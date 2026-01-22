@@ -6,7 +6,17 @@
 use iced::widget::{Space, button, column, container, row, text};
 use iced::{Alignment, Border, Color, Element, Length, Theme};
 
-use crate::theme::{BORDER_RADIUS_SM, SPACING_SM, colors};
+use crate::theme::{BORDER_RADIUS_SM, ClinicalColors, SPACING_SM};
+
+// =============================================================================
+// BADGE COLOR ENUM
+// =============================================================================
+
+/// Badge color specification - either a direct color or a theme-derived closure.
+enum BadgeColor {
+    Direct(Color),
+    Themed(fn(&Theme) -> Color),
+}
 
 // =============================================================================
 // VARIABLE LIST ITEM
@@ -29,7 +39,7 @@ pub struct VariableListItem<'a, M> {
     on_click: M,
     selected: bool,
     leading_icon: Option<Element<'a, M>>,
-    trailing_badge: Option<(String, Color)>,
+    trailing_badge: Option<(String, BadgeColor)>,
 }
 
 impl<'a, M: Clone + 'a> VariableListItem<'a, M> {
@@ -57,9 +67,19 @@ impl<'a, M: Clone + 'a> VariableListItem<'a, M> {
         self
     }
 
-    /// Set a trailing badge with text and background color.
+    /// Set a trailing badge with text and direct background color.
     pub fn trailing_badge(mut self, text: impl Into<String>, color: Color) -> Self {
-        self.trailing_badge = Some((text.into(), color));
+        self.trailing_badge = Some((text.into(), BadgeColor::Direct(color)));
+        self
+    }
+
+    /// Set a trailing badge with text and theme-derived background color.
+    pub fn trailing_badge_themed(
+        mut self,
+        text: impl Into<String>,
+        color_fn: fn(&Theme) -> Color,
+    ) -> Self {
+        self.trailing_badge = Some((text.into(), BadgeColor::Themed(color_fn)));
         self
     }
 
@@ -71,15 +91,6 @@ impl<'a, M: Clone + 'a> VariableListItem<'a, M> {
 
     /// Build the list item element.
     pub fn view(self) -> Element<'a, M> {
-        let c = colors();
-        let text_primary = c.text_primary;
-        let text_muted = c.text_muted;
-        let text_on_accent = c.text_on_accent;
-        let accent_primary = c.accent_primary;
-        let accent_light = c.accent_primary_light;
-        let bg_secondary = c.background_secondary;
-        let border_default = c.border_default;
-
         let is_selected = self.selected;
         let name = self.name;
         let label = self.label;
@@ -93,25 +104,53 @@ impl<'a, M: Clone + 'a> VariableListItem<'a, M> {
         // Trailing badge
         let trailing: Element<'a, M> = if let Some((badge_text, badge_color)) = self.trailing_badge
         {
-            container(text(badge_text).size(9).color(text_on_accent))
-                .padding([2.0, 4.0])
-                .style(move |_theme: &Theme| container::Style {
-                    background: Some(badge_color.into()),
-                    border: Border {
-                        radius: 2.0.into(),
+            match badge_color {
+                BadgeColor::Direct(color) => {
+                    container(text(badge_text).size(9).style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_on_accent),
+                    }))
+                    .padding([2.0, 4.0])
+                    .style(move |_theme: &Theme| container::Style {
+                        background: Some(color.into()),
+                        border: Border {
+                            radius: 2.0.into(),
+                            ..Default::default()
+                        },
                         ..Default::default()
-                    },
-                    ..Default::default()
-                })
-                .into()
+                    })
+                    .into()
+                }
+                BadgeColor::Themed(color_fn) => {
+                    container(text(badge_text).size(9).style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_on_accent),
+                    }))
+                    .padding([2.0, 4.0])
+                    .style(move |theme: &Theme| container::Style {
+                        background: Some(color_fn(theme).into()),
+                        border: Border {
+                            radius: 2.0.into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    })
+                    .into()
+                }
+            }
         } else {
             Space::new().width(0.0).into()
         };
 
         // Name and label text
-        let name_text = text(name).size(13).color(text_primary);
+        let name_text = text(name).size(13).style(|theme: &Theme| text::Style {
+            color: Some(theme.extended_palette().background.base.text),
+        });
         let label_text: Element<'a, M> = if let Some(lbl) = label {
-            text(lbl).size(11).color(text_muted).into()
+            text(lbl)
+                .size(11)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                })
+                .into()
         } else {
             Space::new().height(0.0).into()
         };
@@ -128,23 +167,28 @@ impl<'a, M: Clone + 'a> VariableListItem<'a, M> {
         button(content)
             .on_press(on_click)
             .width(Length::Fill)
-            .style(move |_theme: &Theme, btn_status| {
+            .style(move |theme: &Theme, btn_status| {
+                let palette = theme.extended_palette();
+                let clinical = theme.clinical();
+
                 let bg = if is_selected {
-                    Some(accent_light.into())
+                    Some(clinical.accent_primary_light.into())
                 } else {
                     match btn_status {
-                        iced::widget::button::Status::Hovered => Some(bg_secondary.into()),
+                        iced::widget::button::Status::Hovered => {
+                            Some(clinical.background_secondary.into())
+                        }
                         _ => None,
                     }
                 };
                 let border_color = if is_selected {
-                    accent_primary
+                    palette.primary.base.color
                 } else {
-                    border_default
+                    clinical.border_default
                 };
                 iced::widget::button::Style {
                     background: bg,
-                    text_color: text_primary,
+                    text_color: palette.background.base.text,
                     border: Border {
                         radius: BORDER_RADIUS_SM.into(),
                         color: border_color,
@@ -202,26 +246,9 @@ impl<'a, M: Clone + 'a> SimpleListItem<'a, M> {
 
     /// Build the list item element.
     pub fn view(self) -> Element<'a, M> {
-        let c = colors();
-        let text_primary = c.text_primary;
-        let accent_primary = c.accent_primary;
-        let accent_light = c.accent_primary_light;
-        let bg_elevated = c.background_elevated;
-
         let is_selected = self.selected;
         let display_text = self.text;
         let on_click = self.on_click;
-
-        let bg_color = if is_selected {
-            accent_light
-        } else {
-            bg_elevated
-        };
-        let text_color = if is_selected {
-            accent_primary
-        } else {
-            text_primary
-        };
 
         // Leading icon or nothing
         let leading: Element<'a, M> = self
@@ -232,7 +259,17 @@ impl<'a, M: Clone + 'a> SimpleListItem<'a, M> {
             row![
                 leading,
                 Space::new().width(SPACING_SM),
-                text(display_text).size(13).color(text_color),
+                text(display_text).size(13).style(move |theme: &Theme| {
+                    let palette = theme.extended_palette();
+                    let text_color = if is_selected {
+                        palette.primary.base.color
+                    } else {
+                        palette.background.base.text
+                    };
+                    text::Style {
+                        color: Some(text_color),
+                    }
+                }),
             ]
             .align_y(Alignment::Center)
             .width(Length::Fill),
@@ -240,14 +277,28 @@ impl<'a, M: Clone + 'a> SimpleListItem<'a, M> {
         .on_press(on_click)
         .padding([8.0, 12.0])
         .width(Length::Fill)
-        .style(move |_: &Theme, _status| iced::widget::button::Style {
-            background: Some(bg_color.into()),
-            text_color,
-            border: Border {
-                radius: BORDER_RADIUS_SM.into(),
+        .style(move |theme: &Theme, _status| {
+            let palette = theme.extended_palette();
+            let clinical = theme.clinical();
+            let bg_color = if is_selected {
+                clinical.accent_primary_light
+            } else {
+                clinical.background_elevated
+            };
+            let text_color = if is_selected {
+                palette.primary.base.color
+            } else {
+                palette.background.base.text
+            };
+            iced::widget::button::Style {
+                background: Some(bg_color.into()),
+                text_color,
+                border: Border {
+                    radius: BORDER_RADIUS_SM.into(),
+                    ..Default::default()
+                },
                 ..Default::default()
-            },
-            ..Default::default()
+            }
         })
         .into()
     }

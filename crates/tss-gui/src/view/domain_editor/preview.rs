@@ -21,7 +21,7 @@ use crate::message::domain_editor::PreviewMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, DomainState, PreviewUiState, ViewState};
 use crate::theme::{
-    BORDER_RADIUS_SM, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SemanticColor, ThemeConfig,
+    BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, ThemeConfig,
     button_ghost, button_primary,
 };
 
@@ -32,8 +32,9 @@ use crate::theme::{
 /// Get the Not Collected colors for theming
 fn not_collected_colors(config: &ThemeConfig) -> NotCollectedColors {
     // Use warning colors as base for "Not Collected" columns
-    let warning = config.resolve(SemanticColor::StatusWarning);
-    let warning_light = config.resolve(SemanticColor::StatusWarningLight);
+    let theme = config.to_theme(false);
+    let warning = theme.extended_palette().warning.base.color;
+    let warning_light = theme.clinical().status_warning_light;
 
     NotCollectedColors {
         bg: warning_light,
@@ -84,7 +85,8 @@ pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
     let domain = match state.domain(domain_code) {
         Some(d) => d,
         None => {
-            let text_muted = config.resolve(SemanticColor::TextMuted);
+            let theme = config.to_theme(false);
+            let text_muted = theme.clinical().text_muted;
             return container(text("Domain not found").size(14).color(text_muted))
                 .width(Length::Fill)
                 .height(Length::Fill)
@@ -143,11 +145,12 @@ fn view_preview_header<'a>(
     df: Option<&DataFrame>,
     preview_ui: &PreviewUiState,
 ) -> Element<'a, Message> {
-    let text_primary = config.resolve(SemanticColor::TextPrimary);
-    let text_secondary = config.resolve(SemanticColor::TextSecondary);
-    let text_muted = config.resolve(SemanticColor::TextMuted);
-    let text_on_accent = config.resolve(SemanticColor::TextOnAccent);
-    let bg_secondary = config.resolve(SemanticColor::BackgroundSecondary);
+    let theme = config.to_theme(false);
+    let text_primary = theme.extended_palette().background.base.text;
+    let text_secondary = theme.clinical().text_secondary;
+    let text_muted = theme.clinical().text_muted;
+    let text_on_accent = theme.clinical().text_on_accent;
+    let bg_secondary = theme.clinical().background_secondary;
 
     let title = text("Data Preview").size(18).color(text_primary);
 
@@ -250,8 +253,9 @@ fn view_data_table<'a>(
     preview_ui: &PreviewUiState,
     domain: &DomainState,
 ) -> Element<'a, Message> {
-    let bg_secondary = config.resolve(SemanticColor::BackgroundSecondary);
-    let border_default = config.resolve(SemanticColor::BorderDefault);
+    let theme = config.to_theme(false);
+    let bg_secondary = theme.clinical().background_secondary;
+    let border_default = theme.clinical().border_default;
 
     let col_names: Vec<String> = df
         .get_column_names()
@@ -433,10 +437,11 @@ fn build_header_row<'a>(
     col_widths: &[f32],
     not_collected_cols: &HashSet<&str>,
 ) -> Element<'a, Message> {
-    let text_secondary = config.resolve(SemanticColor::TextSecondary);
-    let text_on_accent = config.resolve(SemanticColor::TextOnAccent);
-    let bg_secondary = config.resolve(SemanticColor::BackgroundSecondary);
-    let border_default = config.resolve(SemanticColor::BorderDefault);
+    let theme = config.to_theme(false);
+    let text_secondary = theme.clinical().text_secondary;
+    let text_on_accent = theme.clinical().text_on_accent;
+    let bg_secondary = theme.clinical().background_secondary;
+    let border_default = theme.clinical().border_default;
     let nc_colors = not_collected_colors(config);
 
     let mut header = row![].spacing(0);
@@ -526,11 +531,12 @@ fn build_data_row<'a>(
     row_idx: usize,
     is_even: bool,
 ) -> Element<'a, Message> {
-    let text_primary = config.resolve(SemanticColor::TextPrimary);
-    let text_disabled = config.resolve(SemanticColor::TextDisabled);
-    let bg_elevated = config.resolve(SemanticColor::BackgroundElevated);
-    let bg_secondary = config.resolve(SemanticColor::BackgroundSecondary);
-    let border_default = config.resolve(SemanticColor::BorderDefault);
+    let theme = config.to_theme(false);
+    let text_primary = theme.extended_palette().background.base.text;
+    let text_disabled = theme.clinical().text_disabled;
+    let bg_elevated = theme.clinical().background_elevated;
+    let bg_secondary = theme.clinical().background_secondary;
+    let border_default = theme.clinical().border_default;
     let nc_colors = not_collected_colors(config);
 
     let mut data_row = row![].spacing(0);
@@ -600,10 +606,11 @@ fn view_pagination<'a>(
     total_rows: usize,
     page_size: usize,
 ) -> Element<'a, Message> {
-    let text_secondary = config.resolve(SemanticColor::TextSecondary);
-    let text_disabled = config.resolve(SemanticColor::TextDisabled);
-    let bg_elevated = config.resolve(SemanticColor::BackgroundElevated);
-    let border_default = config.resolve(SemanticColor::BorderDefault);
+    let theme = config.to_theme(false);
+    let text_secondary = theme.clinical().text_secondary;
+    let text_disabled = theme.clinical().text_disabled;
+    let bg_elevated = theme.clinical().background_elevated;
+    let border_default = theme.clinical().border_default;
 
     let total_pages = total_rows.div_ceil(page_size).max(1);
 
@@ -713,10 +720,11 @@ fn view_pagination<'a>(
 
 /// Rows per page selector.
 fn view_rows_per_page_selector<'a>(config: &ThemeConfig, current: usize) -> Element<'a, Message> {
-    let text_secondary = config.resolve(SemanticColor::TextSecondary);
-    let accent_primary = config.resolve(SemanticColor::AccentPrimary);
-    let bg_elevated = config.resolve(SemanticColor::BackgroundElevated);
-    let border_default = config.resolve(SemanticColor::BorderDefault);
+    let theme = config.to_theme(false);
+    let text_secondary = theme.clinical().text_secondary;
+    let accent_primary = theme.extended_palette().primary.base.color;
+    let bg_elevated = theme.clinical().background_elevated;
+    let border_default = theme.clinical().border_default;
 
     // Create a lighter accent background for selected state
     let accent_light = Color {
@@ -842,7 +850,8 @@ fn view_error_state(error: &str) -> Element<'_, Message> {
 
 /// Empty state when no preview is available.
 fn view_empty_state<'a>(config: &ThemeConfig) -> Element<'a, Message> {
-    let text_disabled = config.resolve(SemanticColor::TextDisabled);
+    let theme = config.to_theme(false);
+    let text_disabled = theme.clinical().text_disabled;
 
     EmptyState::new(
         lucide::table().size(48).color(text_disabled),

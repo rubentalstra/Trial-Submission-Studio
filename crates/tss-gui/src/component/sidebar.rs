@@ -3,9 +3,9 @@
 //! A vertical sidebar for domain/feature navigation.
 
 use iced::widget::{button, column, container, scrollable, space, text};
-use iced::{Border, Element, Length, Padding};
+use iced::{Border, Element, Length, Padding, Theme};
 
-use crate::theme::{BORDER_RADIUS_SM, SIDEBAR_WIDTH, SPACING_SM, SPACING_XS, colors};
+use crate::theme::{BORDER_RADIUS_SM, ClinicalColors, SIDEBAR_WIDTH, SPACING_SM, SPACING_XS};
 
 // =============================================================================
 // SIDEBAR ITEM
@@ -45,6 +45,7 @@ impl<M> SidebarItem<M> {
 /// Creates a vertical sidebar navigation.
 ///
 /// Renders a column of navigation items with optional badges.
+/// Uses Iced's theme system - colors are resolved inside style closures.
 ///
 /// # Arguments
 ///
@@ -71,17 +72,6 @@ pub fn sidebar<'a, M: Clone + 'a>(
     active_index: Option<usize>,
     width: f32,
 ) -> Element<'a, M> {
-    let c = colors();
-    let bg_primary = c.background_primary;
-    let bg_secondary = c.background_secondary;
-    let border_default = c.border_default;
-    let text_secondary = c.text_secondary;
-    let text_primary = c.text_primary;
-    let accent_primary = c.accent_primary;
-    let accent_pressed = c.accent_pressed;
-    // Light tint of accent for active background
-    let accent_light = c.accent_primary_light;
-
     let mut item_column = column![].spacing(SPACING_XS);
 
     for (index, item) in items.into_iter().enumerate() {
@@ -91,29 +81,44 @@ pub fn sidebar<'a, M: Clone + 'a>(
         // Item content with optional badge
         let item_content = if let Some(badge) = item.badge {
             iced::widget::row![
-                text(label).size(14).color(if is_active {
-                    accent_pressed
-                } else {
-                    text_secondary
+                text(label).size(14).style(move |theme: &Theme| {
+                    let clinical = theme.clinical();
+                    text::Style {
+                        color: Some(if is_active {
+                            clinical.accent_pressed
+                        } else {
+                            clinical.text_secondary
+                        }),
+                    }
                 }),
                 space::horizontal(),
-                container(text(badge).size(11).color(text_secondary))
-                    .padding([2.0, 6.0])
-                    .style(move |_theme| container::Style {
-                        background: Some(border_default.into()),
+                container(text(badge).size(11).style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_secondary),
+                }))
+                .padding([2.0, 6.0])
+                .style(|theme: &Theme| {
+                    let clinical = theme.clinical();
+                    container::Style {
+                        background: Some(clinical.border_default.into()),
                         border: Border {
                             radius: 10.0.into(),
                             ..Default::default()
                         },
                         ..Default::default()
-                    }),
+                    }
+                }),
             ]
             .align_y(iced::Alignment::Center)
         } else {
-            iced::widget::row![text(label).size(14).color(if is_active {
-                accent_pressed
-            } else {
-                text_secondary
+            iced::widget::row![text(label).size(14).style(move |theme: &Theme| {
+                let clinical = theme.clinical();
+                text::Style {
+                    color: Some(if is_active {
+                        clinical.accent_pressed
+                    } else {
+                        clinical.text_secondary
+                    }),
+                }
             })]
         };
 
@@ -124,13 +129,16 @@ pub fn sidebar<'a, M: Clone + 'a>(
         )
         .on_press(item.message)
         .width(Length::Fill)
-        .style(move |_theme, status| {
+        .style(move |theme: &Theme, status| {
+            let palette = theme.extended_palette();
+            let clinical = theme.clinical();
+
             if is_active {
                 button::Style {
-                    background: Some(accent_light.into()),
-                    text_color: accent_pressed,
+                    background: Some(clinical.accent_primary_light.into()),
+                    text_color: clinical.accent_pressed,
                     border: Border {
-                        color: accent_primary,
+                        color: palette.primary.base.color,
                         width: 0.0,
                         radius: BORDER_RADIUS_SM.into(),
                     },
@@ -138,12 +146,12 @@ pub fn sidebar<'a, M: Clone + 'a>(
                 }
             } else {
                 let bg = match status {
-                    button::Status::Hovered => Some(bg_secondary.into()),
+                    button::Status::Hovered => Some(clinical.background_secondary.into()),
                     _ => None,
                 };
                 button::Style {
                     background: bg,
-                    text_color: text_primary,
+                    text_color: palette.background.base.text,
                     border: Border {
                         radius: BORDER_RADIUS_SM.into(),
                         ..Default::default()
@@ -160,14 +168,18 @@ pub fn sidebar<'a, M: Clone + 'a>(
         .width(Length::Fixed(width))
         .height(Length::Fill)
         .padding(SPACING_SM)
-        .style(move |_theme| container::Style {
-            background: Some(bg_primary.into()),
-            border: Border {
-                color: border_default,
-                width: 1.0,
-                radius: 0.0.into(),
-            },
-            ..Default::default()
+        .style(|theme: &Theme| {
+            let palette = theme.extended_palette();
+            let clinical = theme.clinical();
+            container::Style {
+                background: Some(palette.background.base.color.into()),
+                border: Border {
+                    color: clinical.border_default,
+                    width: 1.0,
+                    radius: 0.0.into(),
+                },
+                ..Default::default()
+            }
         })
         .into()
 }
@@ -187,17 +199,6 @@ pub fn sidebar_with_header<'a, M: Clone + 'a>(
     active_index: Option<usize>,
     width: f32,
 ) -> Element<'a, M> {
-    let c = colors();
-    let bg_primary = c.background_primary;
-    let bg_secondary = c.background_secondary;
-    let border_default = c.border_default;
-    let text_secondary = c.text_secondary;
-    let text_primary = c.text_primary;
-    let accent_primary = c.accent_primary;
-    let accent_pressed = c.accent_pressed;
-    // Light tint of accent for active background
-    let accent_light = c.accent_primary_light;
-
     let mut item_column = column![].spacing(SPACING_XS);
 
     for (index, item) in items.into_iter().enumerate() {
@@ -205,23 +206,31 @@ pub fn sidebar_with_header<'a, M: Clone + 'a>(
         let label = item.label.clone();
 
         let item_button = button(
-            container(text(label).size(14).color(if is_active {
-                accent_pressed
-            } else {
-                text_secondary
+            container(text(label).size(14).style(move |theme: &Theme| {
+                let clinical = theme.clinical();
+                text::Style {
+                    color: Some(if is_active {
+                        clinical.accent_pressed
+                    } else {
+                        clinical.text_secondary
+                    }),
+                }
             }))
             .padding([SPACING_SM, 12.0])
             .width(Length::Fill),
         )
         .on_press(item.message)
         .width(Length::Fill)
-        .style(move |_theme, status| {
+        .style(move |theme: &Theme, status| {
+            let palette = theme.extended_palette();
+            let clinical = theme.clinical();
+
             if is_active {
                 button::Style {
-                    background: Some(accent_light.into()),
-                    text_color: accent_pressed,
+                    background: Some(clinical.accent_primary_light.into()),
+                    text_color: clinical.accent_pressed,
                     border: Border {
-                        color: accent_primary,
+                        color: palette.primary.base.color,
                         width: 0.0,
                         radius: BORDER_RADIUS_SM.into(),
                     },
@@ -229,12 +238,12 @@ pub fn sidebar_with_header<'a, M: Clone + 'a>(
                 }
             } else {
                 let bg = match status {
-                    button::Status::Hovered => Some(bg_secondary.into()),
+                    button::Status::Hovered => Some(clinical.background_secondary.into()),
                     _ => None,
                 };
                 button::Style {
                     background: bg,
-                    text_color: text_primary,
+                    text_color: palette.background.base.text,
                     border: Border {
                         radius: BORDER_RADIUS_SM.into(),
                         ..Default::default()
@@ -257,14 +266,18 @@ pub fn sidebar_with_header<'a, M: Clone + 'a>(
     )
     .width(Length::Fixed(width))
     .height(Length::Fill)
-    .style(move |_theme| container::Style {
-        background: Some(bg_primary.into()),
-        border: Border {
-            color: border_default,
-            width: 1.0,
-            radius: 0.0.into(),
-        },
-        ..Default::default()
+    .style(|theme: &Theme| {
+        let palette = theme.extended_palette();
+        let clinical = theme.clinical();
+        container::Style {
+            background: Some(palette.background.base.color.into()),
+            border: Border {
+                color: clinical.border_default,
+                width: 1.0,
+                radius: 0.0.into(),
+            },
+            ..Default::default()
+        }
     })
     .into()
 }

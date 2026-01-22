@@ -3,14 +3,15 @@
 //! Shows study info header, domain cards with progress, and export action.
 
 use iced::widget::{Space, button, column, container, row, scrollable, text};
-use iced::{Alignment, Element, Length};
+use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 
-use crate::component::{DomainCard, PageHeader};
+use crate::component::DomainCard;
 use crate::message::{HomeMessage, Message};
 use crate::state::{AppState, Study, WorkflowMode};
 use crate::theme::{
-    SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL, button_primary, button_secondary, colors,
+    BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL,
+    button_primary, button_secondary,
 };
 
 /// Render the study view (study loaded).
@@ -59,16 +60,49 @@ pub fn view_study<'a>(
 }
 
 /// Render the page header with study info.
-fn view_header<'a>(study: &Study, workflow_mode: WorkflowMode) -> Element<'a, Message> {
-    let c = colors();
-
+fn view_header<'a>(study: &'a Study, workflow_mode: WorkflowMode) -> Element<'a, Message> {
     let total_rows = study.total_rows();
     let domain_count = study.domain_count();
+
+    // Workflow badge
+    let badge = container(
+        text(workflow_mode.display_name())
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_on_accent),
+            }),
+    )
+    .padding([4.0, 12.0])
+    .style(|theme: &Theme| container::Style {
+        background: Some(theme.extended_palette().primary.base.color.into()),
+        border: Border {
+            radius: 4.0.into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    // Metadata items
+    let domains_meta =
+        text(format!("Domains: {}", domain_count))
+            .size(12)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            });
+
+    let rows_meta = text(format!("Total rows: {}", format_number(total_rows)))
+        .size(12)
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_muted),
+        });
 
     // Close button
     let close_btn = button(
         row![
-            lucide::x().size(14).color(c.text_secondary),
+            container(lucide::x().size(14)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_secondary),
+                ..Default::default()
+            }),
             Space::new().width(SPACING_SM),
             text("Close Study").size(13),
         ]
@@ -78,23 +112,54 @@ fn view_header<'a>(study: &Study, workflow_mode: WorkflowMode) -> Element<'a, Me
     .padding([SPACING_SM, SPACING_MD])
     .style(button_secondary);
 
-    PageHeader::new(&study.study_id)
-        .badge(workflow_mode.display_name(), c.accent_primary)
-        .meta("Domains", domain_count.to_string())
-        .meta("Total rows", format_number(total_rows))
-        .trailing(close_btn)
-        .view()
+    // Build header row
+    let header_row = row![
+        badge,
+        Space::new().width(SPACING_SM),
+        text(&study.study_id)
+            .size(20)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
+        Space::new().width(Length::Fill),
+        domains_meta,
+        Space::new().width(SPACING_MD),
+        rows_meta,
+        Space::new().width(SPACING_MD),
+        close_btn,
+    ]
+    .spacing(SPACING_SM)
+    .align_y(Alignment::Center);
+
+    // Container with background
+    container(header_row)
+        .width(Length::Fill)
+        .padding([SPACING_MD, SPACING_LG])
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().background_secondary.into()),
+            border: Border {
+                width: 0.0,
+                radius: 0.0.into(),
+                color: theme.clinical().border_default,
+            },
+            ..Default::default()
+        })
+        .into()
 }
 
 /// Render the study path info.
 fn view_path_info<'a>(study: &Study) -> Element<'a, Message> {
-    let c = colors();
     let path_str = study.study_folder.display().to_string();
 
     row![
-        lucide::folder().size(14).color(c.text_muted),
+        container(lucide::folder().size(14)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.clinical().text_muted),
+            ..Default::default()
+        }),
         Space::new().width(SPACING_SM),
-        text(path_str).size(12).color(c.text_muted),
+        text(path_str).size(12).style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_muted),
+        }),
     ]
     .align_y(Alignment::Center)
     .into()
@@ -102,24 +167,27 @@ fn view_path_info<'a>(study: &Study) -> Element<'a, Message> {
 
 /// Render the domains section with cards.
 fn view_domains<'a>(state: &'a AppState, study: &'a Study) -> Element<'a, Message> {
-    let c = colors();
     let domain_codes = study.domain_codes_dm_first();
 
     // Section header with domain count
-    let bg_inset = c.background_inset;
+    let domain_count_str = format!("{}", domain_codes.len());
     let header = row![
-        text("Domains").size(16).color(c.text_secondary),
+        text("Domains").size(16).style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_secondary),
+        }),
         Space::new().width(SPACING_SM),
         container(
-            text(format!("{}", domain_codes.len()))
+            text(domain_count_str)
                 .size(12)
-                .color(c.text_muted)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                })
         )
         .padding([2.0, 8.0])
-        .style(move |_| container::Style {
-            background: Some(bg_inset.into()),
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().background_inset.into()),
             border: iced::Border {
-                radius: 4.0.into(),
+                radius: BORDER_RADIUS_SM.into(),
                 ..Default::default()
             },
             ..Default::default()
@@ -169,11 +237,12 @@ fn view_domains<'a>(state: &'a AppState, study: &'a Study) -> Element<'a, Messag
 
 /// Render the export action button.
 fn view_export_action<'a>() -> Element<'a, Message> {
-    let c = colors();
-
     let export_btn = button(
         row![
-            lucide::download().size(16).color(c.text_on_accent),
+            container(lucide::download().size(16)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_on_accent),
+                ..Default::default()
+            }),
             Space::new().width(SPACING_SM),
             text("Go to Export").size(14),
         ]

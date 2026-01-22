@@ -3,15 +3,15 @@
 //! Shows app branding, workflow selector, and recent studies.
 
 use iced::widget::{Space, button, column, container, row, svg, text};
-use iced::{Alignment, Border, Color, Element, Length};
+use iced::{Alignment, Border, Color, Element, Length, Theme};
 use iced_fonts::lucide;
 
 use crate::component::SectionCard;
 use crate::message::{HomeMessage, Message};
 use crate::state::{AppState, RecentStudy, WorkflowMode};
 use crate::theme::{
-    BORDER_RADIUS_MD, BORDER_RADIUS_SM, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL, SPACING_XS,
-    button_primary, colors,
+    BORDER_RADIUS_MD, BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM,
+    SPACING_XL, SPACING_XS, button_primary,
 };
 
 /// Embedded SVG logo bytes.
@@ -19,8 +19,6 @@ const LOGO_SVG: &[u8] = include_bytes!("../../../assets/icon.svg");
 
 /// Render the welcome view (no study loaded).
 pub fn view_welcome(state: &'_ AppState, workflow_mode: WorkflowMode) -> Element<'_, Message> {
-    let c = colors();
-
     let content = column![
         // Logo
         view_logo(),
@@ -28,12 +26,16 @@ pub fn view_welcome(state: &'_ AppState, workflow_mode: WorkflowMode) -> Element
         // Title
         text("Trial Submission Studio")
             .size(28)
-            .color(c.text_primary),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
         Space::new().height(SPACING_XS),
         // Tagline
         text("Transform clinical data into FDA-compliant CDISC formats")
             .size(14)
-            .color(c.text_muted),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }),
         Space::new().height(SPACING_XL),
         // Workflow selector card
         view_workflow_selector(workflow_mode),
@@ -44,7 +46,6 @@ pub fn view_welcome(state: &'_ AppState, workflow_mode: WorkflowMode) -> Element
     .align_x(Alignment::Center)
     .max_width(500.0);
 
-    let bg_elevated = c.background_elevated;
     // Center the content
     container(content)
         .width(Length::Fill)
@@ -52,8 +53,8 @@ pub fn view_welcome(state: &'_ AppState, workflow_mode: WorkflowMode) -> Element
         .center_x(Length::Fill)
         .center_y(Length::Fill)
         .padding(SPACING_XL)
-        .style(move |_| container::Style {
-            background: Some(bg_elevated.into()),
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().background_elevated.into()),
             ..Default::default()
         })
         .into()
@@ -67,8 +68,6 @@ fn view_logo<'a>() -> Element<'a, Message> {
 
 /// Render the workflow selector card.
 fn view_workflow_selector<'a>(workflow_mode: WorkflowMode) -> Element<'a, Message> {
-    let c = colors();
-
     // Workflow mode buttons
     let mode_buttons = row![
         workflow_button(WorkflowMode::Sdtm, workflow_mode, true),
@@ -82,12 +81,17 @@ fn view_workflow_selector<'a>(workflow_mode: WorkflowMode) -> Element<'a, Messag
     // Mode description
     let description = text(workflow_mode.description())
         .size(13)
-        .color(c.text_muted);
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_muted),
+        });
 
     // Open Study button
     let open_button = button(
         row![
-            lucide::folder_open().size(16).color(c.text_on_accent),
+            container(lucide::folder_open().size(16)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_on_accent),
+                ..Default::default()
+            }),
             Space::new().width(SPACING_SM),
             text("Open Study Folder").size(14),
         ]
@@ -108,7 +112,12 @@ fn view_workflow_selector<'a>(workflow_mode: WorkflowMode) -> Element<'a, Messag
     .width(Length::Fill);
 
     SectionCard::new("Select CDISC Standard", card_content)
-        .icon(lucide::layers().size(14).color(c.text_secondary))
+        .icon(
+            container(lucide::layers().size(14)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_secondary),
+                ..Default::default()
+            }),
+        )
         .view()
 }
 
@@ -118,31 +127,32 @@ fn workflow_button<'a>(
     current: WorkflowMode,
     enabled: bool,
 ) -> Element<'a, Message> {
-    let c = colors();
     let is_selected = mode == current;
     let label = mode.display_name();
 
-    // Resolve colors for use in the closure
-    let disabled_bg = c.background_secondary;
-    let disabled_text = c.text_disabled;
-    let disabled_border = c.border_default;
-    let selected_bg = Color {
-        a: 0.15,
-        ..c.accent_primary
-    };
-    let selected_text = c.accent_primary;
-    let selected_border = c.accent_primary;
-    let hover_bg = c.background_secondary;
-    let hover_text = c.text_primary;
-    let hover_border = c.text_disabled;
-    let default_bg = c.background_elevated;
-    let default_text = c.text_secondary;
-    let default_border = Color {
-        a: 0.8,
-        ..c.border_default
-    };
+    let style_fn = move |theme: &Theme, status: button::Status| {
+        let c = theme.clinical();
+        let accent_primary = theme.extended_palette().primary.base.color;
 
-    let style_fn = move |_theme: &iced::Theme, status: button::Status| {
+        let disabled_bg = c.background_secondary;
+        let disabled_text = c.text_disabled;
+        let disabled_border = c.border_default;
+        let selected_bg = Color {
+            a: 0.15,
+            ..accent_primary
+        };
+        let selected_text = accent_primary;
+        let selected_border = accent_primary;
+        let hover_bg = c.background_secondary;
+        let hover_text = theme.extended_palette().background.base.text;
+        let hover_border = c.text_disabled;
+        let default_bg = c.background_elevated;
+        let default_text = c.text_secondary;
+        let default_border = Color {
+            a: 0.8,
+            ..c.border_default
+        };
+
         let (bg, text_color, border_color) = if !enabled {
             // Disabled state
             (disabled_bg, disabled_text, disabled_border)
@@ -181,31 +191,35 @@ fn workflow_button<'a>(
 
 /// Render the recent studies section.
 fn view_recent_studies<'a>(state: &'a AppState) -> Element<'a, Message> {
-    let c = colors();
     let recent_sorted = state.settings.general.recent_sorted();
 
     if recent_sorted.is_empty() {
         return Space::new().height(0.0).into();
     }
 
-    let text_muted = c.text_muted;
-    let text_secondary = c.text_secondary;
-
     // Clear all button
     let clear_btn: Element<'_, Message> = button(
         row![
-            lucide::trash().size(12).color(text_muted),
+            container(lucide::trash().size(12)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_muted),
+                ..Default::default()
+            }),
             Space::new().width(4.0),
-            text("Clear All").size(11).color(text_muted),
+            text("Clear All")
+                .size(11)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }),
         ]
         .align_y(Alignment::Center),
     )
     .on_press(Message::Home(HomeMessage::ClearAllRecentStudies))
     .padding([4.0, 8.0])
-    .style(move |_theme: &iced::Theme, status| {
+    .style(|theme: &Theme, status| {
+        let c = theme.clinical();
         let txt_color = match status {
-            button::Status::Hovered => text_secondary,
-            _ => text_muted,
+            button::Status::Hovered => c.text_secondary,
+            _ => c.text_muted,
         };
         button::Style {
             background: None,
@@ -217,9 +231,16 @@ fn view_recent_studies<'a>(state: &'a AppState) -> Element<'a, Message> {
 
     // Section header with clear button
     let header = row![
-        lucide::timer().size(14).color(c.text_muted),
+        container(lucide::timer().size(14)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.clinical().text_muted),
+            ..Default::default()
+        }),
         Space::new().width(SPACING_SM),
-        text("Recent Studies").size(13).color(c.text_muted),
+        text("Recent Studies")
+            .size(13)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }),
         Space::new().width(Length::Fill),
         clear_btn,
     ]
@@ -239,56 +260,57 @@ fn view_recent_studies<'a>(state: &'a AppState) -> Element<'a, Message> {
 
 /// Render a recent study item with rich metadata.
 fn recent_study_item<'a>(study: &'a RecentStudy) -> Element<'a, Message> {
-    let c = colors();
     let path_clone = study.path.clone();
     let path_for_remove = study.path.clone();
     let is_stale = !study.exists();
-
-    // Resolve all needed colors
-    let accent_primary = c.accent_primary;
-    let accent_light = Color {
-        a: 0.15,
-        ..accent_primary
-    };
-    let status_warning = c.status_warning;
-    let status_warning_light = c.status_warning_light;
-    let text_muted = c.text_muted;
-    let text_primary = c.text_primary;
-    let text_disabled = c.text_disabled;
-    let text_secondary = c.text_secondary;
-    let bg_secondary = c.background_secondary;
-    let bg_elevated = c.background_elevated;
-    let border_default = c.border_default;
+    let workflow_label = study.workflow_type.label().to_string();
 
     // Workflow badge
-    let workflow_badge = container(
-        text(study.workflow_type.label())
-            .size(9)
-            .color(accent_primary),
-    )
-    .padding([2.0, 6.0])
-    .style(move |_theme| container::Style {
-        background: Some(accent_light.into()),
-        border: Border {
-            radius: BORDER_RADIUS_SM.into(),
-            ..Default::default()
-        },
-        ..Default::default()
-    });
+    let workflow_badge =
+        container(
+            text(workflow_label)
+                .size(9)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().primary.base.color),
+                }),
+        )
+        .padding([2.0, 6.0])
+        .style(|theme: &Theme| {
+            let accent_primary = theme.extended_palette().primary.base.color;
+            let accent_light = Color {
+                a: 0.15,
+                ..accent_primary
+            };
+            container::Style {
+                background: Some(accent_light.into()),
+                border: Border {
+                    radius: BORDER_RADIUS_SM.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }
+        });
 
     // Stale indicator
     let stale_icon: Element<'_, Message> = if is_stale {
         container(
             row![
-                lucide::triangle_alert().size(10).color(status_warning),
+                container(lucide::triangle_alert().size(10)).style(|theme: &Theme| {
+                    container::Style {
+                        text_color: Some(theme.extended_palette().warning.base.color),
+                        ..Default::default()
+                    }
+                }),
                 Space::new().width(2.0),
-                text("Missing").size(9).color(status_warning),
+                text("Missing").size(9).style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().warning.base.color),
+                }),
             ]
             .align_y(Alignment::Center),
         )
         .padding([2.0, 4.0])
-        .style(move |_theme| container::Style {
-            background: Some(status_warning_light.into()),
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().status_warning_light.into()),
             border: Border {
                 radius: BORDER_RADIUS_SM.into(),
                 ..Default::default()
@@ -301,38 +323,68 @@ fn recent_study_item<'a>(study: &'a RecentStudy) -> Element<'a, Message> {
     };
 
     // Top row: name, badges, time
-    let name_color = if is_stale { text_muted } else { text_primary };
+    let display_name = study.display_name.clone();
+    let relative_time = study.relative_time();
     let top_row = row![
-        text(&study.display_name).size(13).color(name_color),
+        text(display_name)
+            .size(13)
+            .style(move |theme: &Theme| text::Style {
+                color: Some(if is_stale {
+                    theme.clinical().text_muted
+                } else {
+                    theme.extended_palette().background.base.text
+                }),
+            }),
         Space::new().width(SPACING_XS),
         workflow_badge,
         Space::new().width(SPACING_XS),
         stale_icon,
         Space::new().width(Length::Fill),
-        text(study.relative_time()).size(11).color(text_muted),
+        text(relative_time)
+            .size(11)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }),
     ]
     .align_y(Alignment::Center);
 
     // Bottom row: stats and path
-    let stats_color = if is_stale { text_disabled } else { text_muted };
+    let stats_string = study.stats_string();
+    let path_display = study.path.display().to_string();
     let bottom_row = row![
-        text(study.stats_string()).size(11).color(stats_color),
+        text(stats_string)
+            .size(11)
+            .style(move |theme: &Theme| text::Style {
+                color: Some(if is_stale {
+                    theme.clinical().text_disabled
+                } else {
+                    theme.clinical().text_muted
+                }),
+            }),
         Space::new().width(SPACING_SM),
-        text(study.path.display().to_string())
+        text(path_display)
             .size(10)
-            .color(text_disabled),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_disabled),
+            }),
     ]
     .align_y(Alignment::Center);
 
     // Remove button
-    let remove_btn = button(lucide::x().size(12).color(text_muted))
+    let remove_btn =
+        button(
+            container(lucide::x().size(12)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_muted),
+                ..Default::default()
+            }),
+        )
         .on_press(Message::Home(HomeMessage::RemoveFromRecent(
             path_for_remove,
         )))
         .padding(4.0)
-        .style(move |_theme, status| {
+        .style(|theme: &Theme, status| {
             let bg = match status {
-                button::Status::Hovered => bg_secondary,
+                button::Status::Hovered => theme.clinical().background_secondary,
                 _ => Color::TRANSPARENT,
             };
             button::Style {
@@ -345,9 +397,15 @@ fn recent_study_item<'a>(study: &'a RecentStudy) -> Element<'a, Message> {
             }
         });
 
-    let folder_color = if is_stale { text_disabled } else { text_muted };
     let content = row![
-        lucide::folder().size(16).color(folder_color),
+        container(lucide::folder().size(16)).style(move |theme: &Theme| container::Style {
+            text_color: Some(if is_stale {
+                theme.clinical().text_disabled
+            } else {
+                theme.clinical().text_muted
+            }),
+            ..Default::default()
+        }),
         Space::new().width(SPACING_SM),
         column![top_row, Space::new().height(2.0), bottom_row,].width(Length::Fill),
         Space::new().width(SPACING_SM),
@@ -363,26 +421,27 @@ fn recent_study_item<'a>(study: &'a RecentStudy) -> Element<'a, Message> {
         })
         .padding([SPACING_SM, SPACING_MD])
         .width(Length::Fill)
-        .style(move |_theme, status| {
+        .style(move |theme: &Theme, status| {
+            let c = theme.clinical();
             let bg = if is_stale {
-                bg_secondary
+                c.background_secondary
             } else {
                 match status {
-                    button::Status::Hovered => bg_secondary,
-                    _ => bg_elevated,
+                    button::Status::Hovered => c.background_secondary,
+                    _ => c.background_elevated,
                 }
             };
             let btn_border_color = if is_stale {
                 Color {
                     a: 0.8,
-                    ..border_default
+                    ..c.border_default
                 }
             } else {
-                border_default
+                c.border_default
             };
             button::Style {
                 background: Some(bg.into()),
-                text_color: text_secondary,
+                text_color: c.text_secondary,
                 border: Border {
                     radius: BORDER_RADIUS_MD.into(),
                     color: btn_border_color,

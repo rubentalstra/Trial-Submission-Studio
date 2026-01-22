@@ -4,10 +4,10 @@
 //! cancellation support.
 
 use iced::widget::{Space, button, center, column, container, opaque, progress_bar, stack, text};
-use iced::{Border, Element, Length, Shadow, Vector};
+use iced::{Border, Element, Length, Shadow, Theme, Vector};
 
 use crate::theme::{
-    BORDER_RADIUS_LG, MODAL_WIDTH_SM, SPACING_LG, SPACING_MD, button_secondary, colors,
+    BORDER_RADIUS_LG, ClinicalColors, MODAL_WIDTH_SM, SPACING_LG, SPACING_MD, button_secondary,
     progress_bar_primary,
 };
 
@@ -48,14 +48,12 @@ pub fn progress_modal<'a, M: Clone + 'a>(
     progress: f32,
     on_cancel: Option<M>,
 ) -> Element<'a, M> {
-    let c = colors();
-
     // Backdrop overlay
     let backdrop = container(column![])
         .width(Length::Fill)
         .height(Length::Fill)
-        .style(move |_theme| container::Style {
-            background: Some(c.backdrop.into()),
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().backdrop.into()),
             ..Default::default()
         });
 
@@ -64,16 +62,29 @@ pub fn progress_modal<'a, M: Clone + 'a>(
         .girth(8.0)
         .style(progress_bar_primary);
 
+    let title_owned = title.to_string();
+    let message_owned = message.to_string();
+
     // Percentage text
     let percentage = text(format!("{}%", (progress * 100.0) as u32))
         .size(14)
-        .color(c.text_muted);
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_muted),
+        });
 
     // Build content column
     let mut content = column![
-        text(title).size(18).color(c.text_primary),
+        text(title_owned)
+            .size(18)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
         Space::new().height(SPACING_MD),
-        text(message).size(14).color(c.text_muted),
+        text(message_owned)
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }),
         Space::new().height(SPACING_MD),
         progress_bar_widget,
         Space::new().height(8.0),
@@ -102,19 +113,22 @@ pub fn progress_modal<'a, M: Clone + 'a>(
     let dialog = container(content)
         .width(Length::Fixed(MODAL_WIDTH_SM))
         .padding(SPACING_LG)
-        .style(move |_theme| container::Style {
-            background: Some(c.background_elevated.into()),
-            border: Border {
-                radius: BORDER_RADIUS_LG.into(),
-                width: 1.0,
-                color: c.border_default,
-            },
-            shadow: Shadow {
-                color: c.shadow_strong,
-                offset: Vector::new(0.0, 4.0),
-                blur_radius: 24.0,
-            },
-            ..Default::default()
+        .style(|theme: &Theme| {
+            let clinical = theme.clinical();
+            container::Style {
+                background: Some(clinical.background_elevated.into()),
+                border: Border {
+                    radius: BORDER_RADIUS_LG.into(),
+                    width: 1.0,
+                    color: clinical.border_default,
+                },
+                shadow: Shadow {
+                    color: clinical.shadow_strong,
+                    offset: Vector::new(0.0, 4.0),
+                    blur_radius: 24.0,
+                },
+                ..Default::default()
+            }
         });
 
     // Stack layers
@@ -130,18 +144,14 @@ pub fn progress_modal<'a, M: Clone + 'a>(
 /// * `base` - The background content
 /// * `message` - Loading message (e.g., "Loading study...")
 pub fn loading_modal<'a, M: 'a>(base: Element<'a, M>, message: &'a str) -> Element<'a, M> {
-    let c = colors();
-    let backdrop_color = c.backdrop;
-    let text_muted = c.text_muted;
-    let bg_elevated = c.background_elevated;
-    let border_default = c.border_default;
+    let message_owned = message.to_string();
 
     // Backdrop overlay
     let backdrop = container(column![])
         .width(Length::Fill)
         .height(Length::Fill)
-        .style(move |_theme| container::Style {
-            background: Some(backdrop_color.into()),
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().backdrop.into()),
             ..Default::default()
         });
 
@@ -152,7 +162,11 @@ pub fn loading_modal<'a, M: 'a>(base: Element<'a, M>, message: &'a str) -> Eleme
 
     // Content
     let content = column![
-        text(message).size(16).color(text_muted),
+        text(message_owned)
+            .size(16)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }),
         Space::new().height(SPACING_MD),
         progress_bar_widget,
     ]
@@ -162,19 +176,22 @@ pub fn loading_modal<'a, M: 'a>(base: Element<'a, M>, message: &'a str) -> Eleme
     let dialog = container(content)
         .width(Length::Fixed(280.0))
         .padding(SPACING_LG)
-        .style(move |_theme| container::Style {
-            background: Some(bg_elevated.into()),
-            border: Border {
-                radius: BORDER_RADIUS_LG.into(),
-                width: 1.0,
-                color: border_default,
-            },
-            shadow: Shadow {
-                color: c.shadow_strong,
-                offset: Vector::new(0.0, 4.0),
-                blur_radius: 24.0,
-            },
-            ..Default::default()
+        .style(|theme: &Theme| {
+            let clinical = theme.clinical();
+            container::Style {
+                background: Some(clinical.background_elevated.into()),
+                border: Border {
+                    radius: BORDER_RADIUS_LG.into(),
+                    width: 1.0,
+                    color: clinical.border_default,
+                },
+                shadow: Shadow {
+                    color: clinical.shadow_strong,
+                    offset: Vector::new(0.0, 4.0),
+                    blur_radius: 24.0,
+                },
+                ..Default::default()
+            }
         });
 
     // Stack layers

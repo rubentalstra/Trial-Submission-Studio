@@ -31,10 +31,12 @@
 //! ```
 
 use iced::widget::{Space, button, column, container, row, text};
-use iced::{Alignment, Border, Element, Length};
+use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 
-use crate::theme::{BORDER_RADIUS_SM, SPACING_LG, SPACING_MD, SPACING_SM, button_primary, colors};
+use crate::theme::{
+    BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, button_primary,
+};
 
 // =============================================================================
 // EMPTY STATE
@@ -91,25 +93,31 @@ impl<'a, M: Clone + 'a> EmptyState<'a, M> {
 
     /// Build the element.
     pub fn view(self) -> Element<'a, M> {
-        let c = colors();
-        let text_muted = c.text_muted;
-        let text_on_accent = c.text_on_accent;
+        let title_text = text(self.title)
+            .size(16)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            });
 
-        let mut content = column![self.icon, Space::new().height(SPACING_MD),]
-            .push(text(self.title).size(16).color(text_muted));
+        let mut content = column![self.icon, Space::new().height(SPACING_MD),].push(title_text);
 
         if let Some(desc) = self.description {
-            content = content
-                .push(Space::new().height(SPACING_SM))
-                .push(text(desc).size(13).color(text_muted));
+            content =
+                content
+                    .push(Space::new().height(SPACING_SM))
+                    .push(text(desc).size(13).style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_muted),
+                    }));
         }
 
         if let Some((label, message)) = self.action {
             content = content.push(Space::new().height(SPACING_LG)).push(
-                button(text(label).size(14).color(text_on_accent))
-                    .on_press(message)
-                    .padding([10.0, 24.0])
-                    .style(button_primary),
+                button(text(label).size(14).style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_on_accent),
+                }))
+                .on_press(message)
+                .padding([10.0, 24.0])
+                .style(button_primary),
             );
         }
 
@@ -175,22 +183,29 @@ impl LoadingState {
 
     /// Build the element.
     pub fn view<'a, M: 'a>(self) -> Element<'a, M> {
-        let c = colors();
-        let accent_primary = c.accent_primary;
-        let text_primary = c.text_primary;
-        let text_muted = c.text_muted;
+        // For icons, we need to wrap in a container with style since lucide icons
+        // use .color() which doesn't have a theme closure
+        let icon = container(lucide::loader().size(40)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.extended_palette().primary.base.color),
+            ..Default::default()
+        });
 
-        let mut content = column![
-            lucide::loader().size(40).color(accent_primary),
-            Space::new().height(SPACING_LG),
-            text(self.title).size(18).color(text_primary),
-        ]
-        .align_x(Alignment::Center);
+        let title_text = text(self.title)
+            .size(18)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            });
+
+        let mut content =
+            column![icon, Space::new().height(SPACING_LG), title_text,].align_x(Alignment::Center);
 
         if let Some(desc) = self.description {
-            content = content
-                .push(Space::new().height(SPACING_SM))
-                .push(text(desc).size(13).color(text_muted));
+            content =
+                content
+                    .push(Space::new().height(SPACING_SM))
+                    .push(text(desc).size(13).style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_muted),
+                    }));
         }
 
         if self.centered {
@@ -257,27 +272,32 @@ impl<M: Clone> ErrorState<M> {
     where
         M: 'a,
     {
-        let c = colors();
-        let error_color = c.status_error;
-        let text_primary = c.text_primary;
-        let text_muted = c.text_muted;
-        let bg_secondary = c.background_secondary;
-        let text_on_accent = c.text_on_accent;
+        // Error icon wrapped in container for theme-aware color
+        let error_icon =
+            container(lucide::circle_alert().size(48)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().danger.base.color),
+                ..Default::default()
+            });
 
-        let mut content = column![
-            lucide::circle_alert().size(48).color(error_color),
-            Space::new().height(SPACING_LG),
-            text(self.title).size(18).color(text_primary),
-        ]
-        .align_x(Alignment::Center)
-        .max_width(400.0);
+        let title_text = text(self.title)
+            .size(18)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            });
+
+        let mut content = column![error_icon, Space::new().height(SPACING_LG), title_text,]
+            .align_x(Alignment::Center)
+            .max_width(400.0);
 
         if let Some(msg) = self.message {
+            let msg_text = text(msg).size(12).style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            });
             content = content.push(Space::new().height(SPACING_SM)).push(
-                container(text(msg).size(12).color(text_muted))
+                container(msg_text)
                     .padding(SPACING_MD)
-                    .style(move |_| container::Style {
-                        background: Some(bg_secondary.into()),
+                    .style(|theme: &Theme| container::Style {
+                        background: Some(theme.clinical().background_secondary.into()),
                         border: Border {
                             radius: BORDER_RADIUS_SM.into(),
                             ..Default::default()
@@ -288,14 +308,21 @@ impl<M: Clone> ErrorState<M> {
         }
 
         if let Some(retry_msg) = self.retry {
+            // Retry icon wrapped in container for theme-aware color
+            let retry_icon =
+                container(lucide::refresh_cw().size(14)).style(|theme: &Theme| container::Style {
+                    text_color: Some(theme.clinical().text_on_accent),
+                    ..Default::default()
+                });
+
+            let retry_label = text("Retry").size(14).style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_on_accent),
+            });
+
             content = content.push(Space::new().height(SPACING_LG)).push(
                 button(
-                    row![
-                        lucide::refresh_cw().size(14).color(text_on_accent),
-                        Space::new().width(SPACING_SM),
-                        text("Retry").size(14).color(text_on_accent),
-                    ]
-                    .align_y(Alignment::Center),
+                    row![retry_icon, Space::new().width(SPACING_SM), retry_label,]
+                        .align_y(Alignment::Center),
                 )
                 .on_press(retry_msg)
                 .padding([10.0, 24.0])
@@ -370,31 +397,46 @@ impl<M: Clone> NoFilteredResults<M> {
     where
         M: 'a,
     {
-        let c = colors();
-        let text_disabled = c.text_disabled;
-        let text_muted = c.text_muted;
-        let text_secondary = c.text_secondary;
+        // Search icon wrapped in container for theme-aware color
+        let search_icon =
+            container(lucide::search().size(32)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_disabled),
+                ..Default::default()
+            });
+
+        let no_results_text = text(format!("No {} found", self.filter_name))
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            });
 
         let mut content = column![
-            lucide::search().size(32).color(text_disabled),
+            search_icon,
             Space::new().height(SPACING_MD),
-            text(format!("No {} found", self.filter_name))
-                .size(14)
-                .color(text_muted),
+            no_results_text,
         ]
         .align_x(Alignment::Center);
 
         if let Some(hint) = self.hint {
-            content = content
-                .push(Space::new().height(SPACING_SM))
-                .push(text(hint).size(12).color(text_muted));
+            content =
+                content
+                    .push(Space::new().height(SPACING_SM))
+                    .push(text(hint).size(12).style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_muted),
+                    }));
         }
 
         if let Some(clear_msg) = self.clear_action {
             content = content.push(Space::new().height(SPACING_MD)).push(
-                button(text("Clear filters").size(12).color(text_secondary))
-                    .on_press(clear_msg)
-                    .padding([6.0, 12.0]),
+                button(
+                    text("Clear filters")
+                        .size(12)
+                        .style(|theme: &Theme| text::Style {
+                            color: Some(theme.clinical().text_secondary),
+                        }),
+                )
+                .on_press(clear_msg)
+                .padding([6.0, 12.0]),
             );
         }
 

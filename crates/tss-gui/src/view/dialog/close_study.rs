@@ -5,34 +5,43 @@
 
 use iced::widget::{Space, button, column, container, row, text};
 use iced::window;
-use iced::{Alignment, Border, Element, Length};
+use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 
 use crate::message::{HomeMessage, Message};
-use crate::theme::{SPACING_LG, SPACING_MD, SPACING_SM, button_secondary, colors};
+use crate::theme::{ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, button_secondary};
 
 /// Render the Close Study confirmation dialog content for a standalone window.
 pub fn view_close_study_dialog_content<'a>(window_id: window::Id) -> Element<'a, Message> {
-    let c = colors();
+    let warning_icon =
+        container(lucide::triangle_alert().size(48)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.extended_palette().warning.base.color),
+            ..Default::default()
+        });
 
-    let warning_icon = lucide::triangle_alert().size(48).color(c.status_warning);
-
-    let title = text("Close Study?").size(20).color(c.text_primary);
+    let title = text("Close Study?")
+        .size(20)
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.extended_palette().background.base.text),
+        });
 
     let message = text("All unsaved mapping progress will be lost.")
         .size(14)
-        .color(c.text_secondary);
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_secondary),
+        });
 
     let cancel_button = button(text("Cancel").size(14))
         .on_press(Message::CloseWindow(window_id))
         .padding([10.0, 20.0])
         .style(button_secondary);
 
-    let error_color = c.status_error;
-    let text_on_accent = c.text_on_accent;
     let confirm_button = button(
         row![
-            lucide::trash().size(14).color(text_on_accent),
+            container(lucide::trash().size(14)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_on_accent),
+                ..Default::default()
+            }),
             Space::new().width(SPACING_SM),
             text("Close Study").size(14),
         ]
@@ -40,9 +49,9 @@ pub fn view_close_study_dialog_content<'a>(window_id: window::Id) -> Element<'a,
     )
     .on_press(Message::Home(HomeMessage::CloseStudyConfirmed))
     .padding([10.0, 20.0])
-    .style(move |_theme, _status| iced::widget::button::Style {
-        background: Some(error_color.into()),
-        text_color: text_on_accent,
+    .style(|theme: &Theme, _status| iced::widget::button::Style {
+        background: Some(theme.extended_palette().danger.base.color.into()),
+        text_color: theme.clinical().text_on_accent,
         border: Border {
             radius: 4.0.into(),
             ..Default::default()
@@ -69,15 +78,14 @@ pub fn view_close_study_dialog_content<'a>(window_id: window::Id) -> Element<'a,
     .align_x(Alignment::Center)
     .padding(SPACING_LG);
 
-    let bg_color = c.background_secondary;
     // Wrap in a styled container for the window
     container(content)
         .width(Length::Fill)
         .height(Length::Fill)
         .center_x(Length::Fill)
         .center_y(Length::Fill)
-        .style(move |_| container::Style {
-            background: Some(bg_color.into()),
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().background_secondary.into()),
             ..Default::default()
         })
         .into()

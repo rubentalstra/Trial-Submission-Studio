@@ -18,7 +18,7 @@
 use iced::widget::{
     Space, button, column, container, pick_list, row, rule, scrollable, text, text_input,
 };
-use iced::{Alignment, Border, Element, Length, Theme};
+use iced::{Alignment, Border, Color, Element, Length, Theme};
 use iced_fonts::lucide;
 use polars::prelude::AnyValue;
 
@@ -33,8 +33,8 @@ use crate::state::{
     SuppUiState, ViewState,
 };
 use crate::theme::{
-    BORDER_RADIUS_SM, MASTER_WIDTH, MAX_CHARS_SHORT_LABEL, MAX_CHARS_VARIABLE_NAME, SPACING_LG,
-    SPACING_MD, SPACING_SM, SPACING_XS, colors,
+    BORDER_RADIUS_SM, ClinicalColors, MASTER_WIDTH, MAX_CHARS_SHORT_LABEL, MAX_CHARS_VARIABLE_NAME,
+    SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
 };
 
 // =============================================================================
@@ -43,17 +43,19 @@ use crate::theme::{
 
 /// Render the SUPP configuration tab content.
 pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'a, Message> {
-    let c = colors();
-
     let domain = match state.domain(domain_code) {
         Some(d) => d,
         None => {
-            return container(text("Domain not found").size(14).color(c.text_muted))
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .center_x(Length::Shrink)
-                .center_y(Length::Shrink)
-                .into();
+            return container(text("Domain not found").size(14).style(|theme: &Theme| {
+                text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }
+            }))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Shrink)
+            .center_y(Length::Shrink)
+            .into();
         }
     };
 
@@ -124,8 +126,6 @@ fn build_master_header_pinned<'a>(
     ui: &'a SuppUiState,
     filtered_count: usize,
 ) -> Element<'a, Message> {
-    let c = colors();
-
     // Search box
     let search = text_input("Search columns...", &ui.search_filter)
         .on_input(|s| {
@@ -141,9 +141,13 @@ fn build_master_header_pinned<'a>(
     let stats = row![
         text(format!("{}", filtered_count))
             .size(12)
-            .color(c.text_secondary),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_secondary),
+            }),
         Space::new().width(4.0),
-        text("columns").size(11).color(c.text_muted),
+        text("columns").size(11).style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_muted),
+        }),
     ]
     .align_y(Alignment::Center);
 
@@ -235,42 +239,37 @@ fn build_column_item(
     action: SuppAction,
     is_selected: bool,
 ) -> Element<'static, Message> {
-    let c = colors();
-    let text_disabled = c.text_disabled;
-    let status_success = c.status_success;
-    let accent_primary = c.accent_primary;
-    let text_primary = c.text_primary;
-    let bg_elevated = c.background_elevated;
-
-    // Create a light accent background for selected state
-    let accent_light = iced::Color {
-        a: 0.15,
-        ..accent_primary
-    };
-
+    // Use static colors for status icons
     let status_icon: Element<'static, Message> = match action {
-        SuppAction::Pending => lucide::circle().size(10).color(text_disabled).into(),
-        SuppAction::Include => lucide::circle_check().size(10).color(status_success).into(),
-        SuppAction::Skip => lucide::circle_x().size(10).color(text_disabled).into(),
+        SuppAction::Pending => lucide::circle()
+            .size(10)
+            .color(Color::from_rgb(0.65, 0.65, 0.70))
+            .into(),
+        SuppAction::Include => lucide::circle_check()
+            .size(10)
+            .color(Color::from_rgb(0.20, 0.78, 0.35))
+            .into(),
+        SuppAction::Skip => lucide::circle_x()
+            .size(10)
+            .color(Color::from_rgb(0.65, 0.65, 0.70))
+            .into(),
     };
 
-    let bg_color = if is_selected {
-        accent_light
-    } else {
-        bg_elevated
-    };
-    let text_color = if is_selected {
-        accent_primary
-    } else {
-        text_primary
-    };
     let display_name = col_name.clone();
 
     button(
         row![
             status_icon,
             Space::new().width(SPACING_SM),
-            text(display_name).size(13).color(text_color),
+            text(display_name)
+                .size(13)
+                .style(move |theme: &Theme| text::Style {
+                    color: Some(if is_selected {
+                        theme.extended_palette().primary.base.color
+                    } else {
+                        theme.extended_palette().background.base.text
+                    }),
+                }),
         ]
         .align_y(Alignment::Center)
         .width(Length::Fill),
@@ -280,14 +279,33 @@ fn build_column_item(
     )))
     .padding([8.0, 12.0])
     .width(Length::Fill)
-    .style(move |_: &Theme, _status| iced::widget::button::Style {
-        background: Some(bg_color.into()),
-        text_color,
-        border: Border {
-            radius: BORDER_RADIUS_SM.into(),
+    .style(move |theme: &Theme, _status| {
+        let accent_primary = theme.extended_palette().primary.base.color;
+        let accent_light = Color {
+            a: 0.15,
+            ..accent_primary
+        };
+        let bg_elevated = theme.clinical().background_elevated;
+
+        let bg_color = if is_selected {
+            accent_light
+        } else {
+            bg_elevated
+        };
+
+        iced::widget::button::Style {
+            background: Some(bg_color.into()),
+            text_color: if is_selected {
+                accent_primary
+            } else {
+                theme.extended_palette().background.base.text
+            },
+            border: Border {
+                radius: BORDER_RADIUS_SM.into(),
+                ..Default::default()
+            },
             ..Default::default()
-        },
-        ..Default::default()
+        }
     })
     .into()
 }
@@ -325,12 +343,11 @@ fn build_detail_panel(
 }
 
 fn build_no_selection_state() -> Element<'static, Message> {
-    let c = colors();
-
     EmptyState::new(
-        lucide::mouse_pointer_click()
-            .size(48)
-            .color(c.text_disabled),
+        container(lucide::mouse_pointer_click().size(48)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.clinical().text_disabled),
+            ..Default::default()
+        }),
         "Select a Column",
     )
     .description("Click on a column in the list to configure its SUPP settings")
@@ -378,25 +395,22 @@ fn build_pending_view(
 }
 
 fn build_pending_actions(domain_code: &str) -> Element<'static, Message> {
-    let c = colors();
-    let text_on_accent = c.text_on_accent;
-    let text_muted = c.text_muted;
-    let text_secondary = c.text_secondary;
-    let accent_primary = c.accent_primary;
-    let accent_hover = c.accent_hover;
-    let accent_pressed = c.accent_pressed;
-
     let supp_name = format!("SUPP{}", domain_code);
 
     column![
         // Primary action - Add to SUPP
         button(
             row![
-                lucide::plus().size(16).color(text_on_accent),
+                container(lucide::plus().size(16)).style(|theme: &Theme| container::Style {
+                    text_color: Some(theme.clinical().text_on_accent),
+                    ..Default::default()
+                }),
                 Space::new().width(SPACING_SM),
                 text(format!("Add to {}", supp_name))
                     .size(14)
-                    .color(text_on_accent),
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_on_accent),
+                    }),
             ]
             .align_y(Alignment::Center),
         )
@@ -405,7 +419,10 @@ fn build_pending_actions(domain_code: &str) -> Element<'static, Message> {
         )))
         .padding([12.0, 24.0])
         .width(Length::Fill)
-        .style(move |_: &Theme, status| {
+        .style(|theme: &Theme, status| {
+            let accent_primary = theme.extended_palette().primary.base.color;
+            let accent_hover = theme.clinical().accent_hover;
+            let accent_pressed = theme.clinical().accent_pressed;
             let bg = match status {
                 iced::widget::button::Status::Hovered => accent_hover,
                 iced::widget::button::Status::Pressed => accent_pressed,
@@ -413,7 +430,7 @@ fn build_pending_actions(domain_code: &str) -> Element<'static, Message> {
             };
             iced::widget::button::Style {
                 background: Some(bg.into()),
-                text_color: text_on_accent,
+                text_color: theme.clinical().text_on_accent,
                 border: Border {
                     radius: BORDER_RADIUS_SM.into(),
                     ..Default::default()
@@ -426,9 +443,16 @@ fn build_pending_actions(domain_code: &str) -> Element<'static, Message> {
         container(
             button(
                 row![
-                    lucide::x().size(14).color(text_muted),
+                    container(lucide::x().size(14)).style(|theme: &Theme| container::Style {
+                        text_color: Some(theme.clinical().text_muted),
+                        ..Default::default()
+                    }),
                     Space::new().width(SPACING_XS),
-                    text("Skip this column").size(13).color(text_muted),
+                    text("Skip this column")
+                        .size(13)
+                        .style(|theme: &Theme| text::Style {
+                            color: Some(theme.clinical().text_muted),
+                        }),
                 ]
                 .align_y(Alignment::Center),
             )
@@ -436,10 +460,10 @@ fn build_pending_actions(domain_code: &str) -> Element<'static, Message> {
                 SuppMessage::Skip,
             )))
             .padding([8.0, 16.0])
-            .style(move |_: &Theme, status| {
+            .style(|theme: &Theme, status| {
                 let tc = match status {
-                    iced::widget::button::Status::Hovered => text_secondary,
-                    _ => text_muted,
+                    iced::widget::button::Status::Hovered => theme.clinical().text_secondary,
+                    _ => theme.clinical().text_muted,
                 };
                 iced::widget::button::Style {
                     background: None,
@@ -491,10 +515,6 @@ fn build_included_view(
 }
 
 fn build_readonly_summary(config: &SuppColumnConfig) -> Element<'static, Message> {
-    let c = colors();
-    let status_success = c.status_success;
-    let status_success_light = c.status_success_light;
-
     let qnam = config.qnam.clone();
     let qlabel = config.qlabel.clone();
     let qorig = config.qorig.label().to_string();
@@ -504,11 +524,18 @@ fn build_readonly_summary(config: &SuppColumnConfig) -> Element<'static, Message
         column![
             // Success indicator
             row![
-                lucide::circle_check().size(16).color(status_success),
+                container(lucide::circle_check().size(16)).style(|theme: &Theme| {
+                    container::Style {
+                        text_color: Some(theme.extended_palette().success.base.color),
+                        ..Default::default()
+                    }
+                }),
                 Space::new().width(SPACING_SM),
                 text("Added to SUPP")
                     .size(13)
-                    .color(status_success)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.extended_palette().success.base.color),
+                    })
                     .font(iced::Font {
                         weight: iced::font::Weight::Medium,
                         ..Default::default()
@@ -526,10 +553,10 @@ fn build_readonly_summary(config: &SuppColumnConfig) -> Element<'static, Message
         ]
         .padding(SPACING_MD),
     )
-    .style(move |_: &Theme| container::Style {
-        background: Some(status_success_light.into()),
+    .style(|theme: &Theme| container::Style {
+        background: Some(theme.clinical().status_success_light.into()),
         border: Border {
-            color: status_success,
+            color: theme.extended_palette().success.base.color,
             width: 1.0,
             radius: BORDER_RADIUS_SM.into(),
         },
@@ -540,24 +567,18 @@ fn build_readonly_summary(config: &SuppColumnConfig) -> Element<'static, Message
 }
 
 fn build_included_actions() -> Element<'static, Message> {
-    let c = colors();
-    let accent_primary = c.accent_primary;
-    let accent_hover = c.accent_hover;
-    let accent_light = iced::Color {
-        a: 0.15,
-        ..accent_primary
-    };
-    let text_muted = c.text_muted;
-    let text_secondary = c.text_secondary;
-    let border_default = c.border_default;
-
     row![
         // Edit button
         button(
             row![
-                lucide::pencil().size(14).color(accent_primary),
+                container(lucide::pencil().size(14)).style(|theme: &Theme| container::Style {
+                    text_color: Some(theme.extended_palette().primary.base.color),
+                    ..Default::default()
+                }),
                 Space::new().width(SPACING_XS),
-                text("Edit").size(13).color(accent_primary),
+                text("Edit").size(13).style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().primary.base.color),
+                }),
             ]
             .align_y(Alignment::Center),
         )
@@ -565,7 +586,13 @@ fn build_included_actions() -> Element<'static, Message> {
             SuppMessage::StartEdit,
         )))
         .padding([8.0, 16.0])
-        .style(move |_: &Theme, status| {
+        .style(|theme: &Theme, status| {
+            let accent_primary = theme.extended_palette().primary.base.color;
+            let accent_hover = theme.clinical().accent_hover;
+            let accent_light = Color {
+                a: 0.15,
+                ..accent_primary
+            };
             let text_color = match status {
                 iced::widget::button::Status::Hovered => accent_hover,
                 _ => accent_primary,
@@ -585,9 +612,14 @@ fn build_included_actions() -> Element<'static, Message> {
         // Remove button
         button(
             row![
-                lucide::trash().size(14).color(text_muted),
+                container(lucide::trash().size(14)).style(|theme: &Theme| container::Style {
+                    text_color: Some(theme.clinical().text_muted),
+                    ..Default::default()
+                }),
                 Space::new().width(SPACING_XS),
-                text("Remove").size(13).color(text_muted),
+                text("Remove").size(13).style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }),
             ]
             .align_y(Alignment::Center),
         )
@@ -595,16 +627,16 @@ fn build_included_actions() -> Element<'static, Message> {
             SuppMessage::UndoAction,
         )))
         .padding([8.0, 16.0])
-        .style(move |_: &Theme, status| {
+        .style(|theme: &Theme, status| {
             let text_color = match status {
-                iced::widget::button::Status::Hovered => text_secondary,
-                _ => text_muted,
+                iced::widget::button::Status::Hovered => theme.clinical().text_secondary,
+                _ => theme.clinical().text_muted,
             };
             iced::widget::button::Style {
                 background: None,
                 text_color,
                 border: Border {
-                    color: border_default,
+                    color: theme.clinical().border_default,
                     width: 1.0,
                     radius: BORDER_RADIUS_SM.into(),
                 },
@@ -625,11 +657,6 @@ fn build_edit_view(
     draft: &SuppEditDraft,
     domain_code: &str,
 ) -> Element<'static, Message> {
-    let c = colors();
-    let status_warning = c.status_warning;
-    let status_warning_light = c.status_warning_light;
-    let text_secondary = c.text_secondary;
-
     let header = build_detail_header(col_name, domain_code);
     let sample_data = build_sample_data(domain, col_name);
 
@@ -656,19 +683,24 @@ fn build_edit_view(
     // Edit mode info
     let edit_info = container(
         row![
-            lucide::info().size(14).color(status_warning),
+            container(lucide::info().size(14)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().warning.base.color),
+                ..Default::default()
+            }),
             Space::new().width(SPACING_SM),
             text("Editing — changes will be saved when you click Save")
                 .size(12)
-                .color(text_secondary),
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_secondary),
+                }),
         ]
         .align_y(Alignment::Center),
     )
     .padding([SPACING_SM, SPACING_MD])
-    .style(move |_: &Theme| container::Style {
-        background: Some(status_warning_light.into()),
+    .style(|theme: &Theme| container::Style {
+        background: Some(theme.clinical().status_warning_light.into()),
         border: Border {
-            color: status_warning,
+            color: theme.extended_palette().warning.base.color,
             width: 1.0,
             radius: BORDER_RADIUS_SM.into(),
         },
@@ -699,22 +731,18 @@ fn build_edit_view(
 }
 
 fn build_edit_actions() -> Element<'static, Message> {
-    let c = colors();
-    let text_on_accent = c.text_on_accent;
-    let accent_primary = c.accent_primary;
-    let accent_hover = c.accent_hover;
-    let accent_pressed = c.accent_pressed;
-    let text_secondary = c.text_secondary;
-    let text_primary = c.text_primary;
-    let border_default = c.border_default;
-
     row![
         // Save button (primary)
         button(
             row![
-                lucide::check().size(16).color(text_on_accent),
+                container(lucide::check().size(16)).style(|theme: &Theme| container::Style {
+                    text_color: Some(theme.clinical().text_on_accent),
+                    ..Default::default()
+                }),
                 Space::new().width(SPACING_SM),
-                text("Save").size(14).color(text_on_accent),
+                text("Save").size(14).style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_on_accent),
+                }),
             ]
             .align_y(Alignment::Center),
         )
@@ -722,7 +750,10 @@ fn build_edit_actions() -> Element<'static, Message> {
             SuppMessage::SaveEdit,
         )))
         .padding([10.0, 24.0])
-        .style(move |_: &Theme, status| {
+        .style(|theme: &Theme, status| {
+            let accent_primary = theme.extended_palette().primary.base.color;
+            let accent_hover = theme.clinical().accent_hover;
+            let accent_pressed = theme.clinical().accent_pressed;
             let bg = match status {
                 iced::widget::button::Status::Hovered => accent_hover,
                 iced::widget::button::Status::Pressed => accent_pressed,
@@ -730,7 +761,7 @@ fn build_edit_actions() -> Element<'static, Message> {
             };
             iced::widget::button::Style {
                 background: Some(bg.into()),
-                text_color: text_on_accent,
+                text_color: theme.clinical().text_on_accent,
                 border: Border {
                     radius: BORDER_RADIUS_SM.into(),
                     ..Default::default()
@@ -740,27 +771,31 @@ fn build_edit_actions() -> Element<'static, Message> {
         }),
         Space::new().width(SPACING_MD),
         // Cancel button
-        button(text("Cancel").size(14).color(text_secondary))
-            .on_press(Message::DomainEditor(DomainEditorMessage::Supp(
-                SuppMessage::CancelEdit,
-            )))
-            .padding([10.0, 24.0])
-            .style(move |_: &Theme, status| {
-                let text_color = match status {
-                    iced::widget::button::Status::Hovered => text_primary,
-                    _ => text_secondary,
-                };
-                iced::widget::button::Style {
-                    background: None,
-                    text_color,
-                    border: Border {
-                        color: border_default,
-                        width: 1.0,
-                        radius: BORDER_RADIUS_SM.into(),
-                    },
-                    ..Default::default()
+        button(text("Cancel").size(14).style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_secondary),
+        }),)
+        .on_press(Message::DomainEditor(DomainEditorMessage::Supp(
+            SuppMessage::CancelEdit,
+        )))
+        .padding([10.0, 24.0])
+        .style(|theme: &Theme, status| {
+            let text_color = match status {
+                iced::widget::button::Status::Hovered => {
+                    theme.extended_palette().background.base.text
                 }
-            }),
+                _ => theme.clinical().text_secondary,
+            };
+            iced::widget::button::Style {
+                background: None,
+                text_color,
+                border: Border {
+                    color: theme.clinical().border_default,
+                    width: 1.0,
+                    radius: BORDER_RADIUS_SM.into(),
+                },
+                ..Default::default()
+            }
+        }),
     ]
     .into()
 }
@@ -774,19 +809,6 @@ fn build_skipped_view(
     col_name: &str,
     domain_code: &str,
 ) -> Element<'static, Message> {
-    let c = colors();
-    let text_muted = c.text_muted;
-    let text_secondary = c.text_secondary;
-    let bg_secondary = c.background_secondary;
-    let border_default = c.border_default;
-    let accent_primary = c.accent_primary;
-    let accent_hover = c.accent_hover;
-    let bg_elevated = c.background_elevated;
-    let accent_light = iced::Color {
-        a: 0.15,
-        ..accent_primary
-    };
-
     let header = build_detail_header(col_name, domain_code);
     let sample_data = build_sample_data(domain, col_name);
 
@@ -794,11 +816,18 @@ fn build_skipped_view(
     let skip_message = container(
         column![
             row![
-                lucide::circle_minus().size(20).color(text_muted),
+                container(lucide::circle_minus().size(20)).style(|theme: &Theme| {
+                    container::Style {
+                        text_color: Some(theme.clinical().text_muted),
+                        ..Default::default()
+                    }
+                }),
                 Space::new().width(SPACING_SM),
                 text("Skipped")
                     .size(16)
-                    .color(text_secondary)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_secondary),
+                    })
                     .font(iced::Font {
                         weight: iced::font::Weight::Semibold,
                         ..Default::default()
@@ -808,14 +837,16 @@ fn build_skipped_view(
             Space::new().height(SPACING_SM),
             text("This column will not be included in the output.")
                 .size(13)
-                .color(text_muted),
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }),
         ]
         .padding(SPACING_MD),
     )
-    .style(move |_: &Theme| container::Style {
-        background: Some(bg_secondary.into()),
+    .style(|theme: &Theme| container::Style {
+        background: Some(theme.clinical().background_secondary.into()),
         border: Border {
-            color: border_default,
+            color: theme.clinical().border_default,
             width: 1.0,
             radius: BORDER_RADIUS_SM.into(),
         },
@@ -826,9 +857,16 @@ fn build_skipped_view(
     // Action - Undo skip (returns to pending state)
     let action = button(
         row![
-            lucide::rotate_ccw().size(14).color(accent_primary),
+            container(lucide::rotate_ccw().size(14)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().primary.base.color),
+                ..Default::default()
+            }),
             Space::new().width(SPACING_SM),
-            text("Undo Skip").size(14).color(accent_primary),
+            text("Undo Skip")
+                .size(14)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().primary.base.color),
+                }),
         ]
         .align_y(Alignment::Center),
     )
@@ -836,7 +874,14 @@ fn build_skipped_view(
         SuppMessage::UndoAction,
     )))
     .padding([10.0, 20.0])
-    .style(move |_: &Theme, status| {
+    .style(|theme: &Theme, status| {
+        let accent_primary = theme.extended_palette().primary.base.color;
+        let accent_hover = theme.clinical().accent_hover;
+        let accent_light = Color {
+            a: 0.15,
+            ..accent_primary
+        };
+        let bg_elevated = theme.clinical().background_elevated;
         let (bg, text_color) = match status {
             iced::widget::button::Status::Hovered => (accent_light, accent_hover),
             _ => (bg_elevated, accent_primary),
@@ -884,35 +929,33 @@ fn build_detail_header(col_name: &str, domain_code: &str) -> Element<'static, Me
 }
 
 fn build_sample_data(domain: &DomainState, col_name: &str) -> Element<'static, Message> {
-    let c = colors();
-    let text_secondary = c.text_secondary;
-    let text_muted = c.text_muted;
-    let text_disabled = c.text_disabled;
-    let bg_secondary = c.background_secondary;
-
     let samples = get_sample_values(domain, col_name, 5);
 
     let sample_chips: Vec<Element<'static, Message>> = samples
         .into_iter()
         .map(|s| {
-            container(text(s).size(11).color(text_secondary))
-                .padding([4.0, 8.0])
-                .style(move |_: &Theme| container::Style {
-                    background: Some(bg_secondary.into()),
-                    border: Border {
-                        radius: BORDER_RADIUS_SM.into(),
-                        ..Default::default()
-                    },
+            container(text(s).size(11).style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_secondary),
+            }))
+            .padding([4.0, 8.0])
+            .style(|theme: &Theme| container::Style {
+                background: Some(theme.clinical().background_secondary.into()),
+                border: Border {
+                    radius: BORDER_RADIUS_SM.into(),
                     ..Default::default()
-                })
-                .into()
+                },
+                ..Default::default()
+            })
+            .into()
         })
         .collect();
 
     let sample_content: Element<'static, Message> = if sample_chips.is_empty() {
         text("No data available")
             .size(12)
-            .color(text_disabled)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_disabled),
+            })
             .into()
     } else {
         row(sample_chips).spacing(SPACING_XS).wrap().into()
@@ -921,9 +964,16 @@ fn build_sample_data(domain: &DomainState, col_name: &str) -> Element<'static, M
     container(
         column![
             row![
-                lucide::database().size(14).color(text_muted),
+                container(lucide::database().size(14)).style(|theme: &Theme| container::Style {
+                    text_color: Some(theme.clinical().text_muted),
+                    ..Default::default()
+                }),
                 Space::new().width(SPACING_SM),
-                text("Sample Values").size(13).color(text_secondary),
+                text("Sample Values")
+                    .size(13)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_secondary),
+                    }),
             ]
             .align_y(Alignment::Center),
             Space::new().height(SPACING_SM),
@@ -932,8 +982,8 @@ fn build_sample_data(domain: &DomainState, col_name: &str) -> Element<'static, M
         .width(Length::Fill),
     )
     .padding(SPACING_MD)
-    .style(move |_: &Theme| container::Style {
-        background: Some(bg_secondary.into()),
+    .style(|theme: &Theme| container::Style {
+        background: Some(theme.clinical().background_secondary.into()),
         border: Border {
             radius: BORDER_RADIUS_SM.into(),
             ..Default::default()
@@ -997,10 +1047,10 @@ fn build_editable_fields(
 }
 
 fn build_origin_picker(current: SuppOrigin) -> Element<'static, Message> {
-    let c = colors();
-
     column![
-        text("QORIG").size(12).color(c.text_secondary),
+        text("QORIG").size(12).style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_secondary),
+        }),
         Space::new().height(4.0),
         pick_list(&SuppOrigin::ALL[..], Some(current), |origin| {
             Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QorigChanged(origin)))
@@ -1069,15 +1119,16 @@ fn check_qnam_conflict(domain: &DomainState, current_col: &str, qnam: &str) -> O
 // =============================================================================
 
 fn view_all_mapped_state(domain_code: &str) -> Element<'static, Message> {
-    let c = colors();
-
     let description = format!(
         "All source columns are mapped to {} variables. No SUPP configuration needed.",
         domain_code
     );
 
     EmptyState::new(
-        lucide::circle_check().size(48).color(c.status_success),
+        container(lucide::circle_check().size(48)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.extended_palette().success.base.color),
+            ..Default::default()
+        }),
         "All Columns Mapped",
     )
     .description(description)

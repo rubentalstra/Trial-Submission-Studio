@@ -6,7 +6,7 @@
 use iced::widget::{Space, button, column, row, text, text_input};
 use iced::{Alignment, Border, Color, Element, Length, Theme};
 
-use crate::theme::{BORDER_RADIUS_SM, SPACING_SM, SPACING_XS, button_secondary, colors};
+use crate::theme::{BORDER_RADIUS_SM, ClinicalColors, SPACING_SM, SPACING_XS, button_secondary};
 
 // =============================================================================
 // FILTER TOGGLE
@@ -37,13 +37,6 @@ impl<M: Clone + 'static> FilterToggle<M> {
 
     /// Build the filter toggle element.
     pub fn view(self) -> Element<'static, M> {
-        let c = colors();
-        let accent_primary = c.accent_primary;
-        let accent_light = Color {
-            a: 0.15,
-            ..accent_primary
-        };
-
         let active = self.active;
         let label = self.label;
         let on_toggle = self.on_toggle;
@@ -53,6 +46,11 @@ impl<M: Clone + 'static> FilterToggle<M> {
             .padding([4.0, 8.0])
             .style(move |theme: &Theme, status| {
                 if active {
+                    let accent_primary = theme.extended_palette().primary.base.color;
+                    let accent_light = Color {
+                        a: 0.15,
+                        ..accent_primary
+                    };
                     iced::widget::button::Style {
                         background: Some(accent_light.into()),
                         text_color: accent_primary,
@@ -148,10 +146,6 @@ impl<M: Clone + 'static> SearchFilterBar<M> {
         };
 
         // Stats text
-        let c = colors();
-        let text_muted = c.text_muted;
-        let text_secondary = c.text_secondary;
-
         let stats_el: Option<Element<'static, M>> = self.stats_text.map(|stats_text| {
             // Split stats text into number and label parts
             let (num_part, label_part) = if let Some((n, r)) = stats_text.split_once(' ') {
@@ -161,9 +155,15 @@ impl<M: Clone + 'static> SearchFilterBar<M> {
             };
 
             row![
-                text(num_part).size(12).color(text_secondary),
+                text(num_part).size(12).style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_secondary),
+                }),
                 Space::new().width(4.0),
-                text(label_part).size(11).color(text_muted),
+                text(label_part)
+                    .size(11)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_muted),
+                    }),
             ]
             .align_y(Alignment::Center)
             .into()

@@ -162,7 +162,7 @@ impl App {
             }
             SettingsMessage::Display(display_msg) => {
                 use crate::message::DisplaySettingsMessage;
-                use crate::theme::{ThemeConfig, set_theme};
+                use crate::theme::ThemeConfig;
 
                 match display_msg {
                     DisplaySettingsMessage::PreviewRowsChanged(rows) => {
@@ -171,17 +171,14 @@ impl App {
                     }
                     DisplaySettingsMessage::ThemeModeChanged(mode) => {
                         self.state.settings.display.theme_mode = mode;
-                        let config =
+                        self.state.theme_config =
                             ThemeConfig::new(mode, self.state.settings.display.accessibility_mode);
-                        self.state.theme_config = config;
-                        set_theme(config); // Update thread-local context
                         tracing::info!("Theme mode: {}", mode.label());
                     }
                     DisplaySettingsMessage::AccessibilityModeChanged(mode) => {
                         self.state.settings.display.accessibility_mode = mode;
-                        let config = ThemeConfig::new(self.state.settings.display.theme_mode, mode);
-                        self.state.theme_config = config;
-                        set_theme(config); // Update thread-local context
+                        self.state.theme_config =
+                            ThemeConfig::new(self.state.settings.display.theme_mode, mode);
                         tracing::info!("Accessibility mode: {}", mode.label());
                     }
                 }

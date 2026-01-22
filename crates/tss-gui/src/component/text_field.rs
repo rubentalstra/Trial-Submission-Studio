@@ -6,7 +6,7 @@
 use iced::widget::{Space, column, row, text, text_input};
 use iced::{Border, Color, Element, Length, Theme};
 
-use crate::theme::{BORDER_RADIUS_SM, colors};
+use crate::theme::{BORDER_RADIUS_SM, ClinicalColors};
 
 // =============================================================================
 // TEXT FIELD
@@ -71,22 +71,11 @@ impl<M: Clone + 'static> TextField<M> {
 
     /// Build the text field element.
     pub fn view(self) -> Element<'static, M> {
-        let c = colors();
-        let error_color = c.status_error;
-        let text_muted = c.text_muted;
-        let text_disabled = c.text_disabled;
-        let text_primary = c.text_primary;
-        let border_default = c.border_default;
-        let bg_elevated = c.background_elevated;
-        let accent_primary = c.accent_primary;
-        let selection_bg = Color {
-            a: 0.15,
-            ..accent_primary
-        };
-
         let char_count = self.value.len();
-        let is_over = self.max_length.is_some_and(|max| char_count > max);
+        let max_length = self.max_length;
+        let is_over = max_length.is_some_and(|max| char_count > max);
         let has_error = self.error.is_some() || is_over;
+        let error_msg = self.error.clone();
 
         // Label with optional required indicator
         let label_text = if self.required {
@@ -96,29 +85,40 @@ impl<M: Clone + 'static> TextField<M> {
         };
 
         // Character count display
-        let count_display: Element<'static, M> = if let Some(max) = self.max_length {
+        let count_display: Element<'static, M> = if let Some(max) = max_length {
             text(format!("{}/{}", char_count, max))
                 .size(11)
-                .color(if is_over { error_color } else { text_disabled })
+                .style(move |theme: &Theme| {
+                    let color = if is_over {
+                        theme.extended_palette().danger.base.color
+                    } else {
+                        theme.clinical().text_disabled
+                    };
+                    text::Style { color: Some(color) }
+                })
                 .into()
         } else {
             Space::new().width(0.0).into()
         };
 
         // Error message
-        let error_el: Element<'static, M> = if let Some(err) = self.error {
+        let error_el: Element<'static, M> = if let Some(err) = error_msg {
             row![
                 iced_fonts::lucide::circle_alert()
                     .size(12)
-                    .color(error_color),
+                    .color(Color::from_rgb(0.90, 0.30, 0.25)),
                 Space::new().width(4.0),
-                text(err).size(11).color(error_color),
+                text(err).size(11).style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().danger.base.color),
+                }),
             ]
             .into()
         } else if is_over {
             text("Character limit exceeded")
                 .size(11)
-                .color(error_color)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().danger.base.color),
+                })
                 .into()
         } else {
             Space::new().height(0.0).into()
@@ -130,7 +130,11 @@ impl<M: Clone + 'static> TextField<M> {
 
         column![
             row![
-                text(label_text).size(12).color(text_muted),
+                text(label_text)
+                    .size(12)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_muted),
+                    }),
                 Space::new().width(Length::Fill),
                 count_display,
             ],
@@ -139,22 +143,32 @@ impl<M: Clone + 'static> TextField<M> {
                 .on_input(on_change)
                 .padding([10.0, 12.0])
                 .size(14)
-                .style(move |_: &Theme, _status| {
+                .style(move |theme: &Theme, _status| {
+                    let clinical = theme.clinical();
+                    let palette = theme.extended_palette();
+
                     let border_color = if has_error {
-                        error_color
+                        palette.danger.base.color
                     } else {
-                        border_default
+                        clinical.border_default
                     };
+
+                    let accent_primary = palette.primary.base.color;
+                    let selection_bg = Color {
+                        a: 0.15,
+                        ..accent_primary
+                    };
+
                     iced::widget::text_input::Style {
-                        background: bg_elevated.into(),
+                        background: clinical.background_elevated.into(),
                         border: Border {
                             color: border_color,
                             width: 1.0,
                             radius: BORDER_RADIUS_SM.into(),
                         },
-                        icon: text_muted,
-                        placeholder: text_disabled,
-                        value: text_primary,
+                        icon: clinical.text_muted,
+                        placeholder: clinical.text_disabled,
+                        value: palette.background.base.text,
                         selection: selection_bg,
                     }
                 }),

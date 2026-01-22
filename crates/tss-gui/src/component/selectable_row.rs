@@ -18,9 +18,10 @@
 //! ```
 
 use iced::widget::{Space, button, column, container, row, text};
-use iced::{Alignment, Border, Color, Element, Length};
+use iced::{Alignment, Border, Element, Length, Theme};
+use iced_fonts::lucide;
 
-use crate::theme::{BORDER_RADIUS_SM, SPACING_SM, SPACING_XS, colors};
+use crate::theme::{BORDER_RADIUS_SM, ClinicalColors, SPACING_SM, SPACING_XS};
 
 // =============================================================================
 // SELECTABLE ROW
@@ -34,18 +35,11 @@ pub struct SelectableRow<'a, M> {
     trailing: Option<Element<'a, M>>,
     selected: bool,
     on_click: M,
-    text_primary_color: Color,
-    text_muted_color: Color,
-    selected_bg: Color,
-    hover_bg: Color,
-    selected_border: Color,
-    default_border: Color,
 }
 
 impl<'a, M: Clone + 'a> SelectableRow<'a, M> {
     /// Create a new selectable row.
     pub fn new(primary: impl Into<String>, on_click: M) -> Self {
-        let c = colors();
         Self {
             primary: primary.into(),
             secondary: None,
@@ -53,12 +47,6 @@ impl<'a, M: Clone + 'a> SelectableRow<'a, M> {
             trailing: None,
             selected: false,
             on_click,
-            text_primary_color: c.text_primary,
-            text_muted_color: c.text_muted,
-            selected_bg: c.accent_primary_light,
-            hover_bg: c.background_secondary,
-            selected_border: c.accent_primary,
-            default_border: c.border_default,
         }
     }
 
@@ -89,12 +77,7 @@ impl<'a, M: Clone + 'a> SelectableRow<'a, M> {
     /// Build the element.
     pub fn view(self) -> Element<'a, M> {
         let is_selected = self.selected;
-        let text_primary = self.text_primary_color;
-        let text_muted = self.text_muted_color;
-        let selected_bg = self.selected_bg;
-        let hover_bg = self.hover_bg;
-        let selected_border = self.selected_border;
-        let default_border = self.default_border;
+        let primary_text = self.primary.clone();
 
         // Build content
         let mut content_row = row![].spacing(SPACING_SM).align_y(Alignment::Center);
@@ -106,14 +89,28 @@ impl<'a, M: Clone + 'a> SelectableRow<'a, M> {
 
         // Text section
         let text_section: Element<'a, M> = if let Some(secondary) = self.secondary {
+            let secondary_text = secondary.clone();
             column![
-                text(self.primary).size(13).color(text_primary),
-                text(secondary).size(11).color(text_muted),
+                text(primary_text)
+                    .size(13)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.extended_palette().background.base.text),
+                    }),
+                text(secondary_text)
+                    .size(11)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_muted),
+                    }),
             ]
             .spacing(2.0)
             .into()
         } else {
-            text(self.primary).size(13).color(text_primary).into()
+            text(primary_text)
+                .size(13)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().background.base.text),
+                })
+                .into()
         };
         content_row = content_row.push(text_section);
 
@@ -129,24 +126,27 @@ impl<'a, M: Clone + 'a> SelectableRow<'a, M> {
         button(content_row.padding([SPACING_SM, SPACING_SM]))
             .on_press(self.on_click)
             .width(Length::Fill)
-            .style(move |_, status| {
+            .style(move |theme: &Theme, status| {
+                let clinical = theme.clinical();
                 let bg = if is_selected {
-                    Some(selected_bg.into())
+                    Some(clinical.accent_primary_light.into())
                 } else {
                     match status {
-                        iced::widget::button::Status::Hovered => Some(hover_bg.into()),
+                        iced::widget::button::Status::Hovered => {
+                            Some(clinical.background_secondary.into())
+                        }
                         _ => None,
                     }
                 };
                 let border_color = if is_selected {
-                    selected_border
+                    theme.extended_palette().primary.base.color
                 } else {
-                    default_border
+                    clinical.border_default
                 };
 
                 iced::widget::button::Style {
                     background: bg,
-                    text_color: text_primary,
+                    text_color: theme.extended_palette().background.base.text,
                     border: Border {
                         radius: BORDER_RADIUS_SM.into(),
                         color: border_color,
@@ -173,20 +173,11 @@ pub struct DomainListItem<M> {
     is_complete: bool,
     is_touched: bool,
     on_click: M,
-    // Theme colors
-    success_color: Color,
-    warning_color: Color,
-    muted_color: Color,
-    accent_color: Color,
-    text_on_accent: Color,
-    text_primary: Color,
-    hover_bg: Color,
 }
 
 impl<M: Clone> DomainListItem<M> {
     /// Create a new domain list item.
     pub fn new(code: impl Into<String>, display_name: impl Into<String>, on_click: M) -> Self {
-        let c = colors();
         Self {
             code: code.into(),
             display_name: display_name.into(),
@@ -194,13 +185,6 @@ impl<M: Clone> DomainListItem<M> {
             is_complete: false,
             is_touched: false,
             on_click,
-            success_color: c.status_success,
-            warning_color: c.status_warning,
-            muted_color: c.text_muted,
-            accent_color: c.accent_primary,
-            text_on_accent: c.text_on_accent,
-            text_primary: c.text_primary,
-            hover_bg: c.background_secondary,
         }
     }
 
@@ -227,30 +211,39 @@ impl<M: Clone> DomainListItem<M> {
     where
         M: 'a,
     {
-        use iced_fonts::lucide;
-
-        let success = self.success_color;
-        let warning = self.warning_color;
-        let muted = self.muted_color;
-        let accent = self.accent_color;
-        let text_on_accent = self.text_on_accent;
-        let text_primary = self.text_primary;
-        let hover_bg = self.hover_bg;
+        let is_complete = self.is_complete;
+        let is_touched = self.is_touched;
+        let code = self.code;
+        let display_name = self.display_name;
+        let row_count = self.row_count;
 
         // Status icon
-        let status_icon: Element<'a, M> = if self.is_complete {
-            lucide::circle_check().size(14).color(success).into()
-        } else if self.is_touched {
-            lucide::pencil().size(14).color(warning).into()
+        let status_icon: Element<'a, M> = if is_complete {
+            container(lucide::circle_check().size(14)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().success.base.color),
+                ..Default::default()
+            })
+        } else if is_touched {
+            container(lucide::pencil().size(14)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().warning.base.color),
+                ..Default::default()
+            })
         } else {
-            lucide::circle().size(14).color(muted).into()
-        };
+            container(lucide::circle().size(14)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_muted),
+                ..Default::default()
+            })
+        }
+        .into();
 
         // Domain badge
-        let badge: Element<'a, M> = container(text(self.code).size(14).color(text_on_accent))
+        let badge: Element<'a, M> =
+            container(text(code).size(14).style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_on_accent),
+            }))
             .padding([4.0, 12.0])
-            .style(move |_| container::Style {
-                background: Some(accent.into()),
+            .style(|theme: &Theme| container::Style {
+                background: Some(theme.extended_palette().primary.base.color.into()),
                 border: Border {
                     radius: 4.0.into(),
                     ..Default::default()
@@ -265,11 +258,17 @@ impl<M: Clone> DomainListItem<M> {
             Space::new().width(SPACING_XS),
             badge,
             Space::new().width(SPACING_SM),
-            text(self.display_name).size(14).color(text_primary),
+            text(display_name)
+                .size(14)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().background.base.text),
+                }),
             Space::new().width(Length::Fill),
-            text(format!("{} rows", self.row_count))
+            text(format!("{} rows", row_count))
                 .size(12)
-                .color(muted),
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }),
         ]
         .align_y(Alignment::Center)
         .padding([SPACING_SM, SPACING_SM]);
@@ -277,14 +276,17 @@ impl<M: Clone> DomainListItem<M> {
         button(content)
             .on_press(self.on_click)
             .width(Length::Fill)
-            .style(move |_, status| {
+            .style(|theme: &Theme, status| {
+                let clinical = theme.clinical();
                 let bg = match status {
-                    iced::widget::button::Status::Hovered => Some(hover_bg.into()),
+                    iced::widget::button::Status::Hovered => {
+                        Some(clinical.background_secondary.into())
+                    }
                     _ => None,
                 };
                 iced::widget::button::Style {
                     background: bg,
-                    text_color: text_primary,
+                    text_color: theme.extended_palette().background.base.text,
                     border: Border {
                         radius: BORDER_RADIUS_SM.into(),
                         ..Default::default()

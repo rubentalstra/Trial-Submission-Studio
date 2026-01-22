@@ -6,7 +6,7 @@
 use iced::widget::{Space, column, container, row, text};
 use iced::{Alignment, Border, Color, Element, Length, Theme};
 
-use crate::theme::{SPACING_XS, colors};
+use crate::theme::{ClinicalColors, SPACING_XS};
 
 // =============================================================================
 // DETAIL HEADER
@@ -25,22 +25,15 @@ pub struct DetailHeader<'a, M> {
     title: String,
     subtitle: Option<String>,
     badge: Option<(Element<'a, M>, String, Color)>, // (icon, text, bg_color)
-    title_color: Color,
-    subtitle_color: Color,
-    badge_text_color: Color,
 }
 
 impl<'a, M: 'a> DetailHeader<'a, M> {
     /// Create a new detail header with a title.
     pub fn new(title: impl Into<String>) -> Self {
-        let c = colors();
         Self {
             title: title.into(),
             subtitle: None,
             badge: None,
-            title_color: c.text_primary,
-            subtitle_color: c.text_muted,
-            badge_text_color: c.text_on_accent,
         }
     }
 
@@ -69,16 +62,19 @@ impl<'a, M: 'a> DetailHeader<'a, M> {
 
     /// Build the detail header element.
     pub fn view(self) -> Element<'a, M> {
-        let title_color = self.title_color;
-        let subtitle_color = self.subtitle_color;
-        let badge_text_color = self.badge_text_color;
-
-        let title_text = text(self.title).size(20).color(title_color);
+        let title_text = self.title.clone();
+        let title_element = text(title_text)
+            .size(20)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            });
 
         let subtitle_el: Element<'a, M> = if let Some(sub) = self.subtitle {
             column![
                 Space::new().height(SPACING_XS),
-                text(sub).size(14).color(subtitle_color),
+                text(sub).size(14).style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }),
             ]
             .into()
         } else {
@@ -90,7 +86,11 @@ impl<'a, M: 'a> DetailHeader<'a, M> {
                 row![
                     icon,
                     Space::new().width(SPACING_XS),
-                    text(badge_text).size(11).color(badge_text_color),
+                    text(badge_text)
+                        .size(11)
+                        .style(|theme: &Theme| text::Style {
+                            color: Some(theme.clinical().text_on_accent),
+                        }),
                 ]
                 .align_y(Alignment::Center),
             )
@@ -109,7 +109,7 @@ impl<'a, M: 'a> DetailHeader<'a, M> {
         };
 
         column![
-            row![title_text, Space::new().width(Length::Fill), badge_el,]
+            row![title_element, Space::new().width(Length::Fill), badge_el,]
                 .align_y(Alignment::Center),
             subtitle_el,
         ]

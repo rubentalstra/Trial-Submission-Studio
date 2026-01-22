@@ -21,9 +21,9 @@
 //! ```
 
 use iced::widget::{Space, column, container, row, text};
-use iced::{Alignment, Border, Color, Element, Length};
+use iced::{Alignment, Border, Color, Element, Length, Theme};
 
-use crate::theme::{BORDER_RADIUS_SM, SPACING_MD, SPACING_SM, colors};
+use crate::theme::{BORDER_RADIUS_SM, ClinicalColors, SPACING_MD, SPACING_SM};
 
 // =============================================================================
 // SECTION CARD
@@ -36,22 +36,15 @@ pub struct SectionCard<'a, M> {
     title: String,
     icon: Option<Element<'a, M>>,
     content: Element<'a, M>,
-    title_color: Color,
-    bg_color: Color,
-    border_color: Color,
 }
 
 impl<'a, M: 'a> SectionCard<'a, M> {
     /// Create a new section card with title and content.
     pub fn new(title: impl Into<String>, content: impl Into<Element<'a, M>>) -> Self {
-        let c = colors();
         Self {
             title: title.into(),
             icon: None,
             content: content.into(),
-            title_color: c.text_secondary,
-            bg_color: c.background_secondary,
-            border_color: c.border_default,
         }
     }
 
@@ -63,20 +56,27 @@ impl<'a, M: 'a> SectionCard<'a, M> {
 
     /// Build the element.
     pub fn view(self) -> Element<'a, M> {
-        let title_color = self.title_color;
-        let bg_color = self.bg_color;
-        let border_color = self.border_color;
+        let title_text = self.title.clone();
 
         let header: Element<'a, M> = if let Some(icon) = self.icon {
             row![
                 icon,
                 Space::new().width(SPACING_SM),
-                text(self.title).size(14).color(title_color),
+                text(title_text)
+                    .size(14)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_secondary),
+                    }),
             ]
             .align_y(Alignment::Center)
             .into()
         } else {
-            text(self.title).size(14).color(title_color).into()
+            text(title_text)
+                .size(14)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_secondary),
+                })
+                .into()
         };
 
         container(
@@ -84,14 +84,17 @@ impl<'a, M: 'a> SectionCard<'a, M> {
         )
         .padding(SPACING_MD)
         .width(Length::Fill)
-        .style(move |_| container::Style {
-            background: Some(bg_color.into()),
-            border: Border {
-                radius: BORDER_RADIUS_SM.into(),
-                color: border_color,
-                width: 1.0,
-            },
-            ..Default::default()
+        .style(|theme: &Theme| {
+            let clinical = theme.clinical();
+            container::Style {
+                background: Some(clinical.background_secondary.into()),
+                border: Border {
+                    radius: BORDER_RADIUS_SM.into(),
+                    color: clinical.border_default,
+                    width: 1.0,
+                },
+                ..Default::default()
+            }
         })
         .into()
     }
@@ -105,13 +108,11 @@ impl<'a, M: 'a> SectionCard<'a, M> {
 ///
 /// Gray background, rounded corners, padding.
 pub fn panel<'a, M: 'a>(content: impl Into<Element<'a, M>>) -> Element<'a, M> {
-    let bg_color = colors().background_secondary;
-
     container(content)
         .padding(SPACING_MD)
         .width(Length::Fill)
-        .style(move |_| container::Style {
-            background: Some(bg_color.into()),
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().background_secondary.into()),
             border: Border {
                 radius: BORDER_RADIUS_SM.into(),
                 ..Default::default()
@@ -138,19 +139,20 @@ pub fn status_panel<'a, M: 'a>(
     border_color: Color,
     background: Option<Color>,
 ) -> Element<'a, M> {
-    let bg = background.unwrap_or_else(|| colors().background_secondary);
-
     container(content)
         .padding(SPACING_MD)
         .width(Length::Fill)
-        .style(move |_| container::Style {
-            background: Some(bg.into()),
-            border: Border {
-                radius: BORDER_RADIUS_SM.into(),
-                color: border_color,
-                width: 2.0,
-            },
-            ..Default::default()
+        .style(move |theme: &Theme| {
+            let bg = background.unwrap_or_else(|| theme.clinical().background_secondary);
+            container::Style {
+                background: Some(bg.into()),
+                border: Border {
+                    radius: BORDER_RADIUS_SM.into(),
+                    color: border_color,
+                    width: 2.0,
+                },
+                ..Default::default()
+            }
         })
         .into()
 }

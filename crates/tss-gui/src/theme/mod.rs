@@ -1,55 +1,56 @@
 //! Theme module for Trial Submission Studio.
 //!
-//! This module provides the Professional Clinical theme with:
-//! - Pre-resolved color cache (`resolved`) - eliminates config parameter passing
-//! - Thread-local context (`context`) - global color access via `colors()`
-//! - Color palettes for different accessibility modes (`palette`)
-//! - Spacing constants (`spacing`)
-//! - Typography definitions (`typography`)
-//! - Custom widget styles (`clinical`)
+//! This module provides the Professional Clinical theme using idiomatic Iced 0.14 patterns:
+//!
+//! - **palette**: Clinical color palettes for all theme/accessibility combinations
+//! - **colors**: ClinicalColors extension trait for app-specific colors
+//! - **clinical**: Widget style functions that use the theme parameter
+//! - **spacing**: Layout spacing constants
+//! - **typography**: Text size constants
 //!
 //! # Architecture
 //!
-//! The theme system uses a thread-local context to store pre-resolved colors,
-//! eliminating the need to pass `&ThemeConfig` through the call hierarchy.
+//! The theme system follows Iced's design patterns:
+//! - Style functions receive `&Theme` and use it to access colors
+//! - `theme.extended_palette()` provides standard widget colors
+//! - `theme.clinical()` (via ClinicalColors trait) provides app-specific colors
 //!
 //! # Usage
 //!
 //! ```rust,ignore
-//! use tss_gui::theme::{set_theme, colors, spacing};
+//! use crate::theme::{clinical_theme, ClinicalColors, spacing};
+//! use iced::Theme;
 //!
-//! // Initialize theme (call in App::new and on settings change)
-//! set_theme(config);
+//! // Create the theme (typically in App::theme())
+//! let theme = clinical_theme(theme_mode, accessibility_mode, system_is_dark);
 //!
-//! // Access colors anywhere - no parameters needed
-//! let c = colors();
-//! let background = c.background_primary;
-//! let success = c.status_success;
+//! // In style closures, use the theme parameter:
+//! .style(|theme: &Theme| {
+//!     let palette = theme.extended_palette();
+//!     let clinical = theme.clinical();
 //!
-//! // Use spacing constants
-//! let padding = spacing::SPACING_MD;
+//!     container::Style {
+//!         background: Some(palette.background.base.color.into()),
+//!         border: Border {
+//!             color: clinical.border_default,
+//!             ..Default::default()
+//!         },
+//!         ..Default::default()
+//!     }
+//! })
 //! ```
 
 pub mod clinical;
-pub mod context;
+pub mod colors;
 pub mod palette;
-pub mod resolved;
-pub mod semantic;
 pub mod spacing;
 pub mod typography;
 
-// Re-export thread-local context functions (main API)
-pub use context::{colors, is_dark, set_theme};
+// Re-export ClinicalColors extension trait (main API for app-specific colors)
+pub use colors::ClinicalColors;
 
-// Re-export semantic color types (kept for palette implementations)
-pub use semantic::{Palette as PaletteTrait, SemanticColor};
-
-// Re-export palette mode enums
+// Re-export palette types
 pub use palette::{AccessibilityMode, ThemeMode};
-
-// Re-export palette implementations
-pub use palette::dark::{DeuteranopiaDark, ProtanopiaDark, StandardDark, TritanopiaDark};
-pub use palette::light::{DeuteranopiaLight, ProtanopiaLight, StandardLight, TritanopiaLight};
 
 // Re-export theme creation function
 pub use clinical::clinical_theme;
@@ -69,7 +70,7 @@ pub use clinical::{
     button_ghost, button_primary, button_secondary, progress_bar_primary, text_input_default,
 };
 
-use iced::Color;
+use iced::Theme;
 use serde::{Deserialize, Serialize};
 
 // =============================================================================
@@ -78,7 +79,7 @@ use serde::{Deserialize, Serialize};
 
 /// Theme configuration for the application.
 ///
-/// Combines appearance mode (light/dark) with accessibility mode.
+/// Combines appearance mode (light/dark/system) with accessibility mode.
 /// Changes apply immediately without app restart.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ThemeConfig {
@@ -106,35 +107,24 @@ impl ThemeConfig {
         }
     }
 
-    /// Get the effective theme mode (resolves System to Light/Dark).
-    pub fn effective_mode(&self) -> ThemeMode {
-        self.theme_mode.resolve()
-    }
-
-    /// Check if currently in dark mode.
-    pub fn is_dark(&self) -> bool {
-        matches!(self.effective_mode(), ThemeMode::Dark)
-    }
-
-    /// Resolve a semantic color using the current palette combination.
-    pub fn resolve(&self, color: SemanticColor) -> Color {
-        match (self.effective_mode(), self.accessibility_mode) {
-            // Light mode palettes
-            (ThemeMode::Light, AccessibilityMode::Standard) => StandardLight.resolve(color),
-            (ThemeMode::Light, AccessibilityMode::Deuteranopia) => DeuteranopiaLight.resolve(color),
-            (ThemeMode::Light, AccessibilityMode::Protanopia) => ProtanopiaLight.resolve(color),
-            (ThemeMode::Light, AccessibilityMode::Tritanopia) => TritanopiaLight.resolve(color),
-            // Dark mode palettes
-            (ThemeMode::Dark, AccessibilityMode::Standard) => StandardDark.resolve(color),
-            (ThemeMode::Dark, AccessibilityMode::Deuteranopia) => DeuteranopiaDark.resolve(color),
-            (ThemeMode::Dark, AccessibilityMode::Protanopia) => ProtanopiaDark.resolve(color),
-            (ThemeMode::Dark, AccessibilityMode::Tritanopia) => TritanopiaDark.resolve(color),
-            // System resolves to Light or Dark via effective_mode()
-            (ThemeMode::System, _) => {
-                // This branch should never be reached because effective_mode()
-                // always resolves System to Light or Dark
-                StandardLight.resolve(color)
-            }
-        }
+    /// Create an Iced Theme from this configuration.
+    ///
+    /// This is useful for previewing themes (e.g., in settings dialogs)
+    /// where you need to show colors for a different configuration than
+    /// the currently active theme.
+    ///
+    /// # Arguments
+    ///
+    /// * `system_is_dark` - Whether the system is in dark mode (for System theme mode)
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let config = ThemeConfig::new(ThemeMode::Dark, AccessibilityMode::Standard);
+    /// let preview_theme = config.to_theme(false);
+    /// let colors = preview_theme.clinical();
+    /// ```
+    pub fn to_theme(self, system_is_dark: bool) -> Theme {
+        clinical_theme(self.theme_mode, self.accessibility_mode, system_is_dark)
     }
 }

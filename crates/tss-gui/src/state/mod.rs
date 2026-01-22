@@ -91,6 +91,10 @@ pub struct AppState {
     /// Theme configuration (derived from settings, cached for quick access).
     pub theme_config: ThemeConfig,
 
+    /// Whether the system is in dark mode (for ThemeMode::System).
+    /// Updated via system::theme_changes() subscription.
+    pub system_is_dark: bool,
+
     /// CDISC Controlled Terminology registry.
     ///
     /// Loaded once when first study is opened. Used for validation
@@ -243,6 +247,7 @@ impl AppState {
             study: None,
             settings,
             theme_config,
+            system_is_dark: false, // Will be updated by system::theme_changes() subscription
             terminology: None,
             error: None,
             is_loading: false,

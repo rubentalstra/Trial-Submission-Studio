@@ -4,18 +4,18 @@
 //! Commonly used for the mapping view (variable list + detail panel) and export view.
 
 use iced::widget::{column, container, row, rule, scrollable};
-use iced::{Color, Element, Length};
+use iced::{Element, Length, Theme};
 
-use crate::theme::{SPACING_MD, colors};
+use crate::theme::{ClinicalColors, SPACING_MD};
 
 // =============================================================================
 // HELPER
 // =============================================================================
 
-/// Helper to create a divider rule style with a given color.
-fn divider_style(color: Color) -> impl Fn(&iced::Theme) -> rule::Style {
-    move |_theme| rule::Style {
-        color,
+/// Helper to create a divider rule style using theme.
+fn divider_style(theme: &Theme) -> rule::Style {
+    rule::Style {
+        color: theme.clinical().border_default,
         radius: 0.0.into(),
         fill_mode: rule::FillMode::Full,
         snap: true,
@@ -53,14 +53,12 @@ pub fn master_detail<'a, M: 'a>(
     detail: Element<'a, M>,
     master_width: f32,
 ) -> Element<'a, M> {
-    let divider_color = colors().border_default;
-
     row![
         container(scrollable(master).height(Length::Fill))
             .width(Length::Fixed(master_width))
             .height(Length::Fill)
             .padding(SPACING_MD),
-        rule::vertical(1).style(divider_style(divider_color)),
+        rule::vertical(1).style(divider_style),
         container(scrollable(detail).height(Length::Fill))
             .width(Length::Fill)
             .height(Length::Fill)
@@ -86,13 +84,11 @@ pub fn master_detail_with_header<'a, M: 'a>(
     detail: Element<'a, M>,
     master_width: f32,
 ) -> Element<'a, M> {
-    let divider_color = colors().border_default;
-
     column![
         container(header)
             .width(Length::Fill)
             .padding(iced::Padding::new(SPACING_MD).bottom(0.0)),
-        rule::horizontal(1).style(divider_style(divider_color)),
+        rule::horizontal(1).style(divider_style),
         master_detail(master, detail, master_width),
     ]
     .height(Length::Fill)
@@ -116,8 +112,6 @@ pub fn master_detail_with_pinned_header<'a, M: 'a>(
     detail: Element<'a, M>,
     master_width: f32,
 ) -> Element<'a, M> {
-    let divider_color = colors().border_default;
-
     row![
         container(
             column![
@@ -129,7 +123,7 @@ pub fn master_detail_with_pinned_header<'a, M: 'a>(
         .width(Length::Fixed(master_width))
         .height(Length::Fill)
         .padding(SPACING_MD),
-        rule::vertical(1).style(divider_style(divider_color)),
+        rule::vertical(1).style(divider_style),
         container(detail)
             .width(Length::Fill)
             .height(Length::Fill)
@@ -154,14 +148,12 @@ pub fn detail_master<'a, M: 'a>(
     master: Element<'a, M>,
     master_width: f32,
 ) -> Element<'a, M> {
-    let divider_color = colors().border_default;
-
     row![
         container(scrollable(detail).height(Length::Fill))
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(SPACING_MD),
-        rule::vertical(1).style(divider_style(divider_color)),
+        rule::vertical(1).style(divider_style),
         container(scrollable(master).height(Length::Fill))
             .width(Length::Fixed(master_width))
             .height(Length::Fill)

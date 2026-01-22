@@ -6,7 +6,28 @@
 use iced::widget::{Space, button, column, container, row, text};
 use iced::{Alignment, Border, Color, Element, Length, Theme};
 
-use crate::theme::{BORDER_RADIUS_SM, SPACING_MD, SPACING_SM, SPACING_XS, button_primary, colors};
+use crate::theme::{
+    BORDER_RADIUS_SM, ClinicalColors, SPACING_MD, SPACING_SM, SPACING_XS, button_primary,
+};
+
+// =============================================================================
+// COLOR ENUM
+// =============================================================================
+
+/// Color specification - either a direct color or a theme-derived closure.
+enum ColorSpec {
+    Direct(Color),
+    Themed(fn(&Theme) -> Color),
+}
+
+impl ColorSpec {
+    fn resolve(&self, theme: &Theme) -> Color {
+        match self {
+            ColorSpec::Direct(c) => *c,
+            ColorSpec::Themed(f) => f(theme),
+        }
+    }
+}
 
 // =============================================================================
 // STATUS CARD
@@ -32,28 +53,21 @@ pub struct StatusCard<'a, M> {
     value: Option<String>,
     description: Option<String>,
     action: Option<(String, M)>,
-    background: Option<Color>,
-    border_color: Option<Color>,
-    title_color: Color,
-    value_color: Color,
-    description_color: Color,
+    background: Option<ColorSpec>,
+    border_color: Option<ColorSpec>,
 }
 
 impl<'a, M: Clone + 'a> StatusCard<'a, M> {
     /// Create a new status card with an icon.
     pub fn new(icon: impl Into<Element<'a, M>>) -> Self {
-        let c = colors();
         Self {
             icon: icon.into(),
             title: None,
             value: None,
             description: None,
             action: None,
-            background: Some(c.background_secondary),
+            background: None,
             border_color: None,
-            title_color: c.text_muted,
-            value_color: c.text_primary,
-            description_color: c.text_muted,
         }
     }
 
@@ -81,42 +95,63 @@ impl<'a, M: Clone + 'a> StatusCard<'a, M> {
         self
     }
 
-    /// Set the background color.
+    /// Set the background color directly.
     pub fn background(mut self, color: Color) -> Self {
-        self.background = Some(color);
+        self.background = Some(ColorSpec::Direct(color));
         self
     }
 
-    /// Set the border color.
+    /// Set the background color from a theme closure.
+    pub fn background_themed(mut self, color_fn: fn(&Theme) -> Color) -> Self {
+        self.background = Some(ColorSpec::Themed(color_fn));
+        self
+    }
+
+    /// Set the border color directly.
     pub fn border_color(mut self, color: Color) -> Self {
-        self.border_color = Some(color);
+        self.border_color = Some(ColorSpec::Direct(color));
+        self
+    }
+
+    /// Set the border color from a theme closure.
+    pub fn border_color_themed(mut self, color_fn: fn(&Theme) -> Color) -> Self {
+        self.border_color = Some(ColorSpec::Themed(color_fn));
         self
     }
 
     /// Build the status card element.
     pub fn view(self) -> Element<'a, M> {
-        let c = colors();
-        let bg_secondary = c.background_secondary;
-
-        let bg = self.background.unwrap_or(bg_secondary);
-        let border = self.border_color;
-        let title_color = self.title_color;
-        let value_color = self.value_color;
-        let description_color = self.description_color;
+        let bg_spec = self.background;
+        let border_spec = self.border_color;
 
         // Build text content column
         let mut text_content = column![];
 
         if let Some(title) = self.title {
-            text_content = text_content.push(text(title).size(12).color(title_color));
+            text_content = text_content.push(text(title).size(12).style(|theme: &Theme| {
+                let clinical = theme.clinical();
+                text::Style {
+                    color: Some(clinical.text_muted),
+                }
+            }));
         }
 
         if let Some(value) = self.value {
-            text_content = text_content.push(text(value).size(14).color(value_color));
+            text_content = text_content.push(text(value).size(14).style(|theme: &Theme| {
+                let palette = theme.extended_palette();
+                text::Style {
+                    color: Some(palette.background.base.text),
+                }
+            }));
         }
 
         if let Some(desc) = self.description {
-            text_content = text_content.push(text(desc).size(11).color(description_color));
+            text_content = text_content.push(text(desc).size(11).style(|theme: &Theme| {
+                let clinical = theme.clinical();
+                text::Style {
+                    color: Some(clinical.text_muted),
+                }
+            }));
         }
 
         // Main content row with icon and text
@@ -145,14 +180,22 @@ impl<'a, M: Clone + 'a> StatusCard<'a, M> {
         container(final_content)
             .padding(SPACING_MD)
             .width(Length::Fill)
-            .style(move |_theme: &Theme| container::Style {
-                background: Some(bg.into()),
-                border: Border {
-                    radius: BORDER_RADIUS_SM.into(),
-                    color: border.unwrap_or(Color::TRANSPARENT),
-                    width: if border.is_some() { 1.0 } else { 0.0 },
-                },
-                ..Default::default()
+            .style(move |theme: &Theme| {
+                let clinical = theme.clinical();
+                let bg_color = bg_spec
+                    .as_ref()
+                    .map(|s| s.resolve(theme))
+                    .unwrap_or(clinical.background_secondary);
+                let border_col = border_spec.as_ref().map(|s| s.resolve(theme));
+                container::Style {
+                    background: Some(bg_color.into()),
+                    border: Border {
+                        radius: BORDER_RADIUS_SM.into(),
+                        color: border_col.unwrap_or(Color::TRANSPARENT),
+                        width: if border_col.is_some() { 1.0 } else { 0.0 },
+                    },
+                    ..Default::default()
+                }
             })
             .into()
     }
@@ -168,21 +211,63 @@ pub fn status_card_success<'a, M: Clone + 'a>(
     value: impl Into<String>,
     description: impl Into<String>,
 ) -> Element<'a, M> {
-    let c = colors();
-    let success_color = c.status_success;
-    let bg_color = c.status_success_light;
+    let title_str = title.into();
+    let value_str = value.into();
+    let desc_str = description.into();
 
-    StatusCard::new(
-        iced_fonts::lucide::circle_check()
-            .size(16)
-            .color(success_color),
+    // We need to create the icon with a style closure
+    let icon = container(iced_fonts::lucide::circle_check().size(16)).style(|theme: &Theme| {
+        let palette = theme.extended_palette();
+        container::Style {
+            text_color: Some(palette.success.base.color),
+            ..Default::default()
+        }
+    });
+
+    // Create a custom card that applies colors via theme
+    container(
+        row![
+            icon,
+            Space::new().width(SPACING_SM),
+            column![
+                text(title_str).size(12).style(|theme: &Theme| {
+                    let clinical = theme.clinical();
+                    text::Style {
+                        color: Some(clinical.text_muted),
+                    }
+                }),
+                text(value_str).size(14).style(|theme: &Theme| {
+                    let palette = theme.extended_palette();
+                    text::Style {
+                        color: Some(palette.background.base.text),
+                    }
+                }),
+                text(desc_str).size(11).style(|theme: &Theme| {
+                    let clinical = theme.clinical();
+                    text::Style {
+                        color: Some(clinical.text_muted),
+                    }
+                }),
+            ],
+        ]
+        .align_y(Alignment::Center),
     )
-    .title(title)
-    .value(value)
-    .description(description)
-    .background(bg_color)
-    .border_color(success_color)
-    .view()
+    .padding(SPACING_MD)
+    .width(Length::Fill)
+    .style(|theme: &Theme| {
+        let palette = theme.extended_palette();
+        let clinical = theme.clinical();
+        container::Style {
+            background: Some(clinical.status_success_light.into()),
+            border: Border {
+                radius: BORDER_RADIUS_SM.into(),
+                color: palette.success.base.color,
+                width: 1.0,
+            },
+            ..Default::default()
+        }
+    })
+    .into()
 }
 
 /// Convenience function for creating a warning/suggested status card.
@@ -193,22 +278,76 @@ pub fn status_card_warning<'a, M: Clone + 'a>(
     action_label: impl Into<String>,
     action_message: M,
 ) -> Element<'a, M> {
-    let c = colors();
-    let warning_color = c.status_warning;
-    let bg_color = c.status_warning_light;
+    let title_str = title.into();
+    let value_str = value.into();
+    let desc_str = description.into();
+    let action_str = action_label.into();
 
-    StatusCard::new(
-        iced_fonts::lucide::lightbulb()
-            .size(16)
-            .color(warning_color),
+    let icon = container(iced_fonts::lucide::lightbulb().size(16)).style(|theme: &Theme| {
+        let palette = theme.extended_palette();
+        container::Style {
+            text_color: Some(palette.warning.base.color),
+            ..Default::default()
+        }
+    });
+
+    let action_btn = button(
+        row![
+            iced_fonts::lucide::check().size(12),
+            Space::new().width(SPACING_XS),
+            text(action_str).size(13),
+        ]
+        .align_y(Alignment::Center),
     )
-    .title(title)
-    .value(value)
-    .description(description)
-    .action(action_label, action_message)
-    .background(bg_color)
-    .border_color(warning_color)
-    .view()
+    .on_press(action_message)
+    .padding([8.0, 16.0])
+    .style(button_primary);
+
+    container(column![
+        row![
+            icon,
+            Space::new().width(SPACING_SM),
+            column![
+                text(title_str).size(12).style(|theme: &Theme| {
+                    let clinical = theme.clinical();
+                    text::Style {
+                        color: Some(clinical.text_muted),
+                    }
+                }),
+                text(value_str).size(14).style(|theme: &Theme| {
+                    let palette = theme.extended_palette();
+                    text::Style {
+                        color: Some(palette.background.base.text),
+                    }
+                }),
+                text(desc_str).size(11).style(|theme: &Theme| {
+                    let clinical = theme.clinical();
+                    text::Style {
+                        color: Some(clinical.text_muted),
+                    }
+                }),
+            ],
+        ]
+        .align_y(Alignment::Center),
+        Space::new().height(SPACING_SM),
+        action_btn,
+    ])
+    .padding(SPACING_MD)
+    .width(Length::Fill)
+    .style(|theme: &Theme| {
+        let palette = theme.extended_palette();
+        let clinical = theme.clinical();
+        container::Style {
+            background: Some(clinical.status_warning_light.into()),
+            border: Border {
+                radius: BORDER_RADIUS_SM.into(),
+                color: palette.warning.base.color,
+                width: 1.0,
+            },
+            ..Default::default()
+        }
+    })
+    .into()
 }
 
 /// Convenience function for creating a neutral status card.
@@ -217,25 +356,91 @@ pub fn status_card_neutral<'a, M: Clone + 'a>(
     title: impl Into<String>,
     description: impl Into<String>,
 ) -> Element<'a, M> {
-    let c = colors();
-    let bg_color = c.background_secondary;
+    let title_str = title.into();
+    let desc_str = description.into();
 
-    StatusCard::new(icon)
-        .value(title)
-        .description(description)
-        .background(bg_color)
-        .view()
+    container(
+        row![
+            icon.into(),
+            Space::new().width(SPACING_SM),
+            column![
+                text(title_str).size(14).style(|theme: &Theme| {
+                    let palette = theme.extended_palette();
+                    text::Style {
+                        color: Some(palette.background.base.text),
+                    }
+                }),
+                text(desc_str).size(11).style(|theme: &Theme| {
+                    let clinical = theme.clinical();
+                    text::Style {
+                        color: Some(clinical.text_muted),
+                    }
+                }),
+            ],
+        ]
+        .align_y(Alignment::Center),
+    )
+    .padding(SPACING_MD)
+    .width(Length::Fill)
+    .style(|theme: &Theme| {
+        let clinical = theme.clinical();
+        container::Style {
+            background: Some(clinical.background_secondary.into()),
+            border: Border {
+                radius: BORDER_RADIUS_SM.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    })
+    .into()
 }
 
 /// Convenience function for creating an unmapped status card.
 pub fn status_card_unmapped<'a, M: Clone + 'a>() -> Element<'a, M> {
-    let c = colors();
-    let muted_color = c.text_muted;
-    let bg_color = c.background_secondary;
+    let icon = container(iced_fonts::lucide::circle().size(16)).style(|theme: &Theme| {
+        let clinical = theme.clinical();
+        container::Style {
+            text_color: Some(clinical.text_muted),
+            ..Default::default()
+        }
+    });
 
-    StatusCard::new(iced_fonts::lucide::circle().size(16).color(muted_color))
-        .value("Not Mapped")
-        .description("Select a source column below to map this variable")
-        .background(bg_color)
-        .view()
+    container(
+        row![
+            icon,
+            Space::new().width(SPACING_SM),
+            column![
+                text("Not Mapped").size(14).style(|theme: &Theme| {
+                    let palette = theme.extended_palette();
+                    text::Style {
+                        color: Some(palette.background.base.text),
+                    }
+                }),
+                text("Select a source column below to map this variable")
+                    .size(11)
+                    .style(|theme: &Theme| {
+                        let clinical = theme.clinical();
+                        text::Style {
+                            color: Some(clinical.text_muted),
+                        }
+                    }),
+            ],
+        ]
+        .align_y(Alignment::Center),
+    )
+    .padding(SPACING_MD)
+    .width(Length::Fill)
+    .style(|theme: &Theme| {
+        let clinical = theme.clinical();
+        container::Style {
+            background: Some(clinical.background_secondary.into()),
+            border: Border {
+                radius: BORDER_RADIUS_SM.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    })
+    .into()
 }

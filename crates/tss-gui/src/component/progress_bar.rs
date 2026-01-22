@@ -14,9 +14,9 @@
 //! ```
 
 use iced::widget::{Space, container, row, text};
-use iced::{Border, Color, Element, Length};
+use iced::{Border, Element, Length, Theme};
 
-use crate::theme::{SPACING_SM, colors};
+use crate::theme::{ClinicalColors, SPACING_SM};
 
 /// A horizontal progress bar with accessibility support.
 ///
@@ -25,24 +25,15 @@ pub struct ProgressBar {
     value: f32,
     height: f32,
     show_label: bool,
-    fill_color: Color,
-    complete_color: Color,
-    track_color: Color,
-    label_color: Color,
 }
 
 impl ProgressBar {
     /// Create a new progress bar with the given value (0.0 to 1.0).
     pub fn new(value: f32) -> Self {
-        let c = colors();
         Self {
             value: value.clamp(0.0, 1.0),
             height: 6.0,
             show_label: false,
-            fill_color: c.accent_primary,
-            complete_color: c.status_success,
-            track_color: c.border_default,
-            label_color: c.text_muted,
         }
     }
 
@@ -62,25 +53,17 @@ impl ProgressBar {
     pub fn view<M: 'static>(self) -> Element<'static, M> {
         let percentage = (self.value * 100.0).round() as u32;
         let height = self.height;
-
-        // Choose color based on completion
-        let fill_color = if self.value >= 1.0 {
-            self.complete_color
-        } else {
-            self.fill_color
-        };
-        let track_color = self.track_color;
-        let label_color = self.label_color;
+        let value = self.value;
 
         // Filled portion width as FillPortion for proper scaling
-        let fill_width = if self.value > 0.0 {
-            Length::FillPortion((self.value * 100.0).max(1.0) as u16)
+        let fill_width = if value > 0.0 {
+            Length::FillPortion((value * 100.0).max(1.0) as u16)
         } else {
             Length::Fixed(0.0)
         };
 
-        let empty_width = if self.value < 1.0 {
-            Length::FillPortion(((1.0 - self.value) * 100.0).max(1.0) as u16)
+        let empty_width = if value < 1.0 {
+            Length::FillPortion(((1.0 - value) * 100.0).max(1.0) as u16)
         } else {
             Length::Fixed(0.0)
         };
@@ -89,13 +72,22 @@ impl ProgressBar {
         let fill: Element<'static, M> = container(Space::new())
             .width(fill_width)
             .height(height)
-            .style(move |_theme| container::Style {
-                background: Some(fill_color.into()),
-                border: Border {
-                    radius: (height / 2.0).into(),
+            .style(move |theme: &Theme| {
+                let palette = theme.extended_palette();
+                // Choose color based on completion
+                let fill_color = if value >= 1.0 {
+                    palette.success.base.color
+                } else {
+                    palette.primary.base.color
+                };
+                container::Style {
+                    background: Some(fill_color.into()),
+                    border: Border {
+                        radius: (height / 2.0).into(),
+                        ..Default::default()
+                    },
                     ..Default::default()
-                },
-                ..Default::default()
+                }
             })
             .into();
 
@@ -106,13 +98,16 @@ impl ProgressBar {
         let bar: Element<'static, M> = container(row![fill, empty].height(height))
             .width(Length::Fill)
             .height(height)
-            .style(move |_theme| container::Style {
-                background: Some(track_color.into()),
-                border: Border {
-                    radius: (height / 2.0).into(),
+            .style(move |theme: &Theme| {
+                let clinical = theme.clinical();
+                container::Style {
+                    background: Some(clinical.border_default.into()),
+                    border: Border {
+                        radius: (height / 2.0).into(),
+                        ..Default::default()
+                    },
                     ..Default::default()
-                },
-                ..Default::default()
+                }
             })
             .into();
 
@@ -120,7 +115,14 @@ impl ProgressBar {
             row![
                 bar,
                 Space::new().width(SPACING_SM),
-                text(format!("{}%", percentage)).size(12).color(label_color),
+                text(format!("{}%", percentage))
+                    .size(12)
+                    .style(|theme: &Theme| {
+                        let clinical = theme.clinical();
+                        text::Style {
+                            color: Some(clinical.text_muted),
+                        }
+                    }),
             ]
             .into()
         } else {

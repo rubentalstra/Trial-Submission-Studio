@@ -4,9 +4,9 @@
 //! Used in mapping, normalization, and SUPP detail panels.
 
 use iced::widget::{Space, column, container, row, text};
-use iced::{Alignment, Border, Color, Element, Length, Theme};
+use iced::{Alignment, Border, Element, Length, Theme};
 
-use crate::theme::{BORDER_RADIUS_SM, SPACING_MD, SPACING_SM, colors};
+use crate::theme::{BORDER_RADIUS_SM, ClinicalColors, SPACING_MD, SPACING_SM};
 
 // =============================================================================
 // METADATA ROW
@@ -22,16 +22,19 @@ pub fn metadata_row<'a, M: 'a>(
     label: impl Into<String>,
     value: impl Into<String>,
 ) -> Element<'a, M> {
-    let c = colors();
-    let label_color = c.text_muted;
-    let value_color = c.text_primary;
+    let label_str: String = label.into();
+    let value_str: String = value.into();
 
     row![
-        text(label.into())
+        text(label_str)
             .size(12)
-            .color(label_color)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            })
             .width(Length::Fixed(80.0)),
-        text(value.into()).size(12).color(value_color),
+        text(value_str).size(12).style(|theme: &Theme| text::Style {
+            color: Some(theme.extended_palette().background.base.text)
+        }),
     ]
     .align_y(Alignment::Center)
     .into()
@@ -43,16 +46,19 @@ pub fn metadata_row_wide<'a, M: 'a>(
     value: impl Into<String>,
     label_width: f32,
 ) -> Element<'a, M> {
-    let c = colors();
-    let label_color = c.text_muted;
-    let value_color = c.text_primary;
+    let label_str: String = label.into();
+    let value_str: String = value.into();
 
     row![
-        text(label.into())
+        text(label_str)
             .size(12)
-            .color(label_color)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            })
             .width(Length::Fixed(label_width)),
-        text(value.into()).size(12).color(value_color),
+        text(value_str).size(12).style(|theme: &Theme| text::Style {
+            color: Some(theme.extended_palette().background.base.text)
+        }),
     ]
     .align_y(Alignment::Center)
     .into()
@@ -75,23 +81,14 @@ pub fn metadata_row_wide<'a, M: 'a>(
 pub struct MetadataCard {
     rows: Vec<(String, String)>,
     title: Option<String>,
-    title_color: Color,
-    label_color: Color,
-    value_color: Color,
-    bg_color: Color,
 }
 
 impl MetadataCard {
-    /// Create a new metadata card with theme configuration.
+    /// Create a new metadata card.
     pub fn new() -> Self {
-        let c = colors();
         Self {
             rows: Vec::new(),
             title: None,
-            title_color: c.text_muted,
-            label_color: c.text_muted,
-            value_color: c.text_primary,
-            bg_color: c.background_secondary,
         }
     }
 
@@ -117,15 +114,12 @@ impl MetadataCard {
 
     /// Build the metadata card element.
     pub fn view<'a, M: 'a>(self) -> Element<'a, M> {
-        let title_color = self.title_color;
-        let label_color = self.label_color;
-        let value_color = self.value_color;
-        let bg_color = self.bg_color;
-
         let mut content = column![].spacing(SPACING_SM);
 
         if let Some(title) = self.title {
-            content = content.push(text(title).size(14).color(title_color));
+            content = content.push(text(title).size(14).style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }));
             content = content.push(Space::new().height(SPACING_SM));
         }
 
@@ -133,9 +127,13 @@ impl MetadataCard {
             let row_el: Element<'a, M> = row![
                 text(label)
                     .size(12)
-                    .color(label_color)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_muted)
+                    })
                     .width(Length::Fixed(80.0)),
-                text(value).size(12).color(value_color),
+                text(value).size(12).style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().background.base.text)
+                }),
             ]
             .align_y(Alignment::Center)
             .into();
@@ -145,8 +143,8 @@ impl MetadataCard {
         container(content)
             .padding(SPACING_MD)
             .width(Length::Fill)
-            .style(move |_theme: &Theme| container::Style {
-                background: Some(bg_color.into()),
+            .style(|theme: &Theme| container::Style {
+                background: Some(theme.clinical().background_secondary.into()),
                 border: Border {
                     radius: BORDER_RADIUS_SM.into(),
                     ..Default::default()

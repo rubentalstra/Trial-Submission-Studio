@@ -14,12 +14,12 @@ pub mod supp;
 pub mod validation;
 
 use iced::widget::{column, container, text};
-use iced::{Border, Element, Length};
+use iced::{Border, Element, Length, Theme};
 
 use crate::component::{PageHeader, Tab, tab_bar};
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, DomainState, EditorTab};
-use crate::theme::colors;
+use crate::theme::ClinicalColors;
 
 // Re-export tab view functions
 pub use mapping::view_mapping_tab;
@@ -44,13 +44,16 @@ pub fn view_domain_editor<'a>(
     let domain = match state.domain(domain_code) {
         Some(d) => d,
         None => {
-            let c = colors();
-            return container(text("Domain not found").size(16).color(c.text_muted))
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .center_x(Length::Shrink)
-                .center_y(Length::Shrink)
-                .into();
+            return container(text("Domain not found").size(16).style(|theme: &Theme| {
+                text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }
+            }))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Shrink)
+            .center_y(Length::Shrink)
+            .into();
         }
     };
 
@@ -87,7 +90,6 @@ pub fn view_domain_editor<'a>(
 
 /// Domain editor header with domain info and back button.
 fn view_editor_header<'a>(domain_code: &'a str, domain: &'a DomainState) -> Element<'a, Message> {
-    let c = colors();
     let display_name = domain.display_name(domain_code);
     let summary = domain.summary();
 
@@ -99,7 +101,9 @@ fn view_editor_header<'a>(domain_code: &'a str, domain: &'a DomainState) -> Elem
 
     PageHeader::new(display_name)
         .back(Message::DomainEditor(DomainEditorMessage::BackClicked))
-        .badge(domain_code, c.accent_primary)
+        .badge_themed(domain_code, |theme: &Theme| {
+            theme.extended_palette().primary.base.color
+        })
         .meta("Rows", domain.row_count().to_string())
         .meta(
             "Progress",
@@ -117,10 +121,6 @@ fn view_editor_header<'a>(domain_code: &'a str, domain: &'a DomainState) -> Elem
 
 /// Tab bar for switching between editor tabs.
 fn view_tab_bar<'a>(current_tab: EditorTab) -> Element<'a, Message> {
-    let c = colors();
-    let bg_elevated = c.background_elevated;
-    let border_default = c.border_default;
-
     let tabs: Vec<Tab<Message>> = EditorTab::ALL
         .iter()
         .map(|tab| {
@@ -139,14 +139,17 @@ fn view_tab_bar<'a>(current_tab: EditorTab) -> Element<'a, Message> {
 
     container(tab_bar(tabs, active_index))
         .width(Length::Fill)
-        .style(move |_theme| container::Style {
-            background: Some(bg_elevated.into()),
-            border: Border {
-                width: 1.0,
-                radius: 0.0.into(),
-                color: border_default,
-            },
-            ..Default::default()
+        .style(|theme: &Theme| {
+            let clinical = theme.clinical();
+            container::Style {
+                background: Some(clinical.background_elevated.into()),
+                border: Border {
+                    width: 1.0,
+                    radius: 0.0.into(),
+                    color: clinical.border_default,
+                },
+                ..Default::default()
+            }
         })
         .into()
 }
