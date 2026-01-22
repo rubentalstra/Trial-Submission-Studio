@@ -152,7 +152,6 @@ impl ViewState {
     ///
     /// Returns `None` if not in domain editor view.
     #[inline]
-    #[allow(dead_code)]
     pub fn current_domain(&self) -> Option<&str> {
         match self {
             Self::DomainEditor { domain, .. } => Some(domain),
@@ -164,7 +163,7 @@ impl ViewState {
     ///
     /// Returns `None` if not in domain editor view.
     #[inline]
-    #[allow(dead_code)]
+
     pub fn current_tab(&self) -> Option<EditorTab> {
         match self {
             Self::DomainEditor { tab, .. } => Some(*tab),
@@ -174,28 +173,28 @@ impl ViewState {
 
     /// Check if currently in domain editor view.
     #[inline]
-    #[allow(dead_code)]
+
     pub fn is_domain_editor(&self) -> bool {
         matches!(self, Self::DomainEditor { .. })
     }
 
     /// Check if currently in home view.
     #[inline]
-    #[allow(dead_code)]
+
     pub fn is_home(&self) -> bool {
         matches!(self, Self::Home { .. })
     }
 
     /// Check if currently in source assignment view.
     #[inline]
-    #[allow(dead_code)]
+
     pub fn is_source_assignment(&self) -> bool {
         matches!(self, Self::SourceAssignment { .. })
     }
 
     /// Check if currently in export view.
     #[inline]
-    #[allow(dead_code)]
+
     pub fn is_export(&self) -> bool {
         matches!(self, Self::Export(_))
     }
@@ -211,7 +210,7 @@ impl ViewState {
     ///
     /// Returns `None` if not in domain editor view.
     #[inline]
-    #[allow(dead_code)]
+
     pub fn mapping_ui_mut(&mut self) -> Option<&mut MappingUiState> {
         match self {
             Self::DomainEditor { mapping_ui, .. } => Some(mapping_ui),
@@ -223,7 +222,7 @@ impl ViewState {
     ///
     /// Returns `None` if not in domain editor view.
     #[inline]
-    #[allow(dead_code)]
+
     pub fn mapping_ui(&self) -> Option<&MappingUiState> {
         match self {
             Self::DomainEditor { mapping_ui, .. } => Some(mapping_ui),
@@ -235,7 +234,7 @@ impl ViewState {
     ///
     /// Returns `None` if not in domain editor view.
     #[inline]
-    #[allow(dead_code)]
+
     pub fn validation_ui_mut(&mut self) -> Option<&mut ValidationUiState> {
         match self {
             Self::DomainEditor { validation_ui, .. } => Some(validation_ui),
@@ -247,7 +246,7 @@ impl ViewState {
     ///
     /// Returns `None` if not in domain editor view.
     #[inline]
-    #[allow(dead_code)]
+
     pub fn preview_ui_mut(&mut self) -> Option<&mut PreviewUiState> {
         match self {
             Self::DomainEditor { preview_ui, .. } => Some(preview_ui),
@@ -259,7 +258,7 @@ impl ViewState {
     ///
     /// Returns `None` if not in domain editor view.
     #[inline]
-    #[allow(dead_code)]
+
     pub fn normalization_ui_mut(&mut self) -> Option<&mut NormalizationUiState> {
         match self {
             Self::DomainEditor {
@@ -273,7 +272,7 @@ impl ViewState {
     ///
     /// Returns `None` if not in domain editor view.
     #[inline]
-    #[allow(dead_code)]
+
     pub fn supp_ui_mut(&mut self) -> Option<&mut SuppUiState> {
         match self {
             Self::DomainEditor { supp_ui, .. } => Some(supp_ui),
@@ -285,7 +284,7 @@ impl ViewState {
     ///
     /// Call this when data changes that would affect the preview.
     /// The preview will be rebuilt on next access.
-    #[allow(dead_code)]
+
     pub fn invalidate_preview(&mut self) {
         if let Self::DomainEditor { preview_cache, .. } = self {
             *preview_cache = None;
@@ -294,7 +293,7 @@ impl ViewState {
 
     /// Get the cached preview DataFrame if available.
     #[inline]
-    #[allow(dead_code)]
+
     pub fn preview_cache(&self) -> Option<&DataFrame> {
         match self {
             Self::DomainEditor { preview_cache, .. } => preview_cache.as_ref(),
@@ -303,7 +302,7 @@ impl ViewState {
     }
 
     /// Set the preview cache.
-    #[allow(dead_code)]
+
     pub fn set_preview_cache(&mut self, df: DataFrame) {
         if let Self::DomainEditor { preview_cache, .. } = self {
             *preview_cache = Some(df);
@@ -314,7 +313,7 @@ impl ViewState {
     ///
     /// Returns `None` if not in source assignment view.
     #[inline]
-    #[allow(dead_code)]
+
     pub fn source_assignment_ui_mut(&mut self) -> Option<&mut SourceAssignmentUiState> {
         match self {
             Self::SourceAssignment { assignment_ui, .. } => Some(assignment_ui),
@@ -326,7 +325,7 @@ impl ViewState {
     ///
     /// Returns `None` if not in export view.
     #[inline]
-    #[allow(dead_code)]
+
     pub fn export_state_mut(&mut self) -> Option<&mut ExportViewState> {
         match self {
             Self::Export(state) => Some(state),

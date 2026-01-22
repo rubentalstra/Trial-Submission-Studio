@@ -63,7 +63,8 @@ pub fn create_menu() -> Menu {
 /// Poll for a menu event and convert to MenuAction.
 ///
 /// This uses muda's global event receiver with try_recv for non-blocking polling.
-/// Called by the subscription to check for pending menu events.
+/// Note: With the channel-based approach, this is mainly used as a fallback.
+/// The primary path is through the forwarder thread in `channel.rs`.
 pub fn poll_menu_event() -> Option<MenuAction> {
     let receiver = MenuEvent::receiver();
 

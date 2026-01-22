@@ -20,7 +20,9 @@ pub mod desktop;
 
 // Re-exports for platform-specific implementations
 #[cfg(target_os = "macos")]
-pub use macos::{RecentStudyInfo, create_menu, menu_subscription, update_recent_studies_menu};
+pub use macos::{
+    RecentStudyInfo, create_menu, init_menu_channel, menu_subscription, update_recent_studies_menu,
+};
 
 #[cfg(not(target_os = "macos"))]
 pub use desktop::{DropdownId, MenuDropdownState, view_menu_bar};

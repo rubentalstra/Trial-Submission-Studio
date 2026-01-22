@@ -160,6 +160,10 @@ impl App {
                     // - Storing references in thread-local storage
                     let _menu = crate::menu::create_menu();
 
+                    // Initialize the channel-based menu event system
+                    // This spawns a background thread that forwards muda events
+                    crate::menu::init_menu_channel();
+
                     // Populate recent studies submenu from saved settings
                     let studies: Vec<_> = self
                         .state
