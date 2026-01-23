@@ -170,9 +170,30 @@ impl App {
             }
 
             Message::SourceFilesChanged(files) => {
-                // TODO: Show warning dialog about changed source files
+                // Show a warning toast about changed source files
                 tracing::warn!("Source files changed since last save: {:?}", files);
+                let msg = format!(
+                    "{} source file(s) changed since last save. Mappings may be outdated.",
+                    files.len()
+                );
+                self.state.toast =
+                    Some(crate::component::feedback::toast::ToastState::warning(msg));
                 Task::none()
+            }
+
+            // =================================================================
+            // Unsaved changes dialog
+            // =================================================================
+            Message::UnsavedChangesSave => {
+                crate::handler::project::handle_unsaved_changes_save(&mut self.state)
+            }
+
+            Message::UnsavedChangesDiscard => {
+                crate::handler::project::handle_unsaved_changes_discard(&mut self.state)
+            }
+
+            Message::UnsavedChangesCancelled => {
+                crate::handler::project::handle_unsaved_changes_cancelled(&mut self.state)
             }
 
             // =================================================================
@@ -244,6 +265,9 @@ impl App {
                     DialogType::ExportComplete => {
                         // Export complete state is set when export completes
                     }
+                    DialogType::UnsavedChanges => {
+                        // Unsaved changes state is set when dialog is opened
+                    }
                 }
                 Task::none()
             }
@@ -255,8 +279,16 @@ impl App {
                     self.state.dialog_windows.close(id);
                     window::close(id)
                 } else if self.state.main_window_id == Some(id) {
-                    // This is the main window - exit the application
-                    iced::exit()
+                    // This is the main window - check for unsaved changes before exiting
+                    if self.state.dirty_tracker.is_dirty() && self.state.study.is_some() {
+                        // Show unsaved changes dialog with quit action
+                        crate::handler::project::show_unsaved_changes_dialog_for_quit(
+                            &mut self.state,
+                        )
+                    } else {
+                        // No unsaved changes - exit immediately
+                        iced::exit()
+                    }
                 } else {
                     // Unknown window (already closed dialog) - just ignore
                     Task::none()
@@ -286,10 +318,41 @@ impl App {
                         self.state.study = Some(study);
                         self.state.terminology = Some(terminology);
                         self.state.view = ViewState::home();
+
+                        // Check if there's a pending project restoration
+                        // (when opening a .tss file, we need to apply saved mappings)
+                        if let Some((_, project)) = self.state.pending_project_restore.take() {
+                            // Check for changed source files
+                            let changed_files =
+                                crate::handler::project::detect_changed_source_files(&project);
+
+                            if !changed_files.is_empty() {
+                                tracing::warn!(
+                                    "Source files changed since last save: {:?}",
+                                    changed_files
+                                );
+                                // Show a warning to the user via toast
+                                let msg = format!(
+                                    "{} source file(s) changed since last save. Mappings may be outdated.",
+                                    changed_files.len()
+                                );
+                                self.state.toast = Some(
+                                    crate::component::feedback::toast::ToastState::warning(msg),
+                                );
+                            }
+
+                            // Restore mappings regardless (user can re-map if needed)
+                            crate::handler::project::restore_project_mappings(
+                                &mut self.state,
+                                &project,
+                            );
+                        }
                     }
                     Err(err) => {
                         tracing::error!("Failed to load study: {}", err);
                         self.state.error = Some(crate::error::GuiError::study_load(err));
+                        // Clear any pending restore on error
+                        self.state.pending_project_restore = None;
                     }
                 }
                 Task::none()
@@ -437,7 +500,7 @@ impl App {
             view_about_dialog_content, view_close_project_dialog_content, view_domain_editor,
             view_export, view_export_complete_dialog_content, view_export_progress_dialog_content,
             view_settings_dialog_content, view_third_party_dialog_content,
-            view_update_dialog_content,
+            view_unsaved_changes_dialog_content, view_update_dialog_content,
         };
 
         // Check if this is a dialog window
@@ -488,6 +551,9 @@ impl App {
                         // This shouldn't happen - show a simple close button
                         iced::widget::text("Export dialog").into()
                     }
+                }
+                DialogType::UnsavedChanges => {
+                    view_unsaved_changes_dialog_content(id)
                 }
             };
         }
@@ -561,6 +627,7 @@ impl App {
                 DialogType::CloseProjectConfirm => "Close Project?".to_string(),
                 DialogType::ExportProgress => "Exporting...".to_string(),
                 DialogType::ExportComplete => "Export Complete".to_string(),
+                DialogType::UnsavedChanges => "Unsaved Changes".to_string(),
             };
         }
 
@@ -704,7 +771,7 @@ fn check_update_status() -> Option<crate::component::feedback::toast::ToastState
             status.previous_version,
             status.version
         );
-        Some(crate::component::feedback::toast::ToastState::update_success(&status.version))
+        Some(crate::component::feedback::toast::ToastState::success(format!("Updated to v{}", status.version)))
     } else {
         tracing::warn!("Update to {} failed: {:?}", status.version, status.error);
         None

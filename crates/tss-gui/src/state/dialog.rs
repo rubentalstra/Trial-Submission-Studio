@@ -56,6 +56,19 @@ pub enum DialogType {
     ExportProgress,
     /// Export completion dialog.
     ExportComplete,
+    /// Unsaved changes confirmation dialog.
+    UnsavedChanges,
+}
+
+/// What action to perform after handling unsaved changes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PendingAction {
+    /// User wants to create a new project.
+    NewProject,
+    /// User wants to open an existing project.
+    OpenProject(std::path::PathBuf),
+    /// User wants to close the application.
+    QuitApp,
 }
 
 impl DialogType {
@@ -69,6 +82,7 @@ impl DialogType {
             Self::CloseProjectConfirm => "Close Project",
             Self::ExportProgress => "Exporting...",
             Self::ExportComplete => "Export Complete",
+            Self::UnsavedChanges => "Unsaved Changes",
         }
     }
 
@@ -82,6 +96,7 @@ impl DialogType {
             Self::CloseProjectConfirm => (400.0, 180.0),
             Self::ExportProgress => (380.0, 180.0),
             Self::ExportComplete => (400.0, 240.0),
+            Self::UnsavedChanges => (420.0, 220.0),
         }
     }
 
@@ -108,6 +123,8 @@ pub enum DialogState {
     ExportProgress(ExportProgressState),
     /// Export complete with results.
     ExportComplete(ExportResult),
+    /// Unsaved changes confirmation with pending action.
+    UnsavedChanges(PendingAction),
 }
 
 impl DialogState {
@@ -121,6 +138,7 @@ impl DialogState {
             Self::CloseProjectConfirm => DialogType::CloseProjectConfirm,
             Self::ExportProgress(_) => DialogType::ExportProgress,
             Self::ExportComplete(_) => DialogType::ExportComplete,
+            Self::UnsavedChanges(_) => DialogType::UnsavedChanges,
         }
     }
 }

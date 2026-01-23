@@ -106,8 +106,8 @@ pub enum Message {
     /// Project file selected from dialog.
     OpenProjectSelected(Option<PathBuf>),
 
-    /// Project loaded from disk.
-    ProjectLoaded(Result<ProjectFile, String>),
+    /// Project loaded from disk (includes path for storing and restoration).
+    ProjectLoaded(Result<(PathBuf, ProjectFile), String>),
 
     /// Save current project to existing path.
     SaveProject,
@@ -126,6 +126,18 @@ pub enum Message {
 
     /// Source files changed since last save.
     SourceFilesChanged(Vec<String>),
+
+    // =========================================================================
+    // Unsaved changes dialog
+    // =========================================================================
+    /// User clicked "Save" in the unsaved changes dialog.
+    UnsavedChangesSave,
+
+    /// User clicked "Don't Save" in the unsaved changes dialog.
+    UnsavedChangesDiscard,
+
+    /// User clicked "Cancel" in the unsaved changes dialog.
+    UnsavedChangesCancelled,
 
     // =========================================================================
     // Dialogs

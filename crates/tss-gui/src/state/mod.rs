@@ -31,7 +31,7 @@ mod study;
 mod view_state;
 
 // Re-exports - Dialog types are exported but local DialogWindows is kept for backward compatibility
-pub use dialog::{DialogRegistry, DialogState, ExportProgressState};
+pub use dialog::{DialogRegistry, DialogState, ExportProgressState, PendingAction};
 // Re-export DialogType from dialog module (remove local definition)
 pub use dialog::DialogType;
 pub use domain_state::{DomainSource, DomainState, SuppAction, SuppColumnConfig, SuppOrigin};
@@ -152,6 +152,18 @@ pub struct AppState {
     ///
     /// Controls whether auto-save is enabled and its timing parameters.
     pub auto_save_config: AutoSaveConfig,
+
+    /// Pending action to perform after save completes.
+    ///
+    /// Used by the unsaved changes dialog to remember what action
+    /// to perform after the user clicks "Save".
+    pub pending_action_after_save: Option<PendingAction>,
+
+    /// Pending project to restore after study loading completes.
+    ///
+    /// When opening a .tss project, we first load the CSVs, then apply
+    /// the saved mapping decisions from this project data.
+    pub pending_project_restore: Option<(std::path::PathBuf, tss_persistence::ProjectFile)>,
 }
 
 // ExportProgressState is now defined in dialog.rs and re-exported above
@@ -176,6 +188,8 @@ pub struct DialogWindows {
     pub export_progress: Option<(window::Id, ExportProgressState)>,
     /// Export completion dialog window ID and result.
     pub export_complete: Option<(window::Id, ExportResult)>,
+    /// Unsaved changes confirmation dialog window ID and pending action.
+    pub unsaved_changes: Option<(window::Id, PendingAction)>,
 }
 
 impl DialogWindows {
@@ -188,6 +202,7 @@ impl DialogWindows {
             || self.close_project_confirm == Some(id)
             || self.export_progress.as_ref().map(|(i, _)| *i) == Some(id)
             || self.export_complete.as_ref().map(|(i, _)| *i) == Some(id)
+            || self.unsaved_changes.as_ref().map(|(i, _)| *i) == Some(id)
     }
 
     /// Get the dialog type for a window ID.
@@ -206,6 +221,8 @@ impl DialogWindows {
             Some(DialogType::ExportProgress)
         } else if self.export_complete.as_ref().map(|(i, _)| *i) == Some(id) {
             Some(DialogType::ExportComplete)
+        } else if self.unsaved_changes.as_ref().map(|(i, _)| *i) == Some(id) {
+            Some(DialogType::UnsavedChanges)
         } else {
             None
         }
@@ -227,6 +244,8 @@ impl DialogWindows {
             self.export_progress = None;
         } else if self.export_complete.as_ref().map(|(i, _)| *i) == Some(id) {
             self.export_complete = None;
+        } else if self.unsaved_changes.as_ref().map(|(i, _)| *i) == Some(id) {
+            self.unsaved_changes = None;
         }
     }
 }
@@ -265,6 +284,8 @@ impl AppState {
             project_path: None,
             dirty_tracker: DirtyTracker::new(),
             auto_save_config,
+            pending_action_after_save: None,
+            pending_project_restore: None,
         }
     }
 

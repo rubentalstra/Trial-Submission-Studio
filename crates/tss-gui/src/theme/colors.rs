@@ -58,7 +58,9 @@ pub struct ClinicalColorSet {
     /// Medium tint of primary accent (for selections)
     pub accent_primary_medium: Color,
 
-    // === Status Light Backgrounds ===
+    // === Status Colors ===
+    /// Info color (blue) - not in Iced's extended palette
+    pub info: Color,
     /// Success status light background
     pub status_success_light: Color,
     /// Warning status light background
@@ -181,6 +183,9 @@ impl ClinicalColors for Theme {
             } else {
                 blend_color(palette.primary.base.color, Color::WHITE, 0.70)
             },
+
+            // Info color (not in Iced's extended palette)
+            info: Color::from_rgb(0.25, 0.55, 0.85),
 
             // Status light backgrounds
             status_success_light: if is_dark {

@@ -38,9 +38,10 @@ impl ToastType {
     /// Get the semantic color for this toast type.
     pub fn color(&self, theme: &Theme) -> Color {
         let palette = theme.extended_palette();
+        let clinical = theme.clinical();
         match self {
             ToastType::Success => palette.success.base.color,
-            ToastType::Info => Color::from_rgb(0.25, 0.55, 0.85),
+            ToastType::Info => clinical.info,
             ToastType::Warning => palette.warning.base.color,
             ToastType::Error => palette.danger.base.color,
         }
@@ -77,15 +78,39 @@ pub enum ToastMessage {
 }
 
 impl ToastState {
-    /// Creates a new success toast for a completed update.
-    pub fn update_success(version: &str) -> Self {
+    /// Creates a new success toast with a message.
+    pub fn success(message: impl Into<String>) -> Self {
         Self {
-            message: format!("Updated to v{version}"),
+            message: message.into(),
             toast_type: ToastType::Success,
-            action: Some(ToastAction {
-                label: "View changelog".to_string(),
-                on_click: ToastActionType::ViewChangelog,
-            }),
+            action: None,
+        }
+    }
+
+    /// Creates a new info toast with a message.
+    pub fn info(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            toast_type: ToastType::Info,
+            action: None,
+        }
+    }
+
+    /// Creates a new warning toast with a message.
+    pub fn warning(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            toast_type: ToastType::Warning,
+            action: None,
+        }
+    }
+
+    /// Creates a new error toast with a message.
+    pub fn error(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            toast_type: ToastType::Error,
+            action: None,
         }
     }
 }
