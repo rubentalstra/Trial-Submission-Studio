@@ -229,6 +229,42 @@ impl WorkflowType {
 // GENERAL SETTINGS
 // =============================================================================
 
+/// Assignment mode for mapping source files to domains.
+///
+/// Users choose their preferred method in Settings > General.
+/// Only one mode is active at a time.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AssignmentMode {
+    /// Drag files to domains.
+    #[default]
+    DragAndDrop,
+    /// Click file to select, then click domain to assign.
+    ClickToAssign,
+}
+
+#[allow(dead_code)] // Methods used by Settings dialog UI (to be implemented)
+impl AssignmentMode {
+    /// Get display label.
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::DragAndDrop => "Drag and Drop",
+            Self::ClickToAssign => "Click to Assign",
+        }
+    }
+
+    /// Get description.
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::DragAndDrop => "Drag files from the source panel to domains",
+            Self::ClickToAssign => "Click a file to select it, then click a domain to assign",
+        }
+    }
+
+    /// All available modes.
+    pub const ALL: [AssignmentMode; 2] = [Self::DragAndDrop, Self::ClickToAssign];
+}
+
 /// General application settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -247,6 +283,9 @@ pub struct GeneralSettings {
     ///
     /// Higher values show only high-confidence matches, lower values show more suggestions.
     pub mapping_confidence_threshold: f32,
+
+    /// Assignment mode for source-to-domain mapping.
+    pub assignment_mode: AssignmentMode,
 }
 
 impl Default for GeneralSettings {
@@ -256,6 +295,7 @@ impl Default for GeneralSettings {
             recent_studies: Vec::new(),
             max_recent: 10,
             mapping_confidence_threshold: 0.6, // Default threshold for mapping suggestions
+            assignment_mode: AssignmentMode::default(),
         }
     }
 }

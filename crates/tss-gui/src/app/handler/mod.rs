@@ -1,29 +1,11 @@
-//! Message handlers organized by category.
+//! Keyboard handlers as impl App methods.
 //!
-//! Each handler module contains `impl App` blocks with handler methods:
-//! - `home` - Home view messages (open study, recent, close study)
-//! - `domain_editor` - Domain editor tab navigation
-//! - `mapping` - Variable mapping messages
-//! - `normalization` - Normalization rule messages
-//! - `preview` - Preview pagination messages
-//! - `validation` - Validation refresh/filter messages
-//! - `supp` - SUPP qualifier editing messages
-//! - `export` - Export flow messages
-//! - `dialog` - Dialog (about, settings, etc.) messages
-//! - `menu` - Menu action messages
-//! - `keyboard` - Keyboard shortcut messages
+//! Keyboard handling remains as `impl App` since it's tightly coupled
+//! with the App's keyboard shortcut state.
+//!
+//! All other handlers have been moved to the top-level `handler/` module
+//! and implement the `MessageHandler` trait.
 
-mod dialog;
-mod domain_editor;
-mod export;
-mod home;
 mod keyboard;
-mod mapping;
-mod menu;
-mod normalization;
-mod preview;
-mod supp;
-mod validation;
 
-// All handlers are implemented as `impl App` blocks in their respective modules.
-// No re-exports needed since the methods are defined on the App type directly.
+// Keyboard handler is implemented as `impl App` block.

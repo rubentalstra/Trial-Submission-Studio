@@ -446,14 +446,14 @@ mod tests {
     use super::*;
     use crate::normalize::infer_normalization_rules;
     use tss_standards::{
-        CoreDesignation, DatasetClass, SdtmDomain, SdtmVariable, VariableRole, VariableType,
+        CoreDesignation, SdtmDatasetClass, SdtmDomain, SdtmVariable, VariableRole, VariableType,
     };
 
     fn create_test_domain() -> SdtmDomain {
         SdtmDomain {
             name: "AE".to_string(),
             label: Some("Adverse Events".to_string()),
-            class: Some(DatasetClass::Events),
+            class: Some(SdtmDatasetClass::Events),
             structure: None,
             dataset_name: None,
             variables: vec![

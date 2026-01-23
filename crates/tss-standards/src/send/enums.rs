@@ -10,7 +10,7 @@ use std::str::FromStr;
 /// SEND dataset class per SENDIG v3.1.1.
 ///
 /// Similar to SDTM but adapted for nonclinical studies.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum SendDatasetClass {
     /// Interventions: EX (Exposure)
     Interventions,

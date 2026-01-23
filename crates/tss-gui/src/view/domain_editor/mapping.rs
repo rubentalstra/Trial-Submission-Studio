@@ -12,10 +12,11 @@ use iced::widget::{
 use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 
-use crate::component::{
-    ActionButton, ActionButtonList, DetailHeader, EmptyState, FilterToggle, MetadataCard,
-    StatusCard, VariableListItem, master_detail_with_pinned_header,
+use crate::component::display::{
+    ActionButton, ActionButtonList, EmptyState, MetadataCard, StatusCard, VariableListItem,
 };
+use crate::component::layout::SplitView;
+use crate::component::panels::{DetailHeader, FilterToggle};
 use crate::message::domain_editor::MappingMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, DomainState, MappingUiState, NotCollectedEdit, ViewState};
@@ -110,7 +111,10 @@ pub fn view_mapping_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
         view_no_selection()
     };
 
-    master_detail_with_pinned_header(master_header, master_content, detail, MASTER_WIDTH)
+    SplitView::new(master_content, detail)
+        .master_width(MASTER_WIDTH)
+        .master_header(master_header)
+        .view()
 }
 
 // =============================================================================

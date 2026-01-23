@@ -26,6 +26,7 @@
 //! ```
 
 mod checks;
+mod column_reader;
 mod issue;
 mod report;
 pub mod rules;
@@ -38,6 +39,7 @@ use tss_standards::TerminologyRegistry;
 
 // Re-export public types
 pub use checks::dates::is_date_variable;
+pub use column_reader::ColumnReader;
 pub use issue::{Issue, Severity};
 pub use report::ValidationReport;
 pub use rules::Category;

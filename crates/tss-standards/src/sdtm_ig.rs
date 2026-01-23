@@ -8,7 +8,7 @@ use std::path::Path;
 
 use serde::Deserialize;
 
-use crate::sdtm::{DatasetClass, SdtmDomain, SdtmVariable};
+use crate::sdtm::{SdtmDatasetClass, SdtmDomain, SdtmVariable};
 use crate::traits::VariableType;
 
 use crate::error::{Result, StandardsError};
@@ -194,7 +194,7 @@ fn load_variables(path: &Path) -> Result<BTreeMap<String, Vec<SdtmVariable>>> {
 
 /// Dataset metadata from Datasets.csv.
 struct DatasetMeta {
-    class: Option<DatasetClass>,
+    class: Option<SdtmDatasetClass>,
     label: Option<String>,
     structure: Option<String>,
 }

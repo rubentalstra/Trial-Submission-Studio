@@ -6,7 +6,7 @@ use iced::widget::{Space, button, column, container, row, svg, text};
 use iced::{Alignment, Border, Color, Element, Length, Theme};
 use iced_fonts::lucide;
 
-use crate::component::SectionCard;
+use crate::component::panels::SectionCard;
 use crate::message::{HomeMessage, Message};
 use crate::state::{AppState, RecentStudy, WorkflowMode};
 use crate::theme::{

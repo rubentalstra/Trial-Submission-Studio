@@ -100,7 +100,7 @@ pub use send_ig::load as load_send_ig;
 pub use traits::{CdiscDomain, CdiscVariable, CoreDesignation, Standard, VariableType};
 
 // SDTM types
-pub use sdtm::{DatasetClass, SdtmDomain, SdtmVariable, VariableRole};
+pub use sdtm::{SdtmDatasetClass, SdtmDomain, SdtmVariable, VariableRole};
 
 // ADaM types
 pub use adam::{AdamDataset, AdamDatasetType, AdamVariable, AdamVariableSource};

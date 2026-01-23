@@ -22,6 +22,7 @@ futures-util.workspace = true
 polars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+thiserror.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 xportrs.workspace = true
@@ -46,10 +47,11 @@ iced = { version = "0.14.0", features = [
     "advanced",
 ] }
 iced_fonts = { version = "0.3.0", features = ["lucide"] }
+iced_aw = { version = "0.13.0", default-features = false, features = ["context_menu"] }
 image = { version = "0.25", features = ["png", "ico"] }
 open = "5.3"
 rfd = "0.17"
-tokio = { version = "1", features = ["rt-multi-thread", "sync"] }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time"] }
 toml = "0.9"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 

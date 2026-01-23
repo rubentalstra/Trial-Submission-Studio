@@ -193,13 +193,15 @@ fn extract_reference_date(dm_df: &DataFrame) -> Option<chrono::NaiveDate> {
 mod tests {
     use super::*;
     use polars::prelude::*;
-    use tss_standards::{CoreDesignation, DatasetClass, SdtmVariable, VariableRole, VariableType};
+    use tss_standards::{
+        CoreDesignation, SdtmDatasetClass, SdtmVariable, VariableRole, VariableType,
+    };
 
     fn create_test_domain() -> SdtmDomain {
         SdtmDomain {
             name: "AE".to_string(),
             label: Some("Adverse Events".to_string()),
-            class: Some(DatasetClass::Events),
+            class: Some(SdtmDatasetClass::Events),
             structure: None,
             dataset_name: None,
             variables: vec![

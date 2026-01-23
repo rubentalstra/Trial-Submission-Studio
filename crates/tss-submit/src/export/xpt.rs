@@ -2,10 +2,10 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result, anyhow};
 use polars::prelude::{AnyValue, DataFrame};
 
 use super::types::{DomainFrame, domain_map_by_code};
+use crate::error::{Result, SubmitError};
 use tss_standards::{SdtmDomain, VariableType};
 use tss_standards::{any_to_f64, any_to_string};
 use xportrs::{Column, ColumnData, Dataset, Xpt};
@@ -29,7 +29,9 @@ pub fn write_xpt_outputs(
         let code = frame.domain_code.to_uppercase();
         let domain = domain_lookup
             .get(&code)
-            .ok_or_else(|| anyhow!("missing domain definition for {code}"))?;
+            .ok_or_else(|| SubmitError::MissingDomain {
+                domain: code.clone(),
+            })?;
         // Use frame's dataset name (from metadata) for split domains, falling back to domain.name
         let output_dataset_name = frame.dataset_name();
         let dataset = build_xpt_dataset_with_name(domain, frame, &output_dataset_name)?;
@@ -40,9 +42,12 @@ pub fn write_xpt_outputs(
         // Write using xportrs builder pattern
         Xpt::writer(dataset)
             .finalize()
-            .with_context(|| format!("failed to validate XPT dataset for {}", filename))?
+            .map_err(|e| SubmitError::XptValidation {
+                dataset: filename.clone(),
+                message: e.to_string(),
+            })?
             .write_path(&path)
-            .with_context(|| format!("failed to write XPT file: {}", path.display()))?;
+            .map_err(|e| SubmitError::write_error("XPT", path.display().to_string(), e))?;
 
         outputs.push(path);
     }
@@ -65,8 +70,12 @@ pub fn build_xpt_dataset_with_name(
     // Use domain label if available, otherwise use domain name
     let dataset_label = domain.label.as_deref().unwrap_or(&domain.name);
 
-    Dataset::with_label(dataset_name, dataset_label, columns)
-        .with_context(|| format!("failed to create XPT dataset for {}", dataset_name))
+    Dataset::with_label(dataset_name, dataset_label, columns).map_err(|e| {
+        SubmitError::XptValidation {
+            dataset: dataset_name.to_string(),
+            message: e.to_string(),
+        }
+    })
 }
 
 /// Build XPT columns from domain variables.
@@ -84,7 +93,9 @@ fn build_xpt_columns(domain: &SdtmDomain, df: &DataFrame) -> Result<Vec<Column>>
     for variable in &existing_vars {
         let col = df
             .column(variable.name.as_str())
-            .with_context(|| format!("missing column {}", variable.name))?;
+            .map_err(|_| SubmitError::ColumnNotFound {
+                column: variable.name.clone(),
+            })?;
 
         let column_data = match variable.data_type {
             VariableType::Num => {

@@ -4,13 +4,13 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result, anyhow};
 use chrono::{SecondsFormat, Utc};
 use polars::prelude::AnyValue;
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 
 use super::types::{DomainFrame, domain_map_by_code};
+use crate::error::{Result, SubmitError};
 use tss_standards::SdtmDomain;
 use tss_standards::any_to_string_non_empty;
 
@@ -46,7 +46,9 @@ pub fn write_dataset_xml_outputs(
         let code = frame.domain_code.to_uppercase();
         let domain = domain_lookup
             .get(&code)
-            .ok_or_else(|| anyhow!("missing domain definition for {code}"))?;
+            .ok_or_else(|| SubmitError::MissingDomain {
+                domain: code.clone(),
+            })?;
         // Use frame's dataset name (from metadata) for split domains
         let output_dataset_name = frame.dataset_name();
         let disk_name = output_dataset_name.to_lowercase();
@@ -99,8 +101,9 @@ pub fn write_dataset_xml(
 
     let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
     ensure_parent_dir(output_path)?;
-    let file =
-        File::create(output_path).with_context(|| format!("create {}", output_path.display()))?;
+    let file = File::create(output_path).map_err(|e| {
+        SubmitError::write_error("Dataset-XML", output_path.display().to_string(), e)
+    })?;
     let writer = BufWriter::new(file);
     let mut xml = Writer::new_with_indent(writer, b' ', 2);
 
@@ -135,9 +138,11 @@ pub fn write_dataset_xml(
 
     let mut columns = Vec::with_capacity(existing_vars.len());
     for variable in &existing_vars {
-        let series = df
-            .column(variable.name.as_str())
-            .with_context(|| format!("missing column {}", variable.name))?;
+        let series =
+            df.column(variable.name.as_str())
+                .map_err(|_| SubmitError::ColumnNotFound {
+                    column: variable.name.clone(),
+                })?;
         columns.push(series);
     }
 

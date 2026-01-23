@@ -1,4 +1,4 @@
-//! Menu action message handlers.
+//! Menu action message handler.
 //!
 //! Handles:
 //! - File menu actions (Open, Close, Settings, Exit)
@@ -8,23 +8,23 @@
 use iced::window;
 use iced::{Size, Task};
 
-use crate::app::App;
+use crate::handler::MessageHandler;
 use crate::menu::MenuAction;
 use crate::message::{
     DialogMessage, HomeMessage, MenuMessage, Message, SettingsCategory, UpdateMessage,
 };
+use crate::state::AppState;
 use crate::view::dialog::third_party::ThirdPartyState;
 use crate::view::dialog::update::UpdateState;
 
-impl App {
-    /// Handle the unified MenuAction.
-    ///
-    /// This is the new handler for all menu actions from both native (macOS)
-    /// and desktop (Windows/Linux) menus.
-    pub fn handle_menu_action(&mut self, action: MenuAction) -> Task<Message> {
+/// Handler for menu action messages.
+pub struct MenuActionHandler;
+
+impl MessageHandler<MenuAction> for MenuActionHandler {
+    fn handle(&self, state: &mut AppState, action: MenuAction) -> Task<Message> {
         // Close in-app menu dropdown when any menu action is performed (desktop only)
         #[cfg(not(target_os = "macos"))]
-        self.state.menu_dropdown.close();
+        state.menu_dropdown.close();
 
         match action {
             // File menu
@@ -33,8 +33,7 @@ impl App {
             #[cfg(target_os = "macos")]
             MenuAction::OpenRecentStudy(uuid) => {
                 // Find the study path by UUID
-                if let Some(study) = self
-                    .state
+                if let Some(study) = state
                     .settings
                     .general
                     .recent_studies
@@ -50,7 +49,7 @@ impl App {
             }
 
             MenuAction::CloseStudy => {
-                if self.state.has_study() {
+                if state.has_study() {
                     Task::done(Message::Home(HomeMessage::CloseStudyClicked))
                 } else {
                     Task::none()
@@ -58,8 +57,8 @@ impl App {
             }
 
             MenuAction::ClearRecentStudies => {
-                self.state.settings.general.clear_all_recent();
-                let _ = self.state.settings.save();
+                state.settings.general.clear_all_recent();
+                let _ = state.settings.save();
 
                 // Update native menu's recent studies submenu
                 #[cfg(target_os = "macos")]
@@ -69,7 +68,7 @@ impl App {
 
             MenuAction::Settings => {
                 // Don't open if already open
-                if self.state.dialog_windows.settings.is_some() {
+                if state.dialog_windows.settings.is_some() {
                     return Task::none();
                 }
                 // Open settings dialog in a new window
@@ -82,7 +81,7 @@ impl App {
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
-                self.state.dialog_windows.settings = Some((id, SettingsCategory::default()));
+                state.dialog_windows.settings = Some((id, SettingsCategory::default()));
                 task.map(|_| Message::Noop)
             }
 
@@ -131,7 +130,7 @@ impl App {
 
             MenuAction::ThirdPartyLicenses => {
                 // Don't open if already open
-                if self.state.dialog_windows.third_party.is_some() {
+                if state.dialog_windows.third_party.is_some() {
                     return Task::none();
                 }
                 // Open third-party licenses dialog in a new window
@@ -144,13 +143,13 @@ impl App {
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
-                self.state.dialog_windows.third_party = Some((id, ThirdPartyState::new()));
+                state.dialog_windows.third_party = Some((id, ThirdPartyState::new()));
                 task.map(|_| Message::Noop)
             }
 
             MenuAction::CheckUpdates => {
                 // Don't open if already open
-                if self.state.dialog_windows.update.is_some() {
+                if state.dialog_windows.update.is_some() {
                     return Task::none();
                 }
                 // Open update dialog in a new window
@@ -163,10 +162,10 @@ impl App {
                     ..Default::default()
                 };
                 let (id, open_task) = window::open(settings);
-                self.state.dialog_windows.update = Some((id, UpdateState::Checking));
+                state.dialog_windows.update = Some((id, UpdateState::Checking));
 
                 // Start the update check task
-                let update_settings = self.state.settings.updates.clone();
+                let update_settings = state.settings.updates.clone();
                 let check_task = Task::perform(
                     async move {
                         tss_updater::check_for_update(&update_settings)
@@ -183,7 +182,7 @@ impl App {
 
             MenuAction::About => {
                 // Don't open if already open
-                if self.state.dialog_windows.about.is_some() {
+                if state.dialog_windows.about.is_some() {
                     return Task::none();
                 }
                 // Open about dialog in a new window
@@ -196,24 +195,28 @@ impl App {
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
-                self.state.dialog_windows.about = Some(id);
+                state.dialog_windows.about = Some(id);
                 task.map(|_| Message::Noop)
             }
 
             // Desktop-only: Toggle dropdown menu
             #[cfg(not(target_os = "macos"))]
             MenuAction::ToggleDropdown(id) => {
-                self.state.menu_dropdown.toggle(id);
+                state.menu_dropdown.toggle(id);
                 Task::none()
             }
         }
     }
+}
 
-    /// Handle legacy menu messages (for backward compatibility during transition).
-    pub fn handle_menu_message(&mut self, msg: MenuMessage) -> Task<Message> {
+/// Handler for legacy menu messages.
+pub struct MenuMessageHandler;
+
+impl MessageHandler<MenuMessage> for MenuMessageHandler {
+    fn handle(&self, state: &mut AppState, msg: MenuMessage) -> Task<Message> {
         // Close in-app menu dropdown when any menu action is performed
         #[cfg(not(target_os = "macos"))]
-        self.state.menu_dropdown.close();
+        state.menu_dropdown.close();
 
         match msg {
             // File menu
@@ -222,15 +225,15 @@ impl App {
                 Task::done(Message::Home(HomeMessage::RecentStudyClicked(path)))
             }
             MenuMessage::CloseStudy => {
-                if self.state.has_study() {
+                if state.has_study() {
                     Task::done(Message::Home(HomeMessage::CloseStudyClicked))
                 } else {
                     Task::none()
                 }
             }
             MenuMessage::ClearRecentStudies => {
-                self.state.settings.general.clear_all_recent();
-                let _ = self.state.settings.save();
+                state.settings.general.clear_all_recent();
+                let _ = state.settings.save();
 
                 // Update native menu's recent studies submenu
                 #[cfg(target_os = "macos")]
@@ -239,7 +242,7 @@ impl App {
             }
             MenuMessage::Settings => {
                 // Don't open if already open
-                if self.state.dialog_windows.settings.is_some() {
+                if state.dialog_windows.settings.is_some() {
                     return Task::none();
                 }
                 // Open settings dialog in a new window
@@ -252,7 +255,7 @@ impl App {
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
-                self.state.dialog_windows.settings = Some((id, SettingsCategory::default()));
+                state.dialog_windows.settings = Some((id, SettingsCategory::default()));
                 task.map(|_| Message::Noop)
             }
             MenuMessage::Quit => {
@@ -287,7 +290,7 @@ impl App {
             }
             MenuMessage::ThirdPartyLicenses => {
                 // Don't open if already open
-                if self.state.dialog_windows.third_party.is_some() {
+                if state.dialog_windows.third_party.is_some() {
                     return Task::none();
                 }
                 let settings = window::Settings {
@@ -299,12 +302,12 @@ impl App {
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
-                self.state.dialog_windows.third_party = Some((id, ThirdPartyState::new()));
+                state.dialog_windows.third_party = Some((id, ThirdPartyState::new()));
                 task.map(|_| Message::Noop)
             }
             MenuMessage::CheckUpdates => {
                 // Don't open if already open
-                if self.state.dialog_windows.update.is_some() {
+                if state.dialog_windows.update.is_some() {
                     return Task::none();
                 }
                 let settings = window::Settings {
@@ -316,9 +319,9 @@ impl App {
                     ..Default::default()
                 };
                 let (id, open_task) = window::open(settings);
-                self.state.dialog_windows.update = Some((id, UpdateState::Checking));
+                state.dialog_windows.update = Some((id, UpdateState::Checking));
 
-                let update_settings = self.state.settings.updates.clone();
+                let update_settings = state.settings.updates.clone();
                 let check_task = Task::perform(
                     async move {
                         tss_updater::check_for_update(&update_settings)
@@ -334,7 +337,7 @@ impl App {
             }
             MenuMessage::About => {
                 // Don't open if already open
-                if self.state.dialog_windows.about.is_some() {
+                if state.dialog_windows.about.is_some() {
                     return Task::none();
                 }
                 let settings = window::Settings {
@@ -346,7 +349,7 @@ impl App {
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
-                self.state.dialog_windows.about = Some(id);
+                state.dialog_windows.about = Some(id);
                 task.map(|_| Message::Noop)
             }
 

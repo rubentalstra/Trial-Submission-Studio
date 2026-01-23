@@ -16,7 +16,7 @@ pub mod validation;
 use iced::widget::{column, container, text};
 use iced::{Border, Element, Length, Theme};
 
-use crate::component::{PageHeader, Tab, tab_bar};
+use crate::component::layout::{PageHeader, Tab, tab_bar};
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, DomainState, EditorTab};
 use crate::theme::ClinicalColors;

@@ -1,15 +1,120 @@
 //! SDTM-specific enumerations.
 //!
-//! This module contains enumerations specific to SDTM such as variable roles.
+//! This module contains enumerations specific to SDTM:
+//! - [`SdtmDatasetClass`] - Dataset observation classes (Interventions, Events, Findings, etc.)
+//! - [`VariableRole`] - Variable roles (Identifier, Topic, Qualifier, etc.)
+//!
 //! Core designation is shared across standards and is in the `traits` module.
 //!
 //! # SDTMIG Reference
 //!
+//! - Dataset classes: SDTMIG v3.4 Chapter 2 (Fundamentals of the SDTM)
 //! - Variable roles: SDTMIG v3.4 Section 2.1 (General Observation Classes)
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
+
+/// Dataset class per SDTMIG v3.4 Chapter 2.
+///
+/// SDTM organizes domains into observation classes:
+/// - **General Observation Classes**: Interventions, Events, Findings
+/// - **Special-Purpose**: Demographics, Comments, Subject Elements
+/// - **Trial Design**: Study design metadata
+/// - **Relationship**: Cross-domain links
+///
+/// # Example
+///
+/// ```
+/// use tss_standards::SdtmDatasetClass;
+///
+/// let class: SdtmDatasetClass = "Findings".parse().unwrap();
+/// assert!(class.is_general_observation());
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SdtmDatasetClass {
+    /// Interventions: AG, CM, EC, EX, ML, PR, SU
+    Interventions,
+    /// Events: AE, BE, CE, DS, DV, HO, MH
+    Events,
+    /// Findings: BS, CP, CV, DA, DD, EG, FT, GF, IE, IS, LB, MB, MI, MK, MS, NV, OE, PC, PE, PP, QS, RE, RP, RS, SC, SS, TR, TU, UR, VS
+    Findings,
+    /// Findings About (subclass of Findings): FA, SR
+    FindingsAbout,
+    /// Special-Purpose: CO, DM, SE, SM, SV
+    SpecialPurpose,
+    /// Trial Design: TA, TD, TE, TI, TM, TS, TV
+    TrialDesign,
+    /// Study Reference: OI
+    StudyReference,
+    /// Relationship: RELREC, RELSPEC, RELSUB, SUPPQUAL
+    Relationship,
+}
+
+impl SdtmDatasetClass {
+    /// Returns true if this is a General Observation class.
+    ///
+    /// Per SDTMIG v3.4 Section 2.1, the three general observation classes are
+    /// Interventions, Events, and Findings (including Findings About).
+    pub fn is_general_observation(&self) -> bool {
+        matches!(
+            self,
+            Self::Interventions | Self::Events | Self::Findings | Self::FindingsAbout
+        )
+    }
+
+    /// Returns the normalized general observation class.
+    ///
+    /// Maps `FindingsAbout` to `Findings` per SDTMIG v3.4.
+    pub fn general_observation_class(&self) -> Option<Self> {
+        match self {
+            Self::Interventions => Some(Self::Interventions),
+            Self::Events => Some(Self::Events),
+            Self::Findings | Self::FindingsAbout => Some(Self::Findings),
+            _ => None,
+        }
+    }
+
+    /// Returns the canonical class name as it appears in SDTMIG.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Interventions => "Interventions",
+            Self::Events => "Events",
+            Self::Findings => "Findings",
+            Self::FindingsAbout => "Findings About",
+            Self::SpecialPurpose => "Special-Purpose",
+            Self::TrialDesign => "Trial Design",
+            Self::StudyReference => "Study Reference",
+            Self::Relationship => "Relationship",
+        }
+    }
+}
+
+impl fmt::Display for SdtmDatasetClass {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl FromStr for SdtmDatasetClass {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let normalized = s.trim().to_uppercase().replace(['-', '_'], " ");
+        match normalized.as_str() {
+            "INTERVENTIONS" => Ok(Self::Interventions),
+            "EVENTS" => Ok(Self::Events),
+            "FINDINGS" => Ok(Self::Findings),
+            "FINDINGS ABOUT" => Ok(Self::FindingsAbout),
+            "SPECIAL PURPOSE" => Ok(Self::SpecialPurpose),
+            "TRIAL DESIGN" => Ok(Self::TrialDesign),
+            "STUDY REFERENCE" => Ok(Self::StudyReference),
+            "RELATIONSHIP" => Ok(Self::Relationship),
+            _ => Err(format!("Unknown dataset class: {s}")),
+        }
+    }
+}
 
 /// Variable role per SDTMIG v3.4 Section 2.1.
 ///
@@ -157,5 +262,43 @@ mod tests {
     fn test_role_sort_order() {
         assert!(VariableRole::Identifier.sort_order() < VariableRole::Topic.sort_order());
         assert!(VariableRole::Topic.sort_order() < VariableRole::Timing.sort_order());
+    }
+
+    #[test]
+    fn test_dataset_class_from_str() {
+        assert_eq!(
+            "Findings".parse::<SdtmDatasetClass>().unwrap(),
+            SdtmDatasetClass::Findings
+        );
+        assert_eq!(
+            "Special-Purpose".parse::<SdtmDatasetClass>().unwrap(),
+            SdtmDatasetClass::SpecialPurpose
+        );
+        assert_eq!(
+            "TRIAL DESIGN".parse::<SdtmDatasetClass>().unwrap(),
+            SdtmDatasetClass::TrialDesign
+        );
+    }
+
+    #[test]
+    fn test_dataset_class_is_general_observation() {
+        assert!(SdtmDatasetClass::Interventions.is_general_observation());
+        assert!(SdtmDatasetClass::Events.is_general_observation());
+        assert!(SdtmDatasetClass::Findings.is_general_observation());
+        assert!(SdtmDatasetClass::FindingsAbout.is_general_observation());
+        assert!(!SdtmDatasetClass::SpecialPurpose.is_general_observation());
+        assert!(!SdtmDatasetClass::TrialDesign.is_general_observation());
+    }
+
+    #[test]
+    fn test_dataset_class_general_observation_class() {
+        assert_eq!(
+            SdtmDatasetClass::FindingsAbout.general_observation_class(),
+            Some(SdtmDatasetClass::Findings)
+        );
+        assert_eq!(
+            SdtmDatasetClass::SpecialPurpose.general_observation_class(),
+            None
+        );
     }
 }

@@ -63,6 +63,9 @@ pub fn create_menu() -> Menu {
 /// Poll for a menu event and convert to MenuAction.
 ///
 /// This uses muda's global event receiver with try_recv for non-blocking polling.
+/// Note: With the channel-based approach, this is mainly used as a fallback.
+/// The primary path is through the forwarder thread in `channel.rs`.
+#[allow(dead_code)]
 pub fn poll_menu_event() -> Option<MenuAction> {
     let receiver = MenuEvent::receiver();
 
@@ -76,7 +79,7 @@ pub fn poll_menu_event() -> Option<MenuAction> {
 }
 
 /// Convert a menu item ID to a MenuAction.
-fn menu_id_to_action(id: &str) -> Option<MenuAction> {
+pub fn menu_id_to_action(id: &str) -> Option<MenuAction> {
     // Check for recent study click (UUID-based)
     if let Some(uuid_str) = id.strip_prefix(ids::RECENT_STUDY_PREFIX)
         && let Ok(uuid) = uuid::Uuid::parse_str(uuid_str)
