@@ -19,6 +19,9 @@ pub mod source_assignment;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+// Re-export ProjectFile for convenience in result types
+pub use tss_persistence::ProjectFile;
+
 use iced::keyboard;
 use iced::window;
 use tss_standards::TerminologyRegistry;
@@ -36,7 +39,6 @@ pub use dialog::{
 pub use domain_editor::DomainEditorMessage;
 pub use export::ExportMessage;
 pub use home::HomeMessage;
-pub use menu::MenuMessage;
 pub use source_assignment::SourceAssignmentMessage;
 
 // Toast message
@@ -93,6 +95,39 @@ pub enum Message {
     Export(ExportMessage),
 
     // =========================================================================
+    // Project persistence
+    // =========================================================================
+    /// Create a new empty project.
+    NewProject,
+
+    /// Open an existing .tss project file.
+    OpenProject,
+
+    /// Project file selected from dialog.
+    OpenProjectSelected(Option<PathBuf>),
+
+    /// Project loaded from disk.
+    ProjectLoaded(Result<ProjectFile, String>),
+
+    /// Save current project to existing path.
+    SaveProject,
+
+    /// Save project to a new path.
+    SaveProjectAs,
+
+    /// Save dialog returned a path.
+    SavePathSelected(Option<PathBuf>),
+
+    /// Project saved successfully.
+    ProjectSaved(Result<PathBuf, String>),
+
+    /// Auto-save tick (from subscription).
+    AutoSaveTick,
+
+    /// Source files changed since last save.
+    SourceFilesChanged(Vec<String>),
+
+    // =========================================================================
     // Dialogs
     // =========================================================================
     /// Dialog messages (About, Settings, ThirdParty, Update).
@@ -103,9 +138,6 @@ pub enum Message {
     // =========================================================================
     /// Unified menu action (from native or in-app menu).
     MenuAction(MenuAction),
-
-    /// Legacy menu action messages (being phased out).
-    Menu(MenuMessage),
 
     /// Initialize native menu (startup task on macOS).
     InitNativeMenu,

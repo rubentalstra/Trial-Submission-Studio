@@ -41,6 +41,7 @@ pub mod domain_editor;
 pub mod export;
 pub mod home;
 pub mod menu;
+pub mod project;
 pub mod source_assignment;
 
 use iced::Task;
@@ -53,7 +54,7 @@ pub use dialog::DialogHandler;
 pub use domain_editor::DomainEditorHandler;
 pub use export::ExportHandler;
 pub use home::HomeHandler;
-pub use menu::{MenuActionHandler, MenuMessageHandler};
+pub use menu::MenuActionHandler;
 pub use source_assignment::SourceAssignmentHandler;
 
 /// Trait for handling messages in the Iced architecture.

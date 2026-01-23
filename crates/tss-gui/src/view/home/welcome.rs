@@ -1,6 +1,6 @@
 //! Welcome view - displayed when no study is loaded.
 //!
-//! Shows app branding, workflow selector, and recent studies.
+//! Shows app branding, workflow selector, and recent projects.
 
 use iced::widget::{Space, button, column, container, row, svg, text};
 use iced::{Alignment, Border, Color, Element, Length, Theme};
@@ -8,7 +8,7 @@ use iced_fonts::lucide;
 
 use crate::component::panels::SectionCard;
 use crate::message::{HomeMessage, Message};
-use crate::state::{AppState, RecentStudy, WorkflowMode};
+use crate::state::{AppState, RecentProject, WorkflowMode};
 use crate::theme::{
     BORDER_RADIUS_MD, BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM,
     SPACING_XL, SPACING_XS, button_primary,
@@ -40,8 +40,8 @@ pub fn view_welcome(state: &'_ AppState, workflow_mode: WorkflowMode) -> Element
         // Workflow selector card
         view_workflow_selector(workflow_mode),
         Space::new().height(SPACING_XL),
-        // Recent studies section
-        view_recent_studies(state),
+        // Recent projects section
+        view_recent_projects(state),
     ]
     .align_x(Alignment::Center)
     .max_width(500.0);
@@ -85,19 +85,19 @@ fn view_workflow_selector<'a>(workflow_mode: WorkflowMode) -> Element<'a, Messag
             color: Some(theme.clinical().text_muted),
         });
 
-    // Open Study button
-    let open_button = button(
+    // New Project button
+    let new_project_button = button(
         row![
-            container(lucide::folder_open().size(16)).style(|theme: &Theme| container::Style {
+            container(lucide::folder_plus().size(16)).style(|theme: &Theme| container::Style {
                 text_color: Some(theme.clinical().text_on_accent),
                 ..Default::default()
             }),
             Space::new().width(SPACING_SM),
-            text("Open Study Folder").size(14),
+            text("New Project").size(14),
         ]
         .align_y(Alignment::Center),
     )
-    .on_press(Message::Home(HomeMessage::OpenStudyClicked))
+    .on_press(Message::NewProject)
     .padding([SPACING_SM, SPACING_LG])
     .style(button_primary);
 
@@ -107,7 +107,7 @@ fn view_workflow_selector<'a>(workflow_mode: WorkflowMode) -> Element<'a, Messag
         Space::new().height(SPACING_SM),
         description,
         Space::new().height(SPACING_LG),
-        container(open_button).center_x(Length::Fill),
+        container(new_project_button).center_x(Length::Fill),
     ]
     .width(Length::Fill);
 
@@ -189,9 +189,9 @@ fn workflow_button<'a>(
     }
 }
 
-/// Render the recent studies section.
-fn view_recent_studies<'a>(state: &'a AppState) -> Element<'a, Message> {
-    let recent_sorted = state.settings.general.recent_sorted();
+/// Render the recent projects section.
+fn view_recent_projects<'a>(state: &'a AppState) -> Element<'a, Message> {
+    let recent_sorted = state.settings.general.recent_projects_sorted();
 
     if recent_sorted.is_empty() {
         return Space::new().height(0.0).into();
@@ -213,7 +213,7 @@ fn view_recent_studies<'a>(state: &'a AppState) -> Element<'a, Message> {
         ]
         .align_y(Alignment::Center),
     )
-    .on_press(Message::Home(HomeMessage::ClearAllRecentStudies))
+    .on_press(Message::Home(HomeMessage::ClearAllRecentProjects))
     .padding([4.0, 8.0])
     .style(|theme: &Theme, status| {
         let c = theme.clinical();
@@ -236,7 +236,7 @@ fn view_recent_studies<'a>(state: &'a AppState) -> Element<'a, Message> {
             ..Default::default()
         }),
         Space::new().width(SPACING_SM),
-        text("Recent Studies")
+        text("Recent Projects")
             .size(13)
             .style(|theme: &Theme| text::Style {
                 color: Some(theme.clinical().text_muted),
@@ -246,24 +246,24 @@ fn view_recent_studies<'a>(state: &'a AppState) -> Element<'a, Message> {
     ]
     .align_y(Alignment::Center);
 
-    // Recent study items - show all up to max_recent
+    // Recent project items - show all up to max_recent
     let max_display = state.settings.general.max_recent;
     let mut items = column![header, Space::new().height(SPACING_SM),].width(Length::Fill);
 
-    for study in recent_sorted.iter().take(max_display) {
-        items = items.push(recent_study_item(study));
+    for project in recent_sorted.iter().take(max_display) {
+        items = items.push(recent_project_item(project));
         items = items.push(Space::new().height(SPACING_XS));
     }
 
     items.into()
 }
 
-/// Render a recent study item with rich metadata.
-fn recent_study_item<'a>(study: &'a RecentStudy) -> Element<'a, Message> {
-    let path_clone = study.path.clone();
-    let path_for_remove = study.path.clone();
-    let is_stale = !study.exists();
-    let workflow_label = study.workflow_type.label().to_string();
+/// Render a recent project item with rich metadata.
+fn recent_project_item<'a>(project: &'a RecentProject) -> Element<'a, Message> {
+    let path_clone = project.path.clone();
+    let path_for_remove = project.path.clone();
+    let is_stale = !project.exists();
+    let workflow_label = project.workflow_type.label().to_string();
 
     // Workflow badge
     let workflow_badge =
@@ -323,8 +323,8 @@ fn recent_study_item<'a>(study: &'a RecentStudy) -> Element<'a, Message> {
     };
 
     // Top row: name, badges, time
-    let display_name = study.display_name.clone();
-    let relative_time = study.relative_time();
+    let display_name = project.display_name.clone();
+    let relative_time = project.relative_time();
     let top_row = row![
         text(display_name)
             .size(13)
@@ -349,8 +349,8 @@ fn recent_study_item<'a>(study: &'a RecentStudy) -> Element<'a, Message> {
     .align_y(Alignment::Center);
 
     // Bottom row: stats and path
-    let stats_string = study.stats_string();
-    let path_display = study.path.display().to_string();
+    let stats_string = project.stats_string();
+    let path_display = project.path.display().to_string();
     let bottom_row = row![
         text(stats_string)
             .size(11)
@@ -378,7 +378,7 @@ fn recent_study_item<'a>(study: &'a RecentStudy) -> Element<'a, Message> {
                 ..Default::default()
             }),
         )
-        .on_press(Message::Home(HomeMessage::RemoveFromRecent(
+        .on_press(Message::Home(HomeMessage::RemoveFromRecentProjects(
             path_for_remove,
         )))
         .padding(4.0)
@@ -398,7 +398,7 @@ fn recent_study_item<'a>(study: &'a RecentStudy) -> Element<'a, Message> {
         });
 
     let content = row![
-        container(lucide::folder().size(16)).style(move |theme: &Theme| container::Style {
+        container(lucide::file_archive().size(16)).style(move |theme: &Theme| container::Style {
             text_color: Some(if is_stale {
                 theme.clinical().text_disabled
             } else {
@@ -417,7 +417,7 @@ fn recent_study_item<'a>(study: &'a RecentStudy) -> Element<'a, Message> {
         .on_press_maybe(if is_stale {
             None
         } else {
-            Some(Message::Home(HomeMessage::RecentStudyClicked(path_clone)))
+            Some(Message::Home(HomeMessage::RecentProjectClicked(path_clone)))
         })
         .padding([SPACING_SM, SPACING_MD])
         .width(Length::Fill)

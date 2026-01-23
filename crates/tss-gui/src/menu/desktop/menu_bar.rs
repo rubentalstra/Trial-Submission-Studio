@@ -96,61 +96,99 @@ fn view_menu_button<'a>(
 
 /// Render the File menu dropdown.
 fn view_file_dropdown<'a>(has_study: bool, app_state: &'a AppState) -> Element<'a, Message> {
-    let open_item = view_menu_item(
-        lucide::folder_open().size(14).into(),
-        "Open Study...",
-        Some("Ctrl+O"),
-        Some(Message::MenuAction(MenuAction::OpenStudy)),
+    // Project operations
+    let new_project_item = view_menu_item(
+        lucide::file_plus().size(14).into(),
+        "New Project",
+        Some("Ctrl+N"),
+        Some(Message::MenuAction(MenuAction::NewProject)),
     );
 
-    let close_item = view_menu_item(
-        lucide::folder_closed().size(14).into(),
-        "Close Study",
-        Some("Ctrl+W"),
+    let open_project_item = view_menu_item(
+        lucide::folder_open().size(14).into(),
+        "Open Project...",
+        Some("Ctrl+Shift+O"),
+        Some(Message::MenuAction(MenuAction::OpenProject)),
+    );
+
+    let save_item = view_menu_item(
+        lucide::save().size(14).into(),
+        "Save",
+        Some("Ctrl+S"),
         if has_study {
-            Some(Message::MenuAction(MenuAction::CloseStudy))
+            Some(Message::MenuAction(MenuAction::SaveProject))
         } else {
             None
         },
     );
 
-    // Generate recent study items
-    let recent_studies = app_state.settings.general.recent_sorted();
-    let mut dropdown_items: Vec<Element<'a, Message>> =
-        vec![open_item, close_item, view_separator()];
+    let save_as_item = view_menu_item(
+        lucide::save_all().size(14).into(),
+        "Save As...",
+        Some("Ctrl+Shift+S"),
+        if has_study {
+            Some(Message::MenuAction(MenuAction::SaveProjectAs))
+        } else {
+            None
+        },
+    );
 
-    // Add "Recent Studies" label
-    dropdown_items.push(view_menu_label("Recent Studies"));
+    let close_item = view_menu_item(
+        lucide::folder_closed().size(14).into(),
+        "Close Project",
+        Some("Ctrl+W"),
+        if has_study {
+            Some(Message::MenuAction(MenuAction::CloseProject))
+        } else {
+            None
+        },
+    );
 
-    if recent_studies.is_empty() {
+    // Generate recent project items
+    let recent_projects = app_state.settings.general.recent_projects_sorted();
+    let mut dropdown_items: Vec<Element<'a, Message>> = vec![
+        new_project_item,
+        open_project_item,
+        view_separator(),
+        save_item,
+        save_as_item,
+        view_separator(),
+        close_item,
+        view_separator(),
+    ];
+
+    // Add "Recent Projects" label
+    dropdown_items.push(view_menu_label("Recent Projects"));
+
+    if recent_projects.is_empty() {
         dropdown_items.push(view_menu_item_disabled(
             lucide::history().size(14).into(),
-            "No Recent Studies",
+            "No Recent Projects",
         ));
     } else {
-        // Show up to 10 recent studies (consistent with macOS)
-        for study in recent_studies.iter().take(10) {
-            let path = study.path.clone();
+        // Show up to 10 recent projects (consistent with macOS)
+        for project in recent_projects.iter().take(10) {
+            let path = project.path.clone();
             dropdown_items.push(view_menu_item(
-                lucide::folder().size(14).into(),
-                &study.display_name,
+                lucide::file_archive().size(14).into(),
+                &project.display_name,
                 None,
-                Some(Message::Home(HomeMessage::RecentStudyClicked(path))),
+                Some(Message::Home(HomeMessage::RecentProjectClicked(path))),
             ));
         }
     }
 
     dropdown_items.push(view_separator());
 
-    // Clear Recent Studies
+    // Clear Recent Projects
     dropdown_items.push(view_menu_item(
         lucide::trash().size(14).into(),
-        "Clear Recent Studies",
+        "Clear Recent Projects",
         None,
-        if recent_studies.is_empty() {
+        if recent_projects.is_empty() {
             None
         } else {
-            Some(Message::MenuAction(MenuAction::ClearRecentStudies))
+            Some(Message::MenuAction(MenuAction::ClearRecentProjects))
         },
     ));
 

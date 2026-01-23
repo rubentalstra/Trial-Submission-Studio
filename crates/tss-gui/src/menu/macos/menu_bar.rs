@@ -10,7 +10,7 @@ use std::cell::RefCell;
 
 use super::super::MenuAction;
 use super::super::common::ids;
-use super::recent_studies::{RecentStudiesSubmenu, set_recent_submenu};
+use super::recent_projects::{RecentProjectsSubmenu, set_recent_submenu};
 
 // Thread-local storage for the menu bar to keep it alive
 thread_local! {
@@ -80,18 +80,23 @@ pub fn poll_menu_event() -> Option<MenuAction> {
 
 /// Convert a menu item ID to a MenuAction.
 pub fn menu_id_to_action(id: &str) -> Option<MenuAction> {
-    // Check for recent study click (UUID-based)
-    if let Some(uuid_str) = id.strip_prefix(ids::RECENT_STUDY_PREFIX)
+    // Check for recent project click (UUID-based)
+    if let Some(uuid_str) = id.strip_prefix(ids::RECENT_PROJECT_PREFIX)
         && let Ok(uuid) = uuid::Uuid::parse_str(uuid_str)
     {
-        return Some(MenuAction::OpenRecentStudy(uuid));
+        return Some(MenuAction::OpenRecentProject(uuid));
     }
 
     match id {
-        // File menu
-        ids::OPEN_STUDY => Some(MenuAction::OpenStudy),
-        ids::CLOSE_STUDY => Some(MenuAction::CloseStudy),
-        ids::CLEAR_RECENT => Some(MenuAction::ClearRecentStudies),
+        // File menu - Project operations
+        ids::NEW_PROJECT => Some(MenuAction::NewProject),
+        ids::OPEN_PROJECT => Some(MenuAction::OpenProject),
+        ids::SAVE_PROJECT => Some(MenuAction::SaveProject),
+        ids::SAVE_PROJECT_AS => Some(MenuAction::SaveProjectAs),
+
+        // File menu - Study operations
+        ids::CLOSE_PROJECT => Some(MenuAction::CloseProject),
+        ids::CLEAR_RECENT => Some(MenuAction::ClearRecentProjects),
         ids::SETTINGS => Some(MenuAction::Settings),
         ids::EXIT => Some(MenuAction::Quit),
 
@@ -184,38 +189,76 @@ fn create_app_menu(menu: &Menu) {
 }
 
 /// Create the File menu.
-fn create_file_menu(menu: &Menu) -> RecentStudiesSubmenu {
+fn create_file_menu(menu: &Menu) -> RecentProjectsSubmenu {
     let file_menu = Submenu::new("File", true);
 
-    // Open Study (Cmd+O)
+    // Project operations
     file_menu
         .append(&MenuItem::with_id(
-            ids::OPEN_STUDY,
-            "Open Study...",
+            ids::NEW_PROJECT,
+            "New Project",
+            true,
+            Some(Accelerator::new(Some(Modifiers::META), Code::KeyN)),
+        ))
+        .expect("Failed to add New Project menu item");
+
+    file_menu
+        .append(&MenuItem::with_id(
+            ids::OPEN_PROJECT,
+            "Open Project...",
             true,
             Some(Accelerator::new(Some(Modifiers::META), Code::KeyO)),
         ))
-        .expect("Failed to add Open Study menu item");
-
-    // Create Recent Studies submenu
-    let recent_submenu = RecentStudiesSubmenu::new();
-    file_menu
-        .append(recent_submenu.submenu())
-        .expect("Failed to add Recent Studies submenu");
+        .expect("Failed to add Open Project menu item");
 
     file_menu
         .append(&PredefinedMenuItem::separator())
         .expect("Failed to add separator");
 
-    // Close Study (Cmd+W)
     file_menu
         .append(&MenuItem::with_id(
-            ids::CLOSE_STUDY,
-            "Close Study",
+            ids::SAVE_PROJECT,
+            "Save",
+            true,
+            Some(Accelerator::new(Some(Modifiers::META), Code::KeyS)),
+        ))
+        .expect("Failed to add Save menu item");
+
+    file_menu
+        .append(&MenuItem::with_id(
+            ids::SAVE_PROJECT_AS,
+            "Save As...",
+            true,
+            Some(Accelerator::new(
+                Some(Modifiers::META | Modifiers::SHIFT),
+                Code::KeyS,
+            )),
+        ))
+        .expect("Failed to add Save As menu item");
+
+    file_menu
+        .append(&PredefinedMenuItem::separator())
+        .expect("Failed to add separator");
+
+    // Create Recent Projects submenu
+    let recent_submenu = RecentProjectsSubmenu::new();
+    file_menu
+        .append(recent_submenu.submenu())
+        .expect("Failed to add Recent Projects submenu");
+
+    file_menu
+        .append(&PredefinedMenuItem::separator())
+        .expect("Failed to add separator");
+
+    // Close Project (Cmd+W)
+    file_menu
+        .append(&MenuItem::with_id(
+            ids::CLOSE_PROJECT,
+            "Close Project",
             true,
             Some(Accelerator::new(Some(Modifiers::META), Code::KeyW)),
         ))
-        .expect("Failed to add Close Study menu item");
+        .expect("Failed to add Close Project menu item");
 
     menu.append(&file_menu).expect("Failed to add File menu");
 

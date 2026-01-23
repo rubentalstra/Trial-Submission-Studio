@@ -57,6 +57,7 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 
 # Path dependencies (alphabetical)
 tss-ingest = { path = "../tss-ingest" }
+tss-persistence = { path = "../tss-persistence" }
 tss-standards = { path = "../tss-standards" }
 tss-submit = { path = "../tss-submit" }
 tss-updater = { path = "../tss-updater" }

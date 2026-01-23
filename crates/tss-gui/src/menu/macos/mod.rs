@@ -3,7 +3,7 @@
 //! This module provides:
 //! - Native NSMenu via muda with proper lifetime management
 //! - Channel-based event delivery with background forwarder thread
-//! - Dynamic recent studies submenu updates
+//! - Dynamic recent projects submenu updates
 //!
 //! # Architecture
 //!
@@ -15,10 +15,10 @@
 
 mod channel;
 mod menu_bar;
-mod recent_studies;
+mod recent_projects;
 mod subscription;
 
 pub use channel::init_menu_channel;
 pub use menu_bar::create_menu;
-pub use recent_studies::{RecentStudyInfo, update_recent_studies_menu};
+pub use recent_projects::{RecentProjectInfo, update_recent_projects_menu};
 pub use subscription::menu_subscription;

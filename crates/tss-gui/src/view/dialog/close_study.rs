@@ -1,6 +1,6 @@
-//! Close study confirmation dialog view.
+//! Close project confirmation dialog view.
 //!
-//! Confirmation dialog shown when closing a study with potential unsaved changes.
+//! Confirmation dialog shown when closing a project with potential unsaved changes.
 //! Uses the semantic color system for accessibility mode support.
 
 use iced::widget::{Space, button, column, container, row, text};
@@ -11,15 +11,15 @@ use iced_fonts::lucide;
 use crate::message::{HomeMessage, Message};
 use crate::theme::{ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, button_secondary};
 
-/// Render the Close Study confirmation dialog content for a standalone window.
-pub fn view_close_study_dialog_content<'a>(window_id: window::Id) -> Element<'a, Message> {
+/// Render the Close Project confirmation dialog content for a standalone window.
+pub fn view_close_project_dialog_content<'a>(window_id: window::Id) -> Element<'a, Message> {
     let warning_icon =
         container(lucide::triangle_alert().size(48)).style(|theme: &Theme| container::Style {
             text_color: Some(theme.extended_palette().warning.base.color),
             ..Default::default()
         });
 
-    let title = text("Close Study?")
+    let title = text("Close Project?")
         .size(20)
         .style(|theme: &Theme| text::Style {
             color: Some(theme.extended_palette().background.base.text),
@@ -43,11 +43,11 @@ pub fn view_close_study_dialog_content<'a>(window_id: window::Id) -> Element<'a,
                 ..Default::default()
             }),
             Space::new().width(SPACING_SM),
-            text("Close Study").size(14),
+            text("Close Project").size(14),
         ]
         .align_y(Alignment::Center),
     )
-    .on_press(Message::Home(HomeMessage::CloseStudyConfirmed))
+    .on_press(Message::Home(HomeMessage::CloseProjectConfirmed))
     .padding([10.0, 20.0])
     .style(|theme: &Theme, _status| iced::widget::button::Style {
         background: Some(theme.extended_palette().danger.base.color.into()),

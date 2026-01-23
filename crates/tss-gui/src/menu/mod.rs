@@ -21,7 +21,8 @@ pub mod desktop;
 // Re-exports for platform-specific implementations
 #[cfg(target_os = "macos")]
 pub use macos::{
-    RecentStudyInfo, create_menu, init_menu_channel, menu_subscription, update_recent_studies_menu,
+    RecentProjectInfo, create_menu, init_menu_channel, menu_subscription,
+    update_recent_projects_menu,
 };
 
 #[cfg(not(target_os = "macos"))]
@@ -44,18 +45,27 @@ pub enum MenuAction {
     // =========================================================================
     // File menu
     // =========================================================================
-    /// Open a study folder
-    OpenStudy,
+    /// Create a new project
+    NewProject,
 
-    /// Open a recent study by its UUID (macOS only - desktop uses path-based approach)
+    /// Open a project file (.tss)
+    OpenProject,
+
+    /// Open a recent project by its UUID (macOS only - desktop uses path-based approach)
     #[cfg(target_os = "macos")]
-    OpenRecentStudy(Uuid),
+    OpenRecentProject(Uuid),
 
-    /// Close the current study
-    CloseStudy,
+    /// Save the current project
+    SaveProject,
 
-    /// Clear recent studies list
-    ClearRecentStudies,
+    /// Save the current project to a new location
+    SaveProjectAs,
+
+    /// Close the current project
+    CloseProject,
+
+    /// Clear recent projects list
+    ClearRecentProjects,
 
     /// Open settings dialog
     Settings,
@@ -133,17 +143,17 @@ mod tests {
 
     #[test]
     fn test_menu_action_equality() {
-        assert_eq!(MenuAction::OpenStudy, MenuAction::OpenStudy);
-        assert_ne!(MenuAction::OpenStudy, MenuAction::CloseStudy);
+        assert_eq!(MenuAction::NewProject, MenuAction::NewProject);
+        assert_ne!(MenuAction::NewProject, MenuAction::CloseProject);
     }
 
     #[test]
     #[cfg(target_os = "macos")]
-    fn test_menu_action_recent_study() {
+    fn test_menu_action_recent_project() {
         let uuid = Uuid::new_v4();
         assert_eq!(
-            MenuAction::OpenRecentStudy(uuid),
-            MenuAction::OpenRecentStudy(uuid)
+            MenuAction::OpenRecentProject(uuid),
+            MenuAction::OpenRecentProject(uuid)
         );
     }
 

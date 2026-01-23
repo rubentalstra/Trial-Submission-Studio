@@ -9,27 +9,36 @@
 #[cfg(target_os = "macos")]
 pub mod ids {
     // =========================================================================
-    // File menu
+    // File menu - Project operations
     // =========================================================================
 
-    /// Open a study folder
-    pub const OPEN_STUDY: &str = "open_study";
+    /// Create a new project
+    pub const NEW_PROJECT: &str = "new_project";
 
-    /// Close the current study
-    pub const CLOSE_STUDY: &str = "close_study";
+    /// Open a project file (.tss)
+    pub const OPEN_PROJECT: &str = "open_project";
 
-    /// Clear recent studies list
+    /// Save the current project
+    pub const SAVE_PROJECT: &str = "save_project";
+
+    /// Save the current project to a new location
+    pub const SAVE_PROJECT_AS: &str = "save_project_as";
+
+    /// Close the current project
+    pub const CLOSE_PROJECT: &str = "close_project";
+
+    /// Clear recent projects list
     pub const CLEAR_RECENT: &str = "clear_recent";
 
     // -------------------------------------------------------------------------
-    // Recent Studies submenu
+    // Recent Projects submenu
     // -------------------------------------------------------------------------
 
-    /// Prefix for recent study menu items (followed by UUID)
-    pub const RECENT_STUDY_PREFIX: &str = "recent_study:";
+    /// Prefix for recent project menu items (followed by UUID)
+    pub const RECENT_PROJECT_PREFIX: &str = "recent_project:";
 
-    /// Placeholder when no recent studies exist
-    pub const NO_RECENT_STUDIES: &str = "no_recent_studies";
+    /// Placeholder when no recent projects exist
+    pub const NO_RECENT_PROJECTS: &str = "no_recent_projects";
 
     // =========================================================================
     // App/Settings

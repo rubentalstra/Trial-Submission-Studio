@@ -104,11 +104,11 @@ fn view_header<'a>(study: &'a Study, workflow_mode: WorkflowMode) -> Element<'a,
                 ..Default::default()
             }),
             Space::new().width(SPACING_SM),
-            text("Close Study").size(13),
+            text("Close Project").size(13),
         ]
         .align_y(Alignment::Center),
     )
-    .on_press(Message::Home(HomeMessage::CloseStudyClicked))
+    .on_press(Message::Home(HomeMessage::CloseProjectClicked))
     .padding([SPACING_SM, SPACING_MD])
     .style(button_secondary);
 
