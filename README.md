@@ -31,7 +31,7 @@
 > See [Disclaimer](https://rubentalstra.github.io/Trial-Submission-Studio/legal/disclaimer.html).
 
 <div align="center">
-  <img src="docs/src/images/screenshots/study-overview.png" alt="Trial Submission Studio - Study Overview" width="2784"/>
+  <img src="docs/src/images/screenshots/welcome-screen.png" alt="Trial Submission Studio - Study Overview" width="1392"/>
   <p><em>Automatic domain discovery from your clinical trial data</em></p>
 </div>
 
