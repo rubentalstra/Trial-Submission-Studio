@@ -552,9 +552,7 @@ impl App {
                         iced::widget::text("Export dialog").into()
                     }
                 }
-                DialogType::UnsavedChanges => {
-                    view_unsaved_changes_dialog_content(id)
-                }
+                DialogType::UnsavedChanges => view_unsaved_changes_dialog_content(id),
             };
         }
 
@@ -771,7 +769,9 @@ fn check_update_status() -> Option<crate::component::feedback::toast::ToastState
             status.previous_version,
             status.version
         );
-        Some(crate::component::feedback::toast::ToastState::success(format!("Updated to v{}", status.version)))
+        Some(crate::component::feedback::toast::ToastState::success(
+            format!("Updated to v{}", status.version),
+        ))
     } else {
         tracing::warn!("Update to {} failed: {:?}", status.version, status.error);
         None
