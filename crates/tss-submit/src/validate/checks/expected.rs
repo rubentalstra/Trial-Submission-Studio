@@ -9,11 +9,11 @@
 //! Variables marked as "not collected" are exempt from these checks,
 //! as the user has explicitly acknowledged the data was not collected.
 
-use polars::prelude::{AnyValue, DataFrame};
+use polars::prelude::DataFrame;
 use std::collections::BTreeSet;
-use tss_standards::any_to_string;
 use tss_standards::{CoreDesignation, SdtmDomain};
 
+use super::super::column_reader::ColumnReader;
 use super::super::issue::Issue;
 use super::super::util::CaseInsensitiveSet;
 
@@ -31,7 +31,7 @@ pub fn check(
     not_collected: &BTreeSet<String>,
 ) -> Vec<Issue> {
     let mut issues = Vec::new();
-    let row_count = df.height();
+    let reader = ColumnReader::new(df);
 
     for variable in &domain.variables {
         if variable.core != Some(CoreDesignation::Expected) {
@@ -53,7 +53,7 @@ pub fn check(
         };
 
         // Check if ALL values are empty (effectively unmapped)
-        if row_count > 0 && is_all_empty(df, column, row_count) {
+        if reader.all_null(column) {
             issues.push(Issue::ExpectedMissing {
                 variable: variable.name.clone(),
             });
@@ -61,20 +61,4 @@ pub fn check(
     }
 
     issues
-}
-
-/// Check if all values in a column are null/empty.
-fn is_all_empty(df: &DataFrame, column: &str, row_count: usize) -> bool {
-    let Ok(series) = df.column(column) else {
-        return true;
-    };
-
-    for idx in 0..row_count {
-        let value = series.get(idx).unwrap_or(AnyValue::Null);
-        let str_value = any_to_string(value);
-        if !str_value.trim().is_empty() {
-            return false;
-        }
-    }
-    true
 }

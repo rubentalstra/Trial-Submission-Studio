@@ -26,6 +26,10 @@ use iced::widget::container;
 use iced::window;
 use iced::{Element, Size, Subscription, Task, Theme};
 
+use crate::handler::{
+    DialogHandler, DomainEditorHandler, ExportHandler, HomeHandler, MenuActionHandler,
+    MenuMessageHandler, MessageHandler, SourceAssignmentHandler,
+};
 use crate::message::{Message, SettingsCategory};
 use crate::state::{AppState, DialogType, Settings, ViewState};
 use crate::theme::clinical_theme;
@@ -111,36 +115,38 @@ impl App {
             // =================================================================
             // Home view messages
             // =================================================================
-            Message::Home(home_msg) => self.handle_home_message(home_msg),
+            Message::Home(home_msg) => HomeHandler.handle(&mut self.state, home_msg),
 
             // =================================================================
             // Source assignment view messages
             // =================================================================
             Message::SourceAssignment(assignment_msg) => {
-                self.handle_source_assignment_message(assignment_msg)
+                SourceAssignmentHandler.handle(&mut self.state, assignment_msg)
             }
 
             // =================================================================
             // Domain editor messages
             // =================================================================
-            Message::DomainEditor(editor_msg) => self.handle_domain_editor_message(editor_msg),
+            Message::DomainEditor(editor_msg) => {
+                DomainEditorHandler.handle(&mut self.state, editor_msg)
+            }
 
             // =================================================================
             // Export messages
             // =================================================================
-            Message::Export(export_msg) => self.handle_export_message(export_msg),
+            Message::Export(export_msg) => ExportHandler.handle(&mut self.state, export_msg),
 
             // =================================================================
             // Dialog messages
             // =================================================================
-            Message::Dialog(dialog_msg) => self.handle_dialog_message(dialog_msg),
+            Message::Dialog(dialog_msg) => DialogHandler.handle(&mut self.state, dialog_msg),
 
             // =================================================================
             // Menu messages
             // =================================================================
-            Message::MenuAction(action) => self.handle_menu_action(action),
+            Message::MenuAction(action) => MenuActionHandler.handle(&mut self.state, action),
 
-            Message::Menu(menu_msg) => self.handle_menu_message(menu_msg),
+            Message::Menu(menu_msg) => MenuMessageHandler.handle(&mut self.state, menu_msg),
 
             Message::InitNativeMenu => {
                 // Initialize native menu on macOS
@@ -153,6 +159,10 @@ impl App {
                     // - Setting up the window menu
                     // - Storing references in thread-local storage
                     let _menu = crate::menu::create_menu();
+
+                    // Initialize the channel-based menu event system
+                    // This spawns a background thread that forwards muda events
+                    crate::menu::init_menu_channel();
 
                     // Populate recent studies submenu from saved settings
                     let studies: Vec<_> = self
@@ -274,7 +284,7 @@ impl App {
                     }
                     Err(err) => {
                         tracing::error!("Failed to load study: {}", err);
-                        self.state.error = Some(err);
+                        self.state.error = Some(crate::error::GuiError::study_load(err));
                     }
                 }
                 Task::none()
@@ -324,7 +334,16 @@ impl App {
                 verified,
             } => {
                 // Update dialog state to ReadyToInstall
-                self.set_update_ready_to_install(info, data, verified);
+                if let Some((id, _)) = self.state.dialog_windows.update {
+                    self.state.dialog_windows.update = Some((
+                        id,
+                        UpdateState::ReadyToInstall {
+                            info,
+                            data,
+                            verified,
+                        },
+                    ));
+                }
                 Task::none()
             }
 
@@ -340,7 +359,7 @@ impl App {
 
             Message::FolderSelected(path) => {
                 if let Some(folder) = path {
-                    self.load_study(folder)
+                    crate::handler::home::load_study(&mut self.state, folder)
                 } else {
                     Task::none()
                 }
@@ -370,7 +389,7 @@ impl App {
 
     /// Handle toast notification messages.
     fn handle_toast_message(&mut self, msg: crate::message::ToastMessage) -> Task<Message> {
-        use crate::component::toast::{ToastActionType, ToastMessage};
+        use crate::component::feedback::toast::{ToastActionType, ToastMessage};
 
         match msg {
             ToastMessage::Dismiss => {
@@ -386,8 +405,10 @@ impl App {
                         ToastActionType::ViewChangelog => {
                             // Open the update dialog
                             self.state.toast = None;
-                            return self
-                                .handle_menu_message(crate::message::MenuMessage::CheckUpdates);
+                            return MenuMessageHandler.handle(
+                                &mut self.state,
+                                crate::message::MenuMessage::CheckUpdates,
+                            );
                         }
                         ToastActionType::OpenUrl(url) => {
                             let _ = open::that(url);
@@ -495,7 +516,7 @@ impl App {
 
         // If there's a toast, wrap content with an overlay
         if let Some(toast) = &self.state.toast {
-            use crate::component::toast::view_toast;
+            use crate::component::feedback::toast::view_toast;
             use iced::widget::{Space, column, stack};
 
             let toast_element = view_toast(toast);
@@ -627,7 +648,7 @@ impl App {
 ///
 /// This is called on app startup to show a notification when the app has been updated.
 /// The status file is written by the update helper and deleted after reading.
-fn check_update_status() -> Option<crate::component::toast::ToastState> {
+fn check_update_status() -> Option<crate::component::feedback::toast::ToastState> {
     use directories::ProjectDirs;
 
     // Get the status file path using the same location as the helper
@@ -652,9 +673,7 @@ fn check_update_status() -> Option<crate::component::toast::ToastState> {
             status.previous_version,
             status.version
         );
-        Some(crate::component::toast::ToastState::update_success(
-            &status.version,
-        ))
+        Some(crate::component::feedback::toast::ToastState::update_success(&status.version))
     } else {
         tracing::warn!("Update to {} failed: {:?}", status.version, status.error);
         None

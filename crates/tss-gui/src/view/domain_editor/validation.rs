@@ -11,10 +11,9 @@ use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 use tss_submit::{Issue, Severity, ValidationReport};
 
-use crate::component::{
-    DetailHeader, EmptyState, MetadataCard, NoFilteredResults, SelectableRow,
-    master_detail_with_pinned_header,
-};
+use crate::component::display::{EmptyState, MetadataCard, NoFilteredResults, SelectableRow};
+use crate::component::layout::SplitView;
+use crate::component::panels::DetailHeader;
 use crate::message::domain_editor::{SeverityFilter as MsgSeverityFilter, ValidationMessage};
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, SeverityFilter, ValidationUiState, ViewState};
@@ -89,7 +88,10 @@ pub fn view_validation_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Ele
         view_no_selection()
     };
 
-    master_detail_with_pinned_header(master_header, master_content, detail, MASTER_WIDTH)
+    SplitView::new(master_content, detail)
+        .master_width(MASTER_WIDTH)
+        .master_header(master_header)
+        .view()
 }
 
 // =============================================================================

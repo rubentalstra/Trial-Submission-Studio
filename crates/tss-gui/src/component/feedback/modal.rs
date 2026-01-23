@@ -181,28 +181,3 @@ pub fn confirm_modal<'a, M: Clone + 'a>(
         vec![cancel_btn, confirm_btn],
     )
 }
-
-/// Creates an info/alert modal with a single OK button.
-///
-/// # Arguments
-///
-/// * `base` - The background content
-/// * `title` - Modal title
-/// * `message` - Alert message
-/// * `on_close` - Message when OK is clicked
-pub fn alert_modal<'a, M: Clone + 'a>(
-    base: Element<'a, M>,
-    title: &'a str,
-    message: &'a str,
-    on_close: M,
-) -> Element<'a, M> {
-    let content = text(message).into();
-
-    let ok_btn: Element<'a, M> = button(text("OK"))
-        .on_press(on_close.clone())
-        .padding([10.0, 20.0])
-        .style(button_primary)
-        .into();
-
-    modal(base, title, content, on_close, vec![ok_btn])
-}

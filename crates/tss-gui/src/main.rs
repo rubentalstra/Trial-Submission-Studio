@@ -5,20 +5,9 @@
 //!
 //! Built with Iced 0.14.0 using the Elm architecture (State, Message, Update, View).
 
-// Module declarations
-mod app;
-mod component;
-mod menu;
-mod message;
-mod service;
-mod state;
-mod theme;
-mod view;
-
-use app::App;
-
-// Import Lucide font bytes for loading
-use component::LUCIDE_FONT_BYTES;
+// Use library modules - all types come from tss_gui crate
+use tss_gui::app::App;
+use tss_gui::component::LUCIDE_FONT_BYTES;
 
 /// Application entry point.
 ///
