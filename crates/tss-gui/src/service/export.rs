@@ -331,15 +331,8 @@ fn write_dataset_xml_file(
         ..Default::default()
     };
 
-    write_dataset_xml_output(
-        path,
-        domain,
-        frame,
-        study_id,
-        ig_version,
-        Some(&options),
-    )
-    .map_err(|e| ExportError::new(format!("Failed to write Dataset-XML: {}", e)))?;
+    write_dataset_xml_output(path, domain, frame, study_id, ig_version, Some(&options))
+        .map_err(|e| ExportError::new(format!("Failed to write Dataset-XML: {}", e)))?;
 
     Ok(())
 }
