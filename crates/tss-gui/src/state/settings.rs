@@ -367,8 +367,8 @@ pub struct ExportSettings {
     /// XPT version for SAS transport files.
     pub xpt_version: XptVersion,
 
-    /// SDTM-IG version for Dataset-XML and Define-XML.
-    pub sdtm_ig_version: SdtmIgVersion,
+    /// Implementation Guide version for Dataset-XML and Define-XML.
+    pub ig_version: SdtmIgVersion,
 }
 
 impl Default for ExportSettings {
@@ -378,7 +378,7 @@ impl Default for ExportSettings {
             last_export_dir: None,
             include_define_xml: true,
             xpt_version: XptVersion::default(),
-            sdtm_ig_version: SdtmIgVersion::default(),
+            ig_version: SdtmIgVersion::default(),
         }
     }
 }

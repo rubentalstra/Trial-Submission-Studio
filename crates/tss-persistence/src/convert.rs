@@ -50,6 +50,10 @@ pub trait FromSnapshot: Sized {
 /// This is called by GUI code that has access to MappingState.
 /// We can't implement ToSnapshot directly on MappingState because
 /// it's defined in tss-submit.
+///
+/// Note: The `accepted` parameter includes confidence scores from the session,
+/// but we intentionally discard them - confidence is only meaningful during
+/// active mapping, not for persistence.
 pub fn mapping_to_snapshot(
     study_id: &str,
     accepted: &BTreeMap<String, (String, f32)>,
@@ -61,7 +65,7 @@ pub fn mapping_to_snapshot(
         study_id: study_id.to_string(),
         accepted: accepted
             .iter()
-            .map(|(var, (col, conf))| (var.clone(), MappingEntry::new(col.clone(), *conf)))
+            .map(|(var, (col, _conf))| (var.clone(), MappingEntry::new(col.clone())))
             .collect(),
         not_collected: not_collected.clone(),
         omitted: omitted.clone(),

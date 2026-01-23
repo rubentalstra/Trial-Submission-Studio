@@ -98,23 +98,23 @@ impl MappingSnapshot {
 }
 
 /// A single mapping entry.
+///
+/// Note: Confidence is intentionally NOT stored. Confidence is only meaningful
+/// during a mapping session (showing how confident the suggestion algorithm is).
+/// Once a user accepts a mapping, they've validated it - the confidence score
+/// becomes meaningless. It's transient GUI state, not persisted data.
 #[derive(Debug, Clone, Archive, Serialize, Deserialize)]
 #[rkyv(compare(PartialEq))]
 pub struct MappingEntry {
     /// Source column name.
     pub source_column: String,
-
-    /// Confidence score (0.0 to 1.0).
-    /// 1.0 for manual mappings, lower for auto-suggested.
-    pub confidence: f32,
 }
 
 impl MappingEntry {
     /// Create a new mapping entry.
-    pub fn new(source_column: impl Into<String>, confidence: f32) -> Self {
+    pub fn new(source_column: impl Into<String>) -> Self {
         Self {
             source_column: source_column.into(),
-            confidence,
         }
     }
 }

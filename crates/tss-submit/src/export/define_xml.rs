@@ -24,14 +24,15 @@ use super::common::{
 /// Options for Define-XML output.
 #[derive(Debug, Clone)]
 pub struct DefineXmlOptions {
-    pub sdtm_ig_version: String,
+    /// Implementation Guide version (e.g., "3.4" for SDTM-IG 3.4).
+    pub ig_version: String,
     pub context: String,
 }
 
 impl DefineXmlOptions {
-    pub fn new(sdtm_ig_version: impl Into<String>, context: impl Into<String>) -> Self {
+    pub fn new(ig_version: impl Into<String>, context: impl Into<String>) -> Self {
         Self {
-            sdtm_ig_version: sdtm_ig_version.into(),
+            ig_version: ig_version.into(),
             context: context.into(),
         }
     }
@@ -84,7 +85,7 @@ pub fn write_define_xml(
     let study_id = normalize_study_id(study_id);
     let study_oid = format!("STDY.{study_id}");
     let file_oid = format!("{study_oid}.Define-XML_{DEFINE_XML_VERSION}");
-    let mdv_oid = format!("MDV.{study_oid}.SDTMIG.{}", options.sdtm_ig_version);
+    let mdv_oid = format!("MDV.{study_oid}.SDTMIG.{}", options.ig_version);
     let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
 
     let domain_lookup = domain_map_by_code(domains);
@@ -186,7 +187,7 @@ pub fn write_define_xml(
     let mdv_name = format!("Study {study_id}, Data Definitions");
     let mdv_desc = format!(
         "SDTM {} metadata definitions for {study_id}",
-        options.sdtm_ig_version
+        options.ig_version
     );
     metadata.push_attribute(("Name", mdv_name.as_str()));
     metadata.push_attribute(("Description", mdv_desc.as_str()));

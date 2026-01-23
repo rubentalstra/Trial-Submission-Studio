@@ -404,13 +404,14 @@ fn create_project_file_from_state(study: &crate::state::Study, state: &AppState)
             snapshot.label = domain_state.source.label.clone();
 
             // Create mapping snapshot
+            // Note: We discard confidence scores - they're only meaningful during active mapping
             let mapping = &domain_state.mapping;
             let mapping_snapshot = MappingSnapshot {
                 study_id: mapping.study_id().to_string(),
                 accepted: mapping
                     .all_accepted()
                     .iter()
-                    .map(|(var, (col, conf))| (var.clone(), MappingEntry::new(col.clone(), *conf)))
+                    .map(|(var, (col, _conf))| (var.clone(), MappingEntry::new(col.clone())))
                     .collect(),
                 not_collected: mapping.all_not_collected().clone(),
                 omitted: mapping.all_omitted().clone(),
