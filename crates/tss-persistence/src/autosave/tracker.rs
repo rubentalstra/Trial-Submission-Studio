@@ -153,8 +153,10 @@ mod tests {
     #[test]
     fn test_should_auto_save_timing() {
         let mut tracker = DirtyTracker::new();
-        let mut config = AutoSaveConfig::default();
-        config.debounce_ms = 50; // Short debounce for testing
+        let config = AutoSaveConfig {
+            debounce_ms: 50, // Short debounce for testing
+            ..AutoSaveConfig::default()
+        };
 
         // Not dirty - shouldn't save
         assert!(!tracker.should_auto_save(&config));
