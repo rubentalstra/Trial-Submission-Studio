@@ -28,7 +28,7 @@ use iced::{Element, Size, Subscription, Task, Theme};
 
 use crate::handler::{
     DialogHandler, DomainEditorHandler, ExportHandler, HomeHandler, MenuActionHandler,
-    MenuMessageHandler, MessageHandler, SourceAssignmentHandler,
+    MessageHandler, SourceAssignmentHandler,
 };
 use crate::message::{Message, SettingsCategory};
 use crate::state::{AppState, DialogType, Settings, ViewState};
@@ -137,6 +137,66 @@ impl App {
             Message::Export(export_msg) => ExportHandler.handle(&mut self.state, export_msg),
 
             // =================================================================
+            // Project persistence
+            // =================================================================
+            Message::NewProject => crate::handler::project::handle_new_project(&mut self.state),
+
+            Message::OpenProject => crate::handler::project::handle_open_project(&mut self.state),
+
+            Message::OpenProjectSelected(path) => {
+                crate::handler::project::handle_open_project_selected(&mut self.state, path)
+            }
+
+            Message::ProjectLoaded(result) => {
+                crate::handler::project::handle_project_loaded(&mut self.state, result)
+            }
+
+            Message::SaveProject => crate::handler::project::handle_save_project(&mut self.state),
+
+            Message::SaveProjectAs => {
+                crate::handler::project::handle_save_project_as(&mut self.state)
+            }
+
+            Message::SavePathSelected(path) => {
+                crate::handler::project::handle_save_path_selected(&mut self.state, path)
+            }
+
+            Message::ProjectSaved(result) => {
+                crate::handler::project::handle_project_saved(&mut self.state, result)
+            }
+
+            Message::AutoSaveTick => {
+                crate::handler::project::handle_auto_save_tick(&mut self.state)
+            }
+
+            Message::SourceFilesChanged(files) => {
+                // Show a warning toast about changed source files
+                tracing::warn!("Source files changed since last save: {:?}", files);
+                let msg = format!(
+                    "{} source file(s) changed since last save. Mappings may be outdated.",
+                    files.len()
+                );
+                self.state.toast =
+                    Some(crate::component::feedback::toast::ToastState::warning(msg));
+                Task::none()
+            }
+
+            // =================================================================
+            // Unsaved changes dialog
+            // =================================================================
+            Message::UnsavedChangesSave => {
+                crate::handler::project::handle_unsaved_changes_save(&mut self.state)
+            }
+
+            Message::UnsavedChangesDiscard => {
+                crate::handler::project::handle_unsaved_changes_discard(&mut self.state)
+            }
+
+            Message::UnsavedChangesCancelled => {
+                crate::handler::project::handle_unsaved_changes_cancelled(&mut self.state)
+            }
+
+            // =================================================================
             // Dialog messages
             // =================================================================
             Message::Dialog(dialog_msg) => DialogHandler.handle(&mut self.state, dialog_msg),
@@ -145,8 +205,6 @@ impl App {
             // Menu messages
             // =================================================================
             Message::MenuAction(action) => MenuActionHandler.handle(&mut self.state, action),
-
-            Message::Menu(menu_msg) => MenuMessageHandler.handle(&mut self.state, menu_msg),
 
             Message::InitNativeMenu => {
                 // Initialize native menu on macOS
@@ -164,16 +222,16 @@ impl App {
                     // This spawns a background thread that forwards muda events
                     crate::menu::init_menu_channel();
 
-                    // Populate recent studies submenu from saved settings
-                    let studies: Vec<_> = self
+                    // Populate recent projects submenu from saved settings
+                    let projects: Vec<_> = self
                         .state
                         .settings
                         .general
-                        .recent_sorted()
+                        .recent_projects_sorted()
                         .iter()
-                        .map(|s| crate::menu::RecentStudyInfo::new(s.id, s.display_name.clone()))
+                        .map(|p| crate::menu::RecentProjectInfo::new(p.id, p.display_name.clone()))
                         .collect();
-                    crate::menu::update_recent_studies_menu(&studies);
+                    crate::menu::update_recent_projects_menu(&projects);
 
                     tracing::info!("Initialized native macOS menu bar");
                 }
@@ -198,14 +256,17 @@ impl App {
                     DialogType::Update => {
                         self.state.dialog_windows.update = Some((id, UpdateState::Checking));
                     }
-                    DialogType::CloseStudyConfirm => {
-                        self.state.dialog_windows.close_study_confirm = Some(id);
+                    DialogType::CloseProjectConfirm => {
+                        self.state.dialog_windows.close_project_confirm = Some(id);
                     }
                     DialogType::ExportProgress => {
                         // Export progress state is set when export starts
                     }
                     DialogType::ExportComplete => {
                         // Export complete state is set when export completes
+                    }
+                    DialogType::UnsavedChanges => {
+                        // Unsaved changes state is set when dialog is opened
                     }
                 }
                 Task::none()
@@ -218,8 +279,16 @@ impl App {
                     self.state.dialog_windows.close(id);
                     window::close(id)
                 } else if self.state.main_window_id == Some(id) {
-                    // This is the main window - exit the application
-                    iced::exit()
+                    // This is the main window - check for unsaved changes before exiting
+                    if self.state.dirty_tracker.is_dirty() && self.state.study.is_some() {
+                        // Show unsaved changes dialog with quit action
+                        crate::handler::project::show_unsaved_changes_dialog_for_quit(
+                            &mut self.state,
+                        )
+                    } else {
+                        // No unsaved changes - exit immediately
+                        iced::exit()
+                    }
                 } else {
                     // Unknown window (already closed dialog) - just ignore
                     Task::none()
@@ -245,46 +314,45 @@ impl App {
                             study.domain_count()
                         );
 
-                        // Add to recent studies with rich metadata
-                        let workflow_type = match self.state.view.workflow_mode() {
-                            crate::state::WorkflowMode::Sdtm => crate::state::WorkflowType::Sdtm,
-                            crate::state::WorkflowMode::Adam => crate::state::WorkflowType::Adam,
-                            crate::state::WorkflowMode::Send => crate::state::WorkflowType::Send,
-                        };
-                        let total_rows = study.total_rows();
-                        let recent_study = crate::state::RecentStudy::new(
-                            study.study_folder.clone(),
-                            study.study_id.clone(),
-                            workflow_type,
-                            study.domain_count(),
-                            total_rows,
-                        );
-                        self.state.settings.general.add_recent_study(recent_study);
-                        let _ = self.state.settings.save();
-
-                        // Update native menu's recent studies submenu
-                        #[cfg(target_os = "macos")]
-                        {
-                            let studies: Vec<_> = self
-                                .state
-                                .settings
-                                .general
-                                .recent_sorted()
-                                .iter()
-                                .map(|s| {
-                                    crate::menu::RecentStudyInfo::new(s.id, s.display_name.clone())
-                                })
-                                .collect();
-                            crate::menu::update_recent_studies_menu(&studies);
-                        }
-
+                        // Store the study - it will be added to recent projects when saved
                         self.state.study = Some(study);
                         self.state.terminology = Some(terminology);
                         self.state.view = ViewState::home();
+
+                        // Check if there's a pending project restoration
+                        // (when opening a .tss file, we need to apply saved mappings)
+                        if let Some((_, project)) = self.state.pending_project_restore.take() {
+                            // Check for changed source files
+                            let changed_files =
+                                crate::handler::project::detect_changed_source_files(&project);
+
+                            if !changed_files.is_empty() {
+                                tracing::warn!(
+                                    "Source files changed since last save: {:?}",
+                                    changed_files
+                                );
+                                // Show a warning to the user via toast
+                                let msg = format!(
+                                    "{} source file(s) changed since last save. Mappings may be outdated.",
+                                    changed_files.len()
+                                );
+                                self.state.toast = Some(
+                                    crate::component::feedback::toast::ToastState::warning(msg),
+                                );
+                            }
+
+                            // Restore mappings regardless (user can re-map if needed)
+                            crate::handler::project::restore_project_mappings(
+                                &mut self.state,
+                                &project,
+                            );
+                        }
                     }
                     Err(err) => {
                         tracing::error!("Failed to load study: {}", err);
                         self.state.error = Some(crate::error::GuiError::study_load(err));
+                        // Clear any pending restore on error
+                        self.state.pending_project_restore = None;
                     }
                 }
                 Task::none()
@@ -405,10 +473,8 @@ impl App {
                         ToastActionType::ViewChangelog => {
                             // Open the update dialog
                             self.state.toast = None;
-                            return MenuMessageHandler.handle(
-                                &mut self.state,
-                                crate::message::MenuMessage::CheckUpdates,
-                            );
+                            return MenuActionHandler
+                                .handle(&mut self.state, crate::menu::MenuAction::CheckUpdates);
                         }
                         ToastActionType::OpenUrl(url) => {
                             let _ = open::that(url);
@@ -431,10 +497,10 @@ impl App {
     /// In multi-window mode, each window gets its own view based on the window ID.
     pub fn view(&self, id: window::Id) -> Element<'_, Message> {
         use crate::view::{
-            view_about_dialog_content, view_close_study_dialog_content, view_domain_editor,
+            view_about_dialog_content, view_close_project_dialog_content, view_domain_editor,
             view_export, view_export_complete_dialog_content, view_export_progress_dialog_content,
             view_settings_dialog_content, view_third_party_dialog_content,
-            view_update_dialog_content,
+            view_unsaved_changes_dialog_content, view_update_dialog_content,
         };
 
         // Check if this is a dialog window
@@ -468,7 +534,7 @@ impl App {
                         iced::widget::text("Loading...").into()
                     }
                 }
-                DialogType::CloseStudyConfirm => view_close_study_dialog_content(id),
+                DialogType::CloseProjectConfirm => view_close_project_dialog_content(id),
                 DialogType::ExportProgress => {
                     if let Some((_, ref progress_state)) = self.state.dialog_windows.export_progress
                     {
@@ -486,6 +552,7 @@ impl App {
                         iced::widget::text("Export dialog").into()
                     }
                 }
+                DialogType::UnsavedChanges => view_unsaved_changes_dialog_content(id),
             };
         }
 
@@ -555,11 +622,19 @@ impl App {
                 DialogType::Settings => "Settings".to_string(),
                 DialogType::ThirdParty => "Third-Party Licenses".to_string(),
                 DialogType::Update => "Check for Updates".to_string(),
-                DialogType::CloseStudyConfirm => "Close Study?".to_string(),
+                DialogType::CloseProjectConfirm => "Close Project?".to_string(),
                 DialogType::ExportProgress => "Exporting...".to_string(),
                 DialogType::ExportComplete => "Export Complete".to_string(),
+                DialogType::UnsavedChanges => "Unsaved Changes".to_string(),
             };
         }
+
+        // Dirty indicator - show "*" in title when there are unsaved changes
+        let dirty_indicator = if self.state.dirty_tracker.is_dirty() {
+            " *"
+        } else {
+            ""
+        };
 
         // Main window title
         let study_name = self
@@ -574,16 +649,28 @@ impl App {
                 "Trial Submission Studio".to_string()
             }
             ViewState::Home { .. } => {
-                format!("{} - Trial Submission Studio", study_name)
+                format!(
+                    "{}{} - Trial Submission Studio",
+                    study_name, dirty_indicator
+                )
             }
             ViewState::SourceAssignment { .. } => {
-                "Assign Source Files - Trial Submission Studio".to_string()
+                format!(
+                    "Assign Source Files{} - Trial Submission Studio",
+                    dirty_indicator
+                )
             }
             ViewState::DomainEditor { domain, .. } => {
-                format!("{} ({}) - Trial Submission Studio", domain, study_name)
+                format!(
+                    "{} ({}){} - Trial Submission Studio",
+                    domain, study_name, dirty_indicator
+                )
             }
             ViewState::Export(_) => {
-                format!("Export - {} - Trial Submission Studio", study_name)
+                format!(
+                    "Export - {}{} - Trial Submission Studio",
+                    study_name, dirty_indicator
+                )
             }
         }
     }
@@ -634,12 +721,21 @@ impl App {
             Subscription::none()
         };
 
+        // Auto-save timer (polls every 500ms to check if auto-save should trigger)
+        // The actual save only happens if the dirty tracker indicates it should
+        let auto_save_sub = if self.state.auto_save_config.enabled && self.state.study.is_some() {
+            time::every(Duration::from_millis(500)).map(|_| Message::AutoSaveTick)
+        } else {
+            Subscription::none()
+        };
+
         Subscription::batch([
             keyboard_sub,
             system_theme_sub,
             menu_sub,
             window_sub,
             toast_sub,
+            auto_save_sub,
         ])
     }
 }
@@ -673,7 +769,9 @@ fn check_update_status() -> Option<crate::component::feedback::toast::ToastState
             status.previous_version,
             status.version
         );
-        Some(crate::component::feedback::toast::ToastState::update_success(&status.version))
+        Some(crate::component::feedback::toast::ToastState::success(
+            format!("Updated to v{}", status.version),
+        ))
     } else {
         tracing::warn!("Update to {} failed: {:?}", status.version, status.error);
         None

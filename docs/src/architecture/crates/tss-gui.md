@@ -348,7 +348,7 @@ pub struct Settings {
     pub recent_studies: Vec<RecentStudy>,
     pub default_export_dir: Option<PathBuf>,
     pub workflow_type: WorkflowType,
-    pub sdtm_ig_version: SdtmIgVersion,
+    pub ig_version: SdtmIgVersion,
     pub xpt_version: XptVersion,
     pub export_format: ExportFormat,
     // Display settings, validation settings, etc.

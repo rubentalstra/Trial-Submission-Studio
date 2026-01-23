@@ -50,12 +50,25 @@ pub enum DialogType {
     ThirdParty,
     /// Update availability dialog.
     Update,
-    /// Close study confirmation dialog.
-    CloseStudyConfirm,
+    /// Close project confirmation dialog.
+    CloseProjectConfirm,
     /// Export progress indicator dialog.
     ExportProgress,
     /// Export completion dialog.
     ExportComplete,
+    /// Unsaved changes confirmation dialog.
+    UnsavedChanges,
+}
+
+/// What action to perform after handling unsaved changes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PendingAction {
+    /// User wants to create a new project.
+    NewProject,
+    /// User wants to open an existing project.
+    OpenProject(std::path::PathBuf),
+    /// User wants to close the application.
+    QuitApp,
 }
 
 impl DialogType {
@@ -66,9 +79,10 @@ impl DialogType {
             Self::Settings => "Settings",
             Self::ThirdParty => "Third-Party Licenses",
             Self::Update => "Software Update",
-            Self::CloseStudyConfirm => "Close Study",
+            Self::CloseProjectConfirm => "Close Project",
             Self::ExportProgress => "Exporting...",
             Self::ExportComplete => "Export Complete",
+            Self::UnsavedChanges => "Unsaved Changes",
         }
     }
 
@@ -79,9 +93,10 @@ impl DialogType {
             Self::Settings => (700.0, 500.0),
             Self::ThirdParty => (700.0, 550.0),
             Self::Update => (420.0, 300.0),
-            Self::CloseStudyConfirm => (400.0, 180.0),
+            Self::CloseProjectConfirm => (400.0, 180.0),
             Self::ExportProgress => (380.0, 180.0),
             Self::ExportComplete => (400.0, 240.0),
+            Self::UnsavedChanges => (420.0, 220.0),
         }
     }
 
@@ -102,12 +117,14 @@ pub enum DialogState {
     ThirdParty(ThirdPartyState),
     /// Update dialog with version info.
     Update(UpdateState),
-    /// Close study confirmation (no additional state).
-    CloseStudyConfirm,
+    /// Close project confirmation (no additional state).
+    CloseProjectConfirm,
     /// Export progress with progress info.
     ExportProgress(ExportProgressState),
     /// Export complete with results.
     ExportComplete(ExportResult),
+    /// Unsaved changes confirmation with pending action.
+    UnsavedChanges(PendingAction),
 }
 
 impl DialogState {
@@ -118,9 +135,10 @@ impl DialogState {
             Self::Settings(_) => DialogType::Settings,
             Self::ThirdParty(_) => DialogType::ThirdParty,
             Self::Update(_) => DialogType::Update,
-            Self::CloseStudyConfirm => DialogType::CloseStudyConfirm,
+            Self::CloseProjectConfirm => DialogType::CloseProjectConfirm,
             Self::ExportProgress(_) => DialogType::ExportProgress,
             Self::ExportComplete(_) => DialogType::ExportComplete,
+            Self::UnsavedChanges(_) => DialogType::UnsavedChanges,
         }
     }
 }

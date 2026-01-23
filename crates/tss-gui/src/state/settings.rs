@@ -93,46 +93,61 @@ impl Settings {
     }
 }
 
+/// Workflow type for projects.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum WorkflowType {
+    #[default]
+    Sdtm,
+    Adam,
+    Send,
+}
+
+impl WorkflowType {
+    /// Get display label.
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Sdtm => "SDTM",
+            Self::Adam => "ADaM",
+            Self::Send => "SEND",
+        }
+    }
+}
+
 // =============================================================================
-// RECENT STUDY
+// RECENT PROJECT
 // =============================================================================
 
-/// Rich metadata for a recently opened study.
+/// Rich metadata for a recently opened project (.tss file).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RecentStudy {
-    /// Unique identifier for this recent study entry.
-    ///
-    /// Used for robust identification in menu actions instead of path encoding.
+pub struct RecentProject {
+    /// Unique identifier for this recent project entry.
     #[serde(default = "Uuid::new_v4")]
     pub id: Uuid,
 
-    /// Path to the study folder (canonical/absolute).
+    /// Path to the .tss project file (canonical/absolute).
     pub path: PathBuf,
 
-    /// Display name (derived study ID, e.g., "DEMO_GDISC").
+    /// Display name (study ID from the project).
     pub display_name: String,
 
-    /// Workflow type used when last opened.
+    /// Workflow type used.
     pub workflow_type: WorkflowType,
 
-    /// When the study was last successfully opened.
+    /// When the project was last successfully opened.
     pub last_opened: DateTime<Utc>,
 
-    /// Number of domains when last opened.
+    /// Number of domains in the project.
     pub domain_count: usize,
-
-    /// Total row count when last opened.
-    pub total_rows: usize,
 }
 
-impl RecentStudy {
-    /// Create a new recent study entry.
+impl RecentProject {
+    /// Create a new recent project entry.
     pub fn new(
         path: PathBuf,
         display_name: String,
         workflow_type: WorkflowType,
         domain_count: usize,
-        total_rows: usize,
     ) -> Self {
         Self {
             id: Uuid::new_v4(),
@@ -141,13 +156,12 @@ impl RecentStudy {
             workflow_type,
             last_opened: Utc::now(),
             domain_count,
-            total_rows,
         }
     }
 
-    /// Check if the study folder still exists.
+    /// Check if the project file still exists.
     pub fn exists(&self) -> bool {
-        self.path.exists() && self.path.is_dir()
+        self.path.exists() && self.path.is_file()
     }
 
     /// Get relative time string (e.g., "2 hours ago", "Yesterday").
@@ -176,51 +190,12 @@ impl RecentStudy {
         }
     }
 
-    /// Get stats string (e.g., "12 domains, 45,320 rows").
+    /// Get stats string (e.g., "12 domains").
     pub fn stats_string(&self) -> String {
-        let domains = if self.domain_count == 1 {
+        if self.domain_count == 1 {
             "1 domain".to_string()
         } else {
             format!("{} domains", self.domain_count)
-        };
-
-        let rows = format_number(self.total_rows);
-        let rows_label = if self.total_rows == 1 { "row" } else { "rows" };
-
-        format!("{}, {} {}", domains, rows, rows_label)
-    }
-}
-
-/// Format a number with thousand separators.
-fn format_number(n: usize) -> String {
-    let s = n.to_string();
-    let mut result = String::new();
-    for (i, c) in s.chars().rev().enumerate() {
-        if i > 0 && i % 3 == 0 {
-            result.push(',');
-        }
-        result.push(c);
-    }
-    result.chars().rev().collect()
-}
-
-/// Workflow type for recent studies.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "lowercase")]
-pub enum WorkflowType {
-    #[default]
-    Sdtm,
-    Adam,
-    Send,
-}
-
-impl WorkflowType {
-    /// Get display label.
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::Sdtm => "SDTM",
-            Self::Adam => "ADaM",
-            Self::Send => "SEND",
         }
     }
 }
@@ -272,11 +247,11 @@ pub struct GeneralSettings {
     /// Number of header rows in CSV files (default: 2 for label + column names).
     pub header_rows: usize,
 
-    /// Recent studies with full metadata.
+    /// Recent projects with full metadata.
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub recent_studies: Vec<RecentStudy>,
+    pub recent_projects: Vec<RecentProject>,
 
-    /// Maximum number of recent studies to remember.
+    /// Maximum number of recent projects to remember.
     pub max_recent: usize,
 
     /// Minimum confidence score (0.0 to 1.0) for displaying mapping suggestions.
@@ -286,75 +261,87 @@ pub struct GeneralSettings {
 
     /// Assignment mode for source-to-domain mapping.
     pub assignment_mode: AssignmentMode,
+
+    /// Whether auto-save is enabled.
+    ///
+    /// When enabled, projects are automatically saved after a debounce period.
+    pub auto_save_enabled: bool,
+
+    /// Auto-save debounce time in milliseconds.
+    ///
+    /// After a change, the project will be auto-saved once this many milliseconds
+    /// have passed without further changes.
+    pub auto_save_debounce_ms: u64,
 }
 
 impl Default for GeneralSettings {
     fn default() -> Self {
         Self {
             header_rows: 2, // Default to double-header (row 1 = labels, row 2 = column names)
-            recent_studies: Vec::new(),
+            recent_projects: Vec::new(),
             max_recent: 10,
             mapping_confidence_threshold: 0.6, // Default threshold for mapping suggestions
             assignment_mode: AssignmentMode::default(),
+            auto_save_enabled: true,     // Auto-save enabled by default
+            auto_save_debounce_ms: 2000, // 2 second debounce
         }
     }
 }
 
 impl GeneralSettings {
-    /// Add or update a study with full metadata.
+    /// Add or update a project with full metadata.
     ///
-    /// If the study exists, updates its metadata and moves it to front.
+    /// If the project exists, updates its metadata and moves it to front.
     /// If new, adds to front. Respects max_recent limit.
-    pub fn add_recent_study(&mut self, study: RecentStudy) {
+    pub fn add_recent_project(&mut self, project: RecentProject) {
         // Check if already present (by path)
         let existing_idx = self
-            .recent_studies
+            .recent_projects
             .iter()
-            .position(|s| s.path == study.path);
+            .position(|p| p.path == project.path);
 
         if let Some(idx) = existing_idx {
             // Update existing and move to front
-            let mut existing = self.recent_studies.remove(idx);
-            existing.display_name = study.display_name;
-            existing.workflow_type = study.workflow_type;
-            existing.last_opened = study.last_opened;
-            existing.domain_count = study.domain_count;
-            existing.total_rows = study.total_rows;
-            self.recent_studies.insert(0, existing);
+            let mut existing = self.recent_projects.remove(idx);
+            existing.display_name = project.display_name;
+            existing.workflow_type = project.workflow_type;
+            existing.last_opened = project.last_opened;
+            existing.domain_count = project.domain_count;
+            self.recent_projects.insert(0, existing);
         } else {
-            // Add new study to front
-            self.recent_studies.insert(0, study);
+            // Add new project to front
+            self.recent_projects.insert(0, project);
         }
 
         // Trim to max_recent
-        self.enforce_max_recent();
+        self.enforce_max_recent_projects();
     }
 
-    /// Enforce the max_recent limit by removing oldest studies.
-    fn enforce_max_recent(&mut self) {
-        if self.recent_studies.len() > self.max_recent {
-            self.recent_studies.truncate(self.max_recent);
+    /// Enforce the max_recent limit by removing oldest projects.
+    fn enforce_max_recent_projects(&mut self) {
+        if self.recent_projects.len() > self.max_recent {
+            self.recent_projects.truncate(self.max_recent);
         }
     }
 
-    /// Remove a study from recent list by path.
-    pub fn remove_recent(&mut self, path: &PathBuf) {
-        self.recent_studies.retain(|s| &s.path != path);
+    /// Remove a project from recent list by path.
+    pub fn remove_recent_project(&mut self, path: &PathBuf) {
+        self.recent_projects.retain(|p| &p.path != path);
     }
 
-    /// Clear all recent studies.
-    pub fn clear_all_recent(&mut self) {
-        self.recent_studies.clear();
+    /// Clear all recent projects.
+    pub fn clear_all_recent_projects(&mut self) {
+        self.recent_projects.clear();
     }
 
-    /// Remove stale studies (those with missing paths).
-    pub fn prune_stale(&mut self) {
-        self.recent_studies.retain(RecentStudy::exists);
+    /// Remove stale projects (those with missing paths).
+    pub fn prune_stale_projects(&mut self) {
+        self.recent_projects.retain(RecentProject::exists);
     }
 
-    /// Get recent studies sorted by last_opened (most recent first).
-    pub fn recent_sorted(&self) -> Vec<&RecentStudy> {
-        let mut sorted: Vec<&RecentStudy> = self.recent_studies.iter().collect();
+    /// Get recent projects sorted by last_opened (most recent first).
+    pub fn recent_projects_sorted(&self) -> Vec<&RecentProject> {
+        let mut sorted: Vec<&RecentProject> = self.recent_projects.iter().collect();
         sorted.sort_by(|a, b| b.last_opened.cmp(&a.last_opened));
         sorted
     }
@@ -380,8 +367,8 @@ pub struct ExportSettings {
     /// XPT version for SAS transport files.
     pub xpt_version: XptVersion,
 
-    /// SDTM-IG version for Dataset-XML and Define-XML.
-    pub sdtm_ig_version: SdtmIgVersion,
+    /// Implementation Guide version for Dataset-XML and Define-XML.
+    pub ig_version: SdtmIgVersion,
 }
 
 impl Default for ExportSettings {
@@ -391,7 +378,7 @@ impl Default for ExportSettings {
             last_export_dir: None,
             include_define_xml: true,
             xpt_version: XptVersion::default(),
-            sdtm_ig_version: SdtmIgVersion::default(),
+            ig_version: SdtmIgVersion::default(),
         }
     }
 }

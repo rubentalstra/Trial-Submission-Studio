@@ -2,8 +2,8 @@
 //!
 //! Handles:
 //! - Study loading triggers
-//! - Recent study selection
-//! - Study closing
+//! - Recent project selection
+//! - Project closing
 //! - Navigation to domain editor
 
 use std::path::PathBuf;
@@ -21,26 +21,22 @@ use crate::state::{
 /// Handler for home view messages.
 ///
 /// This handler manages:
-/// - Opening studies (folder selection)
-/// - Recent study list interactions
-/// - Study closing flow
+/// - Project operations
+/// - Recent project list interactions
+/// - Project closing flow
 /// - Navigation to other views
 pub struct HomeHandler;
 
 impl MessageHandler<HomeMessage> for HomeHandler {
     fn handle(&self, state: &mut AppState, msg: HomeMessage) -> Task<Message> {
         match msg {
-            HomeMessage::OpenStudyClicked => handle_open_study(),
-
             HomeMessage::StudyFolderSelected(path) => load_study(state, path),
 
-            HomeMessage::RecentStudyClicked(path) => load_study(state, path),
+            HomeMessage::CloseProjectClicked => handle_close_project_clicked(state),
 
-            HomeMessage::CloseStudyClicked => handle_close_study_clicked(state),
+            HomeMessage::CloseProjectConfirmed => handle_close_project_confirmed(state),
 
-            HomeMessage::CloseStudyConfirmed => handle_close_study_confirmed(state),
-
-            HomeMessage::CloseStudyCancelled => handle_close_study_cancelled(state),
+            HomeMessage::CloseProjectCancelled => handle_close_project_cancelled(state),
 
             HomeMessage::DomainClicked(domain) => {
                 let rows = state.settings.display.preview_rows_per_page;
@@ -53,20 +49,26 @@ impl MessageHandler<HomeMessage> for HomeHandler {
                 Task::none()
             }
 
-            HomeMessage::RemoveFromRecent(path) => {
-                state.settings.general.remove_recent(&path);
+            // Recent projects
+            HomeMessage::RecentProjectClicked(path) => {
+                // Open the project file
+                Task::done(Message::OpenProjectSelected(Some(path)))
+            }
+
+            HomeMessage::RemoveFromRecentProjects(path) => {
+                state.settings.general.remove_recent_project(&path);
                 let _ = state.settings.save();
                 Task::none()
             }
 
-            HomeMessage::ClearAllRecentStudies => {
-                state.settings.general.clear_all_recent();
+            HomeMessage::ClearAllRecentProjects => {
+                state.settings.general.clear_all_recent_projects();
                 let _ = state.settings.save();
                 Task::none()
             }
 
-            HomeMessage::PruneStaleStudies => {
-                state.settings.general.prune_stale();
+            HomeMessage::PruneStaleProjects => {
+                state.settings.general.prune_stale_projects();
                 let _ = state.settings.save();
                 Task::none()
             }
@@ -78,42 +80,14 @@ impl MessageHandler<HomeMessage> for HomeHandler {
 // HANDLER FUNCTIONS
 // =============================================================================
 
-/// Handle the open study button click.
-fn handle_open_study() -> Task<Message> {
-    // On macOS, use synchronous dialog to avoid security-scoped access issues
-    #[cfg(target_os = "macos")]
-    {
-        let path = rfd::FileDialog::new()
-            .set_title("Select Study Folder")
-            .pick_folder();
-
-        if let Some(p) = path {
-            return Task::done(Message::Home(HomeMessage::StudyFolderSelected(p)));
-        }
-        Task::none()
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    Task::perform(
-        async {
-            rfd::AsyncFileDialog::new()
-                .set_title("Select Study Folder")
-                .pick_folder()
-                .await
-                .map(|handle| handle.path().to_path_buf())
-        },
-        Message::FolderSelected,
-    )
-}
-
-/// Handle close study button click - opens confirmation dialog.
-fn handle_close_study_clicked(state: &mut AppState) -> Task<Message> {
+/// Handle close project button click - opens confirmation dialog.
+fn handle_close_project_clicked(state: &mut AppState) -> Task<Message> {
     // Don't open if already open
-    if state.dialog_windows.close_study_confirm.is_some() {
+    if state.dialog_windows.close_project_confirm.is_some() {
         return Task::none();
     }
 
-    // Open close study confirmation dialog in a new window
+    // Open close project confirmation dialog in a new window
     let settings = window::Settings {
         size: Size::new(350.0, 250.0),
         resizable: false,
@@ -123,30 +97,32 @@ fn handle_close_study_clicked(state: &mut AppState) -> Task<Message> {
         ..Default::default()
     };
     let (id, task) = window::open(settings);
-    state.dialog_windows.close_study_confirm = Some(id);
+    state.dialog_windows.close_project_confirm = Some(id);
     task.map(|_| Message::Noop)
 }
 
-/// Handle close study confirmation - actually closes the study.
-fn handle_close_study_confirmed(state: &mut AppState) -> Task<Message> {
+/// Handle close project confirmation - actually closes the project.
+fn handle_close_project_confirmed(state: &mut AppState) -> Task<Message> {
     // Close the confirmation dialog window if open
-    let close_task = if let Some(id) = state.dialog_windows.close_study_confirm {
-        state.dialog_windows.close_study_confirm = None;
+    let close_task = if let Some(id) = state.dialog_windows.close_project_confirm {
+        state.dialog_windows.close_project_confirm = None;
         window::close(id)
     } else {
         Task::none()
     };
 
-    // Close the study
+    // Close the project
     state.study = None;
+    state.project_path = None;
+    state.dirty_tracker = tss_persistence::DirtyTracker::new();
     state.view = ViewState::home();
     close_task
 }
 
-/// Handle close study cancellation - just closes the dialog.
-fn handle_close_study_cancelled(state: &mut AppState) -> Task<Message> {
-    if let Some(id) = state.dialog_windows.close_study_confirm {
-        state.dialog_windows.close_study_confirm = None;
+/// Handle close project cancellation - just closes the dialog.
+fn handle_close_project_cancelled(state: &mut AppState) -> Task<Message> {
+    if let Some(id) = state.dialog_windows.close_project_confirm {
+        state.dialog_windows.close_project_confirm = None;
         return window::close(id);
     }
     Task::none()

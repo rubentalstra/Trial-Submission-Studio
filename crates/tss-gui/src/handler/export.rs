@@ -255,7 +255,7 @@ fn start_export(state: &mut AppState) -> Task<Message> {
         output_dir,
         format: state.settings.export.default_format,
         xpt_version: state.settings.export.xpt_version,
-        sdtm_ig_version: state.settings.export.sdtm_ig_version,
+        ig_version: state.settings.export.ig_version,
         domains: domain_data,
         study_id,
         bypass_validation: state.settings.developer.bypass_validation,

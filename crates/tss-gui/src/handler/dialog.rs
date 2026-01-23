@@ -160,8 +160,8 @@ fn handle_settings_message(state: &mut AppState, msg: SettingsMessage) -> Task<M
                     state.settings.export.xpt_version = version;
                 }
                 ExportSettingsMessage::SdtmIgVersionChanged(version) => {
-                    state.settings.export.sdtm_ig_version = version;
-                    tracing::info!("SDTM-IG version: {}", version);
+                    state.settings.export.ig_version = version;
+                    tracing::info!("IG version: {}", version);
                 }
             }
             Task::none()

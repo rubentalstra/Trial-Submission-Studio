@@ -18,9 +18,10 @@ pub mod source_assignment;
 
 // Re-export view functions for standalone window mode (multi-window)
 pub use dialog::{
-    view_about_dialog_content, view_close_study_dialog_content,
+    view_about_dialog_content, view_close_project_dialog_content,
     view_export_complete_dialog_content, view_export_progress_dialog_content,
-    view_settings_dialog_content, view_third_party_dialog_content, view_update_dialog_content,
+    view_settings_dialog_content, view_third_party_dialog_content,
+    view_unsaved_changes_dialog_content, view_update_dialog_content,
 };
 
 pub use domain_editor::view_domain_editor;

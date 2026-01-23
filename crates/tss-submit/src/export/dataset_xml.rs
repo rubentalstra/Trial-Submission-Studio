@@ -33,7 +33,7 @@ pub fn write_dataset_xml_outputs(
     domains: &[SdtmDomain],
     frames: &[DomainFrame],
     study_id: &str,
-    sdtm_ig_version: &str,
+    ig_version: &str,
 ) -> Result<Vec<PathBuf>> {
     let domain_lookup = domain_map_by_code(domains);
     let mut frames_sorted: Vec<&DomainFrame> = frames.iter().collect();
@@ -57,14 +57,7 @@ pub fn write_dataset_xml_outputs(
             dataset_name: Some(output_dataset_name),
             ..Default::default()
         };
-        write_dataset_xml(
-            &path,
-            domain,
-            frame,
-            study_id,
-            sdtm_ig_version,
-            Some(&options),
-        )?;
+        write_dataset_xml(&path, domain, frame, study_id, ig_version, Some(&options))?;
         outputs.push(path);
     }
     Ok(outputs)
@@ -76,7 +69,7 @@ pub fn write_dataset_xml(
     domain: &SdtmDomain,
     frame: &DomainFrame,
     study_id: &str,
-    sdtm_ig_version: &str,
+    ig_version: &str,
     options: Option<&DatasetXmlOptions>,
 ) -> Result<()> {
     let options = options.cloned().unwrap_or_default();
@@ -87,7 +80,7 @@ pub fn write_dataset_xml(
     let study_oid = format!("STDY.{study_id}");
     let mdv_oid = options
         .metadata_version_oid
-        .unwrap_or_else(|| format!("MDV.{study_oid}.SDTMIG.{sdtm_ig_version}"));
+        .unwrap_or_else(|| format!("MDV.{study_oid}.SDTMIG.{ig_version}"));
     let define_file_oid = format!("{study_oid}.Define-XML_{DEFINE_XML_VERSION}");
     let file_oid = format!("{define_file_oid}(IG.{dataset_name})");
     let is_reference = options

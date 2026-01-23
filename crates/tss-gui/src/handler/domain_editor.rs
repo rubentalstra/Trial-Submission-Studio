@@ -97,6 +97,7 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
             {
                 let _ = domain.mapping.accept_suggestion(&variable);
                 domain.invalidate_validation();
+                state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor { preview_cache, .. } = &mut state.view {
                 *preview_cache = None;
@@ -112,6 +113,7 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
             {
                 domain.mapping.clear_assignment(&variable);
                 domain.invalidate_validation();
+                state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor { preview_cache, .. } = &mut state.view {
                 *preview_cache = None;
@@ -127,6 +129,7 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
             {
                 let _ = domain.mapping.accept_manual(&variable, &column);
                 domain.invalidate_validation();
+                state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor { preview_cache, .. } = &mut state.view {
                 *preview_cache = None;
@@ -164,6 +167,7 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
             {
                 let _ = domain.mapping.mark_not_collected(&variable, &reason);
                 domain.invalidate_validation();
+                state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor {
                 mapping_ui,
@@ -205,6 +209,7 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
             {
                 domain.mapping.clear_assignment(&variable);
                 domain.invalidate_validation();
+                state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor { preview_cache, .. } = &mut state.view {
                 *preview_cache = None;
@@ -220,6 +225,7 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
             {
                 let _ = domain.mapping.mark_omit(&variable);
                 domain.invalidate_validation();
+                state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor { preview_cache, .. } = &mut state.view {
                 *preview_cache = None;
@@ -235,6 +241,7 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
             {
                 domain.mapping.clear_assignment(&variable);
                 domain.invalidate_validation();
+                state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor { preview_cache, .. } = &mut state.view {
                 *preview_cache = None;
@@ -547,6 +554,7 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                     return Task::none();
                 }
                 config.action = SuppAction::Include;
+                state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor { supp_ui, .. } = &mut state.view {
                 supp_ui.edit_draft = None;
@@ -568,6 +576,7 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                 && let Some(config) = domain.supp_config.get_mut(&col_name)
             {
                 config.action = SuppAction::Skip;
+                state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor { supp_ui, .. } = &mut state.view {
                 supp_ui.edit_draft = None;
@@ -589,6 +598,7 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                 && let Some(config) = domain.supp_config.get_mut(&col_name)
             {
                 config.action = SuppAction::Pending;
+                state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor { supp_ui, .. } = &mut state.view {
                 supp_ui.edit_draft = None;
@@ -641,6 +651,7 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                     } else {
                         Some(draft.qeval)
                     };
+                    state.dirty_tracker.mark_dirty();
                 }
             }
             if let ViewState::DomainEditor { supp_ui, .. } = &mut state.view {

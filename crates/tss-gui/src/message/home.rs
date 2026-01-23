@@ -1,7 +1,7 @@
 //! Home view messages.
 //!
-//! Messages for the home screen including study selection,
-//! recent studies, and workflow mode selection.
+//! Messages for the home screen including project operations,
+//! recent projects, and workflow mode selection.
 
 use std::path::PathBuf;
 
@@ -9,25 +9,19 @@ use std::path::PathBuf;
 #[derive(Debug, Clone)]
 pub enum HomeMessage {
     // =========================================================================
-    // Study selection
+    // Project operations
     // =========================================================================
-    /// User clicked "Open Study" button
-    OpenStudyClicked,
-
-    /// User selected a folder from the file dialog
+    /// User selected a study folder from the file dialog (for new project)
     StudyFolderSelected(PathBuf),
 
-    /// User clicked on a recent study
-    RecentStudyClicked(PathBuf),
+    /// User wants to close the current project
+    CloseProjectClicked,
 
-    /// User wants to close the current study
-    CloseStudyClicked,
+    /// User confirmed closing the project
+    CloseProjectConfirmed,
 
-    /// User confirmed closing the study
-    CloseStudyConfirmed,
-
-    /// User cancelled closing the study
-    CloseStudyCancelled,
+    /// User cancelled closing the project
+    CloseProjectCancelled,
 
     // =========================================================================
     // Navigation
@@ -39,14 +33,17 @@ pub enum HomeMessage {
     GoToExportClicked,
 
     // =========================================================================
-    // Recent Studies
+    // Recent Projects
     // =========================================================================
-    /// Remove a study from recent list
-    RemoveFromRecent(PathBuf),
+    /// User clicked on a recent project
+    RecentProjectClicked(PathBuf),
 
-    /// Clear all recent studies
-    ClearAllRecentStudies,
+    /// Remove a project from recent list
+    RemoveFromRecentProjects(PathBuf),
 
-    /// Prune studies with missing paths
-    PruneStaleStudies,
+    /// Clear all recent projects
+    ClearAllRecentProjects,
+
+    /// Prune projects with missing paths
+    PruneStaleProjects,
 }

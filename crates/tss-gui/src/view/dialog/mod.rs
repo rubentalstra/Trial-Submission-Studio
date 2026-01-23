@@ -5,7 +5,8 @@
 //! - Settings: User preferences with master-detail layout
 //! - Third-party: Open source license acknowledgments
 //! - Update: Check for and install updates
-//! - Close Study: Confirmation before closing a study
+//! - Close Project: Confirmation before closing a project
+//! - Unsaved Changes: Confirmation when there are unsaved changes
 //! - Export Progress: Export operation in progress
 //! - Export Complete: Export results (success, error, cancelled)
 //!
@@ -16,12 +17,14 @@ pub mod close_study;
 pub mod export;
 pub mod settings;
 pub mod third_party;
+pub mod unsaved_changes;
 pub mod update;
 
 // Re-export view functions for standalone window mode (multi-window)
 pub use about::view_about_dialog_content;
-pub use close_study::view_close_study_dialog_content;
+pub use close_study::view_close_project_dialog_content;
 pub use export::{view_export_complete_dialog_content, view_export_progress_dialog_content};
 pub use settings::view_settings_dialog_content;
 pub use third_party::view_third_party_dialog_content;
+pub use unsaved_changes::view_unsaved_changes_dialog_content;
 pub use update::view_update_dialog_content;

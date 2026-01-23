@@ -1,8 +1,11 @@
 //! Keyboard shortcut message handlers.
 //!
 //! Handles:
-//! - Cmd/Ctrl+O (Open study)
-//! - Cmd/Ctrl+W (Close study)
+//! - Cmd/Ctrl+N (New project)
+//! - Cmd/Ctrl+O (Open project)
+//! - Cmd/Ctrl+S (Save project)
+//! - Cmd/Ctrl+Shift+S (Save project as)
+//! - Cmd/Ctrl+W (Close project)
 //! - Cmd/Ctrl+E (Export)
 //! - Escape (Close dialog)
 //! - Arrow keys, Page Up/Down, Home/End (Preview navigation)
@@ -25,15 +28,38 @@ impl App {
         modifiers: keyboard::Modifiers,
     ) -> Task<Message> {
         match key.as_ref() {
-            // Cmd/Ctrl+O: Open study
-            keyboard::Key::Character("o") if modifiers.command() => {
-                Task::done(Message::Home(HomeMessage::OpenStudyClicked))
+            // Cmd/Ctrl+N: New project
+            keyboard::Key::Character("n") if modifiers.command() && !modifiers.shift() => {
+                Task::done(Message::NewProject)
             }
 
-            // Cmd/Ctrl+W: Close study
+            // Cmd/Ctrl+O: Open project (.tss file)
+            keyboard::Key::Character("o") if modifiers.command() => {
+                Task::done(Message::OpenProject)
+            }
+
+            // Cmd/Ctrl+S: Save project
+            keyboard::Key::Character("s") if modifiers.command() && !modifiers.shift() => {
+                if self.state.has_study() {
+                    Task::done(Message::SaveProject)
+                } else {
+                    Task::none()
+                }
+            }
+
+            // Cmd/Ctrl+Shift+S: Save project as
+            keyboard::Key::Character("s") if modifiers.command() && modifiers.shift() => {
+                if self.state.has_study() {
+                    Task::done(Message::SaveProjectAs)
+                } else {
+                    Task::none()
+                }
+            }
+
+            // Cmd/Ctrl+W: Close project
             keyboard::Key::Character("w") if modifiers.command() => {
                 if self.state.has_study() {
-                    Task::done(Message::Home(HomeMessage::CloseStudyClicked))
+                    Task::done(Message::Home(HomeMessage::CloseProjectClicked))
                 } else {
                     Task::none()
                 }

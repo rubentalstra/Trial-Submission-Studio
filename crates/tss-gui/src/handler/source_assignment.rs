@@ -180,39 +180,8 @@ impl MessageHandler<SourceAssignmentMessage> for SourceAssignmentHandler {
                             study.domain_count()
                         );
 
-                        // Add to recent studies
-                        let workflow_type = match state.view.workflow_mode() {
-                            crate::state::WorkflowMode::Sdtm => crate::state::WorkflowType::Sdtm,
-                            crate::state::WorkflowMode::Adam => crate::state::WorkflowType::Adam,
-                            crate::state::WorkflowMode::Send => crate::state::WorkflowType::Send,
-                        };
-                        let total_rows = study.total_rows();
-                        let recent_study = crate::state::RecentStudy::new(
-                            study.study_folder.clone(),
-                            study.study_id.clone(),
-                            workflow_type,
-                            study.domain_count(),
-                            total_rows,
-                        );
-                        state.settings.general.add_recent_study(recent_study);
-                        let _ = state.settings.save();
-
-                        // Update native menu on macOS
-                        #[cfg(target_os = "macos")]
-                        {
-                            let studies: Vec<_> = state
-                                .settings
-                                .general
-                                .recent_sorted()
-                                .iter()
-                                .map(|s| {
-                                    crate::menu::RecentStudyInfo::new(s.id, s.display_name.clone())
-                                })
-                                .collect();
-                            crate::menu::update_recent_studies_menu(&studies);
-                        }
-
                         // Store study and navigate to home
+                        // Note: The study will be added to recent projects when the user saves it
                         state.study = Some(study);
                         state.terminology = Some(terminology);
                         state.view = ViewState::home();

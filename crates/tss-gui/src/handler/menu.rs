@@ -1,7 +1,7 @@
 //! Menu action message handler.
 //!
 //! Handles:
-//! - File menu actions (Open, Close, Settings, Exit)
+//! - File menu actions (New, Open, Save, Close, Settings, Exit)
 //! - Edit menu actions (Undo, Redo, Cut, Copy, Paste)
 //! - Help menu actions (Documentation, About, etc.)
 
@@ -10,9 +10,7 @@ use iced::{Size, Task};
 
 use crate::handler::MessageHandler;
 use crate::menu::MenuAction;
-use crate::message::{
-    DialogMessage, HomeMessage, MenuMessage, Message, SettingsCategory, UpdateMessage,
-};
+use crate::message::{DialogMessage, HomeMessage, Message, SettingsCategory, UpdateMessage};
 use crate::state::AppState;
 use crate::view::dialog::third_party::ThirdPartyState;
 use crate::view::dialog::update::UpdateState;
@@ -27,42 +25,60 @@ impl MessageHandler<MenuAction> for MenuActionHandler {
         state.menu_dropdown.close();
 
         match action {
-            // File menu
-            MenuAction::OpenStudy => Task::done(Message::Home(HomeMessage::OpenStudyClicked)),
+            // File menu - Project operations
+            MenuAction::NewProject => Task::done(Message::NewProject),
+
+            MenuAction::OpenProject => Task::done(Message::OpenProject),
+
+            MenuAction::SaveProject => {
+                if state.has_study() {
+                    Task::done(Message::SaveProject)
+                } else {
+                    Task::none()
+                }
+            }
+
+            MenuAction::SaveProjectAs => {
+                if state.has_study() {
+                    Task::done(Message::SaveProjectAs)
+                } else {
+                    Task::none()
+                }
+            }
 
             #[cfg(target_os = "macos")]
-            MenuAction::OpenRecentStudy(uuid) => {
-                // Find the study path by UUID
-                if let Some(study) = state
+            MenuAction::OpenRecentProject(uuid) => {
+                // Find the project path by UUID
+                if let Some(project) = state
                     .settings
                     .general
-                    .recent_studies
+                    .recent_projects
                     .iter()
-                    .find(|s| s.id == uuid)
+                    .find(|p| p.id == uuid)
                 {
-                    let path = study.path.clone();
-                    Task::done(Message::Home(HomeMessage::RecentStudyClicked(path)))
+                    let path = project.path.clone();
+                    Task::done(Message::OpenProjectSelected(Some(path)))
                 } else {
-                    tracing::warn!("Recent study with UUID {} not found", uuid);
+                    tracing::warn!("Recent project with UUID {} not found", uuid);
                     Task::none()
                 }
             }
 
-            MenuAction::CloseStudy => {
+            MenuAction::CloseProject => {
                 if state.has_study() {
-                    Task::done(Message::Home(HomeMessage::CloseStudyClicked))
+                    Task::done(Message::Home(HomeMessage::CloseProjectClicked))
                 } else {
                     Task::none()
                 }
             }
 
-            MenuAction::ClearRecentStudies => {
-                state.settings.general.clear_all_recent();
+            MenuAction::ClearRecentProjects => {
+                state.settings.general.clear_all_recent_projects();
                 let _ = state.settings.save();
 
-                // Update native menu's recent studies submenu
+                // Update native menu's recent projects submenu
                 #[cfg(target_os = "macos")]
-                crate::menu::update_recent_studies_menu(&[]);
+                crate::menu::update_recent_projects_menu(&[]);
                 Task::none()
             }
 
@@ -205,161 +221,6 @@ impl MessageHandler<MenuAction> for MenuActionHandler {
                 state.menu_dropdown.toggle(id);
                 Task::none()
             }
-        }
-    }
-}
-
-/// Handler for legacy menu messages.
-pub struct MenuMessageHandler;
-
-impl MessageHandler<MenuMessage> for MenuMessageHandler {
-    fn handle(&self, state: &mut AppState, msg: MenuMessage) -> Task<Message> {
-        // Close in-app menu dropdown when any menu action is performed
-        #[cfg(not(target_os = "macos"))]
-        state.menu_dropdown.close();
-
-        match msg {
-            // File menu
-            MenuMessage::OpenStudy => Task::done(Message::Home(HomeMessage::OpenStudyClicked)),
-            MenuMessage::OpenRecentStudy(path) => {
-                Task::done(Message::Home(HomeMessage::RecentStudyClicked(path)))
-            }
-            MenuMessage::CloseStudy => {
-                if state.has_study() {
-                    Task::done(Message::Home(HomeMessage::CloseStudyClicked))
-                } else {
-                    Task::none()
-                }
-            }
-            MenuMessage::ClearRecentStudies => {
-                state.settings.general.clear_all_recent();
-                let _ = state.settings.save();
-
-                // Update native menu's recent studies submenu
-                #[cfg(target_os = "macos")]
-                crate::menu::update_recent_studies_menu(&[]);
-                Task::none()
-            }
-            MenuMessage::Settings => {
-                // Don't open if already open
-                if state.dialog_windows.settings.is_some() {
-                    return Task::none();
-                }
-                // Open settings dialog in a new window
-                let settings = window::Settings {
-                    size: Size::new(720.0, 500.0),
-                    resizable: false,
-                    decorations: true,
-                    level: window::Level::AlwaysOnTop,
-                    exit_on_close_request: false,
-                    ..Default::default()
-                };
-                let (id, task) = window::open(settings);
-                state.dialog_windows.settings = Some((id, SettingsCategory::default()));
-                task.map(|_| Message::Noop)
-            }
-            MenuMessage::Quit => {
-                std::process::exit(0);
-            }
-
-            // Help menu
-            MenuMessage::Documentation => {
-                let _ = open::that("https://docs.trialsubmissionstudio.com");
-                Task::none()
-            }
-            MenuMessage::ReleaseNotes => {
-                let _ =
-                    open::that("https://github.com/rubentalstra/trial-submission-studio/releases");
-                Task::none()
-            }
-            MenuMessage::ViewOnGitHub => {
-                let _ = open::that("https://github.com/rubentalstra/trial-submission-studio");
-                Task::none()
-            }
-            MenuMessage::ReportIssue => {
-                let _ = open::that(
-                    "https://github.com/rubentalstra/trial-submission-studio/issues/new",
-                );
-                Task::none()
-            }
-            MenuMessage::ViewLicense => {
-                let _ = open::that(
-                    "https://github.com/rubentalstra/trial-submission-studio/blob/main/LICENSE",
-                );
-                Task::none()
-            }
-            MenuMessage::ThirdPartyLicenses => {
-                // Don't open if already open
-                if state.dialog_windows.third_party.is_some() {
-                    return Task::none();
-                }
-                let settings = window::Settings {
-                    size: Size::new(700.0, 550.0),
-                    resizable: true,
-                    decorations: true,
-                    level: window::Level::AlwaysOnTop,
-                    exit_on_close_request: false,
-                    ..Default::default()
-                };
-                let (id, task) = window::open(settings);
-                state.dialog_windows.third_party = Some((id, ThirdPartyState::new()));
-                task.map(|_| Message::Noop)
-            }
-            MenuMessage::CheckUpdates => {
-                // Don't open if already open
-                if state.dialog_windows.update.is_some() {
-                    return Task::none();
-                }
-                let settings = window::Settings {
-                    size: Size::new(600.0, 420.0),
-                    resizable: false,
-                    decorations: true,
-                    level: window::Level::AlwaysOnTop,
-                    exit_on_close_request: false,
-                    ..Default::default()
-                };
-                let (id, open_task) = window::open(settings);
-                state.dialog_windows.update = Some((id, UpdateState::Checking));
-
-                let update_settings = state.settings.updates.clone();
-                let check_task = Task::perform(
-                    async move {
-                        tss_updater::check_for_update(&update_settings)
-                            .await
-                            .map_err(|e| e.user_message().to_string())
-                    },
-                    |result| {
-                        Message::Dialog(DialogMessage::Update(UpdateMessage::CheckResult(result)))
-                    },
-                );
-
-                Task::batch([open_task.map(|_| Message::Noop), check_task])
-            }
-            MenuMessage::About => {
-                // Don't open if already open
-                if state.dialog_windows.about.is_some() {
-                    return Task::none();
-                }
-                let settings = window::Settings {
-                    size: Size::new(480.0, 300.0),
-                    resizable: false,
-                    decorations: true,
-                    level: window::Level::AlwaysOnTop,
-                    exit_on_close_request: false,
-                    ..Default::default()
-                };
-                let (id, task) = window::open(settings);
-                state.dialog_windows.about = Some(id);
-                task.map(|_| Message::Noop)
-            }
-
-            // Edit menu (stubs)
-            MenuMessage::Undo
-            | MenuMessage::Redo
-            | MenuMessage::Cut
-            | MenuMessage::Copy
-            | MenuMessage::Paste
-            | MenuMessage::SelectAll => Task::none(),
         }
     }
 }
