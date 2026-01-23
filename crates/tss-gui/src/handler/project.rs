@@ -126,11 +126,13 @@ pub fn handle_open_project_selected(state: &mut AppState, path: Option<PathBuf>)
 
 /// Handle a loaded project file.
 ///
-/// This is complex because we need to:
-/// 1. Reload source CSV files from their original paths
-/// 2. Recreate MappingState with fresh suggestions
-/// 3. Apply saved decisions (accepted, not_collected, omitted, auto_generated)
-/// 4. Restore SUPP configurations
+/// When loading a project:
+/// 1. Build assignments from saved source_assignments (skip assignment screen)
+/// 2. Create Study directly using create_study_from_assignments
+/// 3. StudyLoaded handler will apply saved mappings from pending_project_restore
+///
+/// Note: If source files are missing, we show an error instead of falling back
+/// to the assignment screen.
 pub fn handle_project_loaded(
     state: &mut AppState,
     result: Result<(PathBuf, tss_persistence::ProjectFile), String>,
@@ -145,21 +147,87 @@ pub fn handle_project_loaded(
                 project.study.study_folder
             );
 
+            // Check if there are source assignments to restore
+            if project.source_assignments.is_empty() {
+                tracing::warn!("Project has no source assignments - cannot restore study");
+                state.error = Some(crate::error::GuiError::operation(
+                    "Load project",
+                    "Project has no source file assignments. Please create a new project.",
+                ));
+                return Task::none();
+            }
+
+            // Build assignments map from saved source_assignments
+            let mut assignments: std::collections::BTreeMap<String, PathBuf> =
+                std::collections::BTreeMap::new();
+            let mut missing_files = Vec::new();
+
+            for assignment in &project.source_assignments {
+                let file_path = PathBuf::from(&assignment.file_path);
+
+                // Check if file exists
+                if !file_path.exists() {
+                    missing_files.push(assignment.file_path.clone());
+                    continue;
+                }
+
+                assignments.insert(assignment.domain_code.clone(), file_path);
+            }
+
+            // If any source files are missing, show error
+            if !missing_files.is_empty() {
+                tracing::error!("Source files missing: {:?}", missing_files);
+                let msg = format!(
+                    "Cannot load project - {} source file(s) not found:\n{}",
+                    missing_files.len(),
+                    missing_files
+                        .iter()
+                        .take(3) // Show at most 3 files
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                );
+                state.error = Some(crate::error::GuiError::operation("Load project", msg));
+                return Task::none();
+            }
+
+            // Convert workflow type from persistence to GUI type
+            let workflow_mode = match project.study.workflow_type {
+                WorkflowTypeSnapshot::Sdtm => crate::state::WorkflowMode::Sdtm,
+                WorkflowTypeSnapshot::Adam => crate::state::WorkflowMode::Adam,
+                WorkflowTypeSnapshot::Send => crate::state::WorkflowMode::Send,
+            };
+
             // Store the project path for future saves
             state.project_path = Some(project_path.clone());
 
-            let study_folder = PathBuf::from(&project.study.study_folder);
-
             // Store the project data for restoration after study loading completes
             // The StudyLoaded handler will check for this and apply the saved mappings
-            state.pending_project_restore = Some((project_path, project));
+            state.pending_project_restore = Some((project_path, project.clone()));
 
             // Reset dirty tracker since we're loading a saved project
             state.dirty_tracker = tss_persistence::DirtyTracker::new();
 
-            // Trigger study loading from the folder
-            // After StudyLoaded completes, we'll apply the saved mappings
-            crate::handler::home::load_study(state, study_folder)
+            // Get settings for study creation
+            let folder = PathBuf::from(&project.study.study_folder);
+            let header_rows = state.settings.general.header_rows;
+            let confidence_threshold = state.settings.general.mapping_confidence_threshold;
+
+            // Set loading state
+            state.is_loading = true;
+
+            // Create study directly from saved assignments (skip assignment screen)
+            Task::perform(
+                crate::service::study::create_study_from_assignments(
+                    folder,
+                    assignments,
+                    Vec::new(), // No metadata files - they were already incorporated
+                    header_rows,
+                    confidence_threshold,
+                    workflow_mode,
+                ),
+                Message::StudyLoaded,
+            )
         }
         Err(e) => {
             tracing::error!("Failed to load project: {}", e);
@@ -404,13 +472,14 @@ fn create_project_file_from_state(study: &crate::state::Study, state: &AppState)
             snapshot.label = domain_state.source.label.clone();
 
             // Create mapping snapshot
+            // Note: We discard confidence scores - they're only meaningful during active mapping
             let mapping = &domain_state.mapping;
             let mapping_snapshot = MappingSnapshot {
                 study_id: mapping.study_id().to_string(),
                 accepted: mapping
                     .all_accepted()
                     .iter()
-                    .map(|(var, (col, conf))| (var.clone(), MappingEntry::new(col.clone(), *conf)))
+                    .map(|(var, (col, _conf))| (var.clone(), MappingEntry::new(col.clone())))
                     .collect(),
                 not_collected: mapping.all_not_collected().clone(),
                 omitted: mapping.all_omitted().clone(),

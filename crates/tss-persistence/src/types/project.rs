@@ -83,8 +83,9 @@ pub struct StudyMetadata {
     /// Workflow type (SDTM, ADaM, SEND).
     pub workflow_type: WorkflowTypeSnapshot,
 
-    /// SDTM-IG version used.
-    pub sdtm_ig_version: String,
+    /// Implementation Guide version used (e.g., "3.4" for SDTM-IG 3.4).
+    /// Applies to SDTM, ADaM, and SEND workflows.
+    pub ig_version: String,
 
     /// Controlled Terminology version used.
     pub ct_version: Option<String>,
@@ -101,7 +102,7 @@ impl StudyMetadata {
             study_id: study_id.into(),
             study_folder: study_folder.into(),
             workflow_type,
-            sdtm_ig_version: "3.4".to_string(),
+            ig_version: "3.4".to_string(),
             ct_version: None,
         }
     }

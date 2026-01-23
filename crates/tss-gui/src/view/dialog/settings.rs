@@ -434,7 +434,7 @@ fn view_export_settings(settings: &Settings) -> Element<'_, Message> {
         Space::new().height(SPACING_XS),
         pick_list(
             crate::state::SdtmIgVersion::ALL.to_vec(),
-            Some(settings.export.sdtm_ig_version),
+            Some(settings.export.ig_version),
             |v| Message::Dialog(DialogMessage::Settings(SettingsMessage::Export(
                 ExportSettingsMessage::SdtmIgVersionChanged(v),
             )))
