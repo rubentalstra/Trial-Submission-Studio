@@ -91,7 +91,8 @@ impl StandardsRegistry {
     /// Errors include which standard failed to load for easier debugging.
     pub fn load(config: &StandardsConfig) -> Result<Self> {
         // Load controlled terminology first (required for validation)
-        let ct = ct::load(config.ct_version)?;
+        // TODO: Primary set should come from config based on study type
+        let ct = ct::load(config.ct_version, Some("SDTM"))?;
 
         // Load SDTM-IG if requested
         let sdtm_domains = if config.load_sdtm {

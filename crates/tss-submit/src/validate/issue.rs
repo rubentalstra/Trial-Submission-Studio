@@ -16,6 +16,8 @@ pub enum Severity {
     Error,
     /// Should review
     Warning,
+    /// Informational - no action required
+    Info,
 }
 
 impl Severity {
@@ -25,6 +27,7 @@ impl Severity {
             "reject" => Some(Self::Reject),
             "error" => Some(Self::Error),
             "warning" => Some(Self::Warning),
+            "info" => Some(Self::Info),
             _ => None,
         }
     }
@@ -35,6 +38,7 @@ impl Severity {
             Self::Reject => "Reject",
             Self::Error => "Error",
             Self::Warning => "Warning",
+            Self::Info => "Info",
         }
     }
 }
@@ -182,7 +186,7 @@ impl Issue {
             Issue::TextTooLong { .. } => Severity::Warning,
             Issue::CtViolation {
                 extensible: true, ..
-            } => Severity::Warning,
+            } => Severity::Info,
             // Cross-domain reference issues are errors (data integrity)
             Issue::UsubjidNotInDm { .. } => Severity::Error,
             Issue::ParentNotFound { .. } => Severity::Error,
@@ -283,16 +287,10 @@ impl Issue {
                 invalid_values,
                 ..
             } => {
-                let ext_str = if *extensible {
-                    " (extensible)"
-                } else {
-                    " (non-extensible)"
-                };
                 let sample_count = invalid_values.len() as u64;
                 let values_str = if invalid_values.is_empty() {
                     String::new()
                 } else if sample_count < *total_invalid {
-                    // Show truncation info when samples are limited
                     format!(
                         " (showing {} of {}): {}",
                         sample_count,
@@ -302,10 +300,20 @@ impl Issue {
                 } else {
                     format!(": {}", invalid_values.join(", "))
                 };
-                format!(
-                    "Variable {} has {} distinct invalid values not in codelist {}{}{}",
-                    variable, total_invalid, codelist_name, ext_str, values_str
-                )
+
+                if *extensible {
+                    // Info: custom values are allowed per CDISC for extensible codelists
+                    format!(
+                        "Variable {} uses {} custom values not in codelist {} (allowed - extensible codelist){}",
+                        variable, total_invalid, codelist_name, values_str
+                    )
+                } else {
+                    // Error: non-extensible codelist, values must be in codelist
+                    format!(
+                        "Variable {} has {} invalid values not in codelist {} (non-extensible){}",
+                        variable, total_invalid, codelist_name, values_str
+                    )
+                }
             }
 
             Issue::UsubjidNotInDm {

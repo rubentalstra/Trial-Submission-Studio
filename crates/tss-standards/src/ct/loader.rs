@@ -66,20 +66,36 @@ impl std::fmt::Display for CtVersion {
 /// # Arguments
 ///
 /// * `version` - The CT version to load
+/// * `primary_set` - The publishing set to mark as primary (e.g., "SDTM", "SEND").
+///   Pass `None` for no primary designation.
 ///
 /// # Example
 ///
 /// ```rust,ignore
 /// use tss_standards::ct::{self, CtVersion};
 ///
-/// let registry = ct::load(CtVersion::default())?;
-/// let ny = registry.resolve("NY", None);
+/// // Load with SDTM CT as primary (typical for SDTM studies)
+/// let registry = ct::load(CtVersion::default(), Some("SDTM"))?;
+///
+/// // For SEND studies, mark SEND CT as primary
+/// let registry = ct::load(CtVersion::default(), Some("SEND"))?;
 /// ```
-pub fn load(version: CtVersion) -> Result<TerminologyRegistry> {
+/// TODO: i think we should refactor and rewrite the whole logic and every file that ahs to do with dataset and use ENUM's so we can use these ENUM's troughout the whole codebase! i think this idead is way better right? no custom strings or using SOME() //// Foundational: CDISC Foundational Standards are the basis of a complete suite of data standards, enhancing the quality, efficiency and cost effectiveness of clinical research processes from beginning to end. Foundational Standards focus on the core principles for defining data standards and include models, domains and specifications for data representation.
+/// https://www.cdisc.org/standards/foundational
+pub fn load(version: CtVersion, primary_set: Option<&str>) -> Result<TerminologyRegistry> {
     let mut registry = TerminologyRegistry::new();
 
     for (filename, content) in embedded::ct_files_for_version(version) {
-        let catalog = load_catalog_from_str(content, filename)?;
+        let mut catalog = load_catalog_from_str(content, filename)?;
+
+        // Mark catalog as primary if it matches the requested publishing set
+        if let Some(primary) = primary_set
+            && let Some(ref pub_set) = catalog.publishing_set
+            && pub_set.eq_ignore_ascii_case(primary)
+        {
+            catalog.set_primary(true);
+        }
+
         registry.add_catalog(catalog);
     }
 
@@ -129,6 +145,7 @@ pub fn load_catalog_from_str(content: &str, filename: &str) -> Result<Terminolog
     }
 
     // Second pass: collect term rows
+    let mut orphan_term_count = 0u32;
     for row in &rows {
         let term_code = row.code.trim();
         let codelist_code = row.codelist_code.trim();
@@ -151,8 +168,46 @@ pub fn load_catalog_from_str(content: &str, filename: &str) -> Result<Terminolog
             // Add term to its parent codelist
             if let Some(codelist) = catalog.codelists.get_mut(&codelist_code.to_uppercase()) {
                 codelist.add_term(term);
+            } else {
+                // Log warning for orphan terms (referencing non-existent codelists)
+                orphan_term_count += 1;
+                if orphan_term_count <= 5 {
+                    tracing::warn!(
+                        file = %filename,
+                        term_code = %term_code,
+                        codelist_code = %codelist_code,
+                        submission_value = %submission_value,
+                        "Orphan term references non-existent codelist"
+                    );
+                }
             }
         }
+    }
+
+    // Log summary if there were orphan terms
+    if orphan_term_count > 0 {
+        tracing::warn!(
+            file = %filename,
+            orphan_count = orphan_term_count,
+            "CT file contains orphan terms referencing non-existent codelists"
+        );
+    }
+
+    // Third pass: check for empty codelists
+    let empty_codelists: Vec<&str> = catalog
+        .codelists
+        .values()
+        .filter(|cl| cl.terms.is_empty())
+        .map(|cl| cl.code.as_str())
+        .collect();
+
+    if !empty_codelists.is_empty() {
+        tracing::warn!(
+            file = %filename,
+            empty_count = empty_codelists.len(),
+            sample_codes = ?empty_codelists.iter().take(5).collect::<Vec<_>>(),
+            "CT file contains codelists with no terms"
+        );
     }
 
     Ok(catalog)
@@ -259,7 +314,7 @@ mod tests {
 
     #[test]
     fn test_load_ct_default() {
-        let registry = load(CtVersion::default()).expect("load CT");
+        let registry = load(CtVersion::default(), Some("SDTM")).expect("load CT");
         assert!(
             !registry.catalogs.is_empty(),
             "Registry should not be empty"
@@ -268,7 +323,7 @@ mod tests {
 
     #[test]
     fn test_load_ct_latest() {
-        let registry = load(CtVersion::latest()).expect("load CT");
+        let registry = load(CtVersion::latest(), Some("SDTM")).expect("load CT");
         assert!(
             !registry.catalogs.is_empty(),
             "Registry should not be empty"
@@ -305,7 +360,7 @@ mod tests {
 
     #[test]
     fn test_resolve_codelist() {
-        let registry = load(CtVersion::default()).expect("load CT");
+        let registry = load(CtVersion::default(), Some("SDTM")).expect("load CT");
 
         // Test resolving NY codelist by NCI code C66742
         let resolved = registry.resolve("C66742", None);
@@ -322,7 +377,7 @@ mod tests {
 
     #[test]
     fn test_submission_value_validation() {
-        let registry = load(CtVersion::default()).expect("load CT");
+        let registry = load(CtVersion::default(), Some("SDTM")).expect("load CT");
 
         // C66742 is NY (Yes/No) - non-extensible
         // Valid submission values: Y, N
@@ -334,6 +389,63 @@ mod tests {
         assert!(
             issue.is_some(),
             "YES should fail - it's a synonym, not a submission value"
+        );
+    }
+
+    #[test]
+    fn test_primary_catalog_marking() {
+        // Load with SDTM as primary
+        let registry = load(CtVersion::default(), Some("SDTM")).expect("load CT");
+
+        // SDTM CT should be marked as primary
+        let sdtm_catalog = registry.catalogs.get("SDTM CT");
+        assert!(sdtm_catalog.is_some(), "Should have SDTM CT catalog");
+        assert!(
+            sdtm_catalog.unwrap().primary,
+            "SDTM CT should be marked as primary"
+        );
+
+        // SEND CT should NOT be primary (if it exists)
+        if let Some(send_catalog) = registry.catalogs.get("SEND CT") {
+            assert!(
+                !send_catalog.primary,
+                "SEND CT should NOT be primary by default"
+            );
+        }
+    }
+
+    #[test]
+    fn test_load_with_send_primary() {
+        // Load with SEND as primary
+        let registry = load(CtVersion::default(), Some("SEND")).expect("load CT");
+
+        // SEND CT should be marked as primary
+        if let Some(send_catalog) = registry.catalogs.get("SEND CT") {
+            assert!(
+                send_catalog.primary,
+                "SEND CT should be marked as primary when requested"
+            );
+        }
+
+        // SDTM CT should NOT be primary
+        if let Some(sdtm_catalog) = registry.catalogs.get("SDTM CT") {
+            assert!(
+                !sdtm_catalog.primary,
+                "SDTM CT should NOT be primary when SEND is requested"
+            );
+        }
+    }
+
+    #[test]
+    fn test_resolved_from_primary() {
+        let registry = load(CtVersion::default(), Some("SDTM")).expect("load CT");
+
+        // Resolve a codelist - should come from SDTM CT (primary)
+        let resolved = registry.resolve("C66742", None);
+        assert!(resolved.is_some());
+        assert!(
+            resolved.unwrap().from_primary(),
+            "Resolution should come from primary catalog"
         );
     }
 }

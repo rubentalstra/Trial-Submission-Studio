@@ -67,7 +67,7 @@ pub fn view_validation_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Ele
                 matches!(issue.severity(), Severity::Error | Severity::Reject)
             }
             SeverityFilter::Warnings => matches!(issue.severity(), Severity::Warning),
-            SeverityFilter::Info => false, // No info level in current model
+            SeverityFilter::Info => matches!(issue.severity(), Severity::Info),
         })
         .collect();
 
@@ -257,6 +257,7 @@ fn view_issue_row<'a>(issue: &'a Issue, idx: usize, is_selected: bool) -> Elemen
             lucide::circle_x().size(14).color(severity_color).into()
         }
         Severity::Warning => lucide::circle_alert().size(14).color(severity_color).into(),
+        Severity::Info => lucide::info().size(14).color(severity_color).into(),
     };
 
     // Short description (truncated)
@@ -280,6 +281,7 @@ fn get_severity_color(severity: Severity) -> iced::Color {
     match severity {
         Severity::Reject | Severity::Error => iced::Color::from_rgb(0.90, 0.30, 0.25),
         Severity::Warning => iced::Color::from_rgb(0.95, 0.65, 0.15),
+        Severity::Info => iced::Color::from_rgb(0.30, 0.60, 0.85), // Blue for informational
     }
 }
 
@@ -301,6 +303,7 @@ fn view_issue_detail<'a>(issue: &Issue) -> Element<'a, Message> {
             lucide::circle_x().size(12).color(severity_color).into()
         }
         Severity::Warning => lucide::circle_alert().size(12).color(severity_color).into(),
+        Severity::Info => lucide::info().size(12).color(severity_color).into(),
     };
 
     // Header with variable name and severity badge

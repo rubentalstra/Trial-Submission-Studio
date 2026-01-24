@@ -56,13 +56,14 @@ impl ValidationReport {
         self.error_count() > 0
     }
 
-    /// Get issues sorted by severity (Reject first, then Error, then Warning).
+    /// Get issues sorted by severity (Reject first, then Error, Warning, Info).
     pub fn sorted_by_severity(&self) -> Vec<&Issue> {
         let mut issues: Vec<_> = self.issues.iter().collect();
         issues.sort_by_key(|i| match i.severity() {
             Severity::Reject => 0,
             Severity::Error => 1,
             Severity::Warning => 2,
+            Severity::Info => 3,
         });
         issues
     }

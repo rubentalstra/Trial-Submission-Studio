@@ -101,7 +101,7 @@ pub fn write_define_xml(
     }
     entries.sort_by(|a, b| a.0.name.cmp(&b.0.name));
 
-    let ct_registry = load_ct(CtVersion::default())?;
+    let ct_registry = load_ct(CtVersion::default(), Some("SDTM"))?;
     let mut item_defs: BTreeMap<String, ItemDefSpec> = BTreeMap::new();
     let mut code_lists: BTreeMap<String, CodeListSpec> = BTreeMap::new();
     let mut ct_standards: BTreeMap<String, CtStandard> = BTreeMap::new();

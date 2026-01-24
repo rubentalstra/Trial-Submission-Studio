@@ -133,3 +133,57 @@ You are not here to "fix things quickly."
 You are here to help make good engineering decisions.
 Quick fixes create technical debt.
 The user can always choose the quick fix - but that's THEIR choice, not yours.
+
+---
+
+## NO LEGACY SUPPORT. EVER.
+
+This is **GREENFIELD DEVELOPMENT**. There is NO legacy to support.
+
+### ABSOLUTELY FORBIDDEN:
+
+1. **Legacy wrappers** - NEVER wrap old code. Delete it.
+2. **Backwards compatibility** - NEVER maintain old behavior. Replace it.
+3. **Deprecation notices** - NEVER deprecate. Just remove.
+4. **Migration code** - NEVER write migration paths. Just rewrite.
+5. **Old API preservation** - NEVER keep old signatures "just in case". Delete them.
+6. **Compatibility shims** - NEVER. EVER.
+
+### THE ONLY ACCEPTABLE APPROACH:
+
+**FULL REWRITES.**
+
+If code needs to change, REWRITE IT. Don't patch it. Don't wrap it. Don't preserve the old way.
+
+### Why This Matters:
+
+Every legacy wrapper, every backwards-compatible hack, every deprecation notice is **technical debt**.
+This is a new codebase. There are no users depending on old behavior.
+There is NOTHING to be backwards compatible WITH.
+
+### Example of What NOT to Do:
+
+```rust
+// BAD - Legacy wrapper
+#[deprecated(note = "Use new_method instead")]
+fn old_method() { new_method() }
+
+// BAD - Backwards compatibility
+fn process(data: Data, legacy_mode: bool) {
+    if legacy_mode { old_behavior() } else { new_behavior() }
+}
+
+// BAD - Keeping old code "just in case"
+// fn old_implementation() { ... } // Commented out for reference
+```
+
+### The ONLY Acceptable Approach:
+
+```rust
+// GOOD - Just the new code. Old code is DELETED.
+fn process(data: Data) {
+    new_behavior()
+}
+```
+
+**DELETE THE OLD. WRITE THE NEW. NO BRIDGES.**

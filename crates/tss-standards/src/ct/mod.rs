@@ -12,8 +12,8 @@
 //! ```rust,ignore
 //! use tss_standards::ct::{self, CtVersion};
 //!
-//! // Load all CT for a version (from embedded data)
-//! let registry = ct::load(CtVersion::default())?;
+//! // Load all CT for a version with SDTM as primary
+//! let registry = ct::load(CtVersion::default(), Some("SDTM"))?;
 //!
 //! // Validate a value against a codelist
 //! if let Some(issue) = registry.validate_submission_value("C66742", "INVALID") {

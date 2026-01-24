@@ -52,7 +52,7 @@ pub async fn create_study_from_assignments(
                 GuiError::operation("Load standards", format!("Failed to load SDTM-IG: {}", e))
             })?;
             let ct_version = tss_standards::ct::CtVersion::default();
-            let ct = tss_standards::ct::load(ct_version).map_err(|e| {
+            let ct = tss_standards::ct::load(ct_version, Some("SDTM")).map_err(|e| {
                 GuiError::operation(
                     "Load standards",
                     format!(
