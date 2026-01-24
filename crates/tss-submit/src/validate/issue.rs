@@ -168,8 +168,8 @@ impl Issue {
             // Terminology checks
             Issue::CtViolation { .. } => Category::Terminology,
             // Cross-domain reference checks
-            Issue::UsubjidNotInDm { .. } => Category::Consistency,
-            Issue::ParentNotFound { .. } => Category::Consistency,
+            Issue::UsubjidNotInDm { .. } => Category::CrossReference,
+            Issue::ParentNotFound { .. } => Category::CrossReference,
         }
     }
 
