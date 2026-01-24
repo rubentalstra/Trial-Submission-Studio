@@ -578,7 +578,9 @@ fn issue_category(issue: &Issue) -> &'static str {
         | Issue::IdentifierNull { .. } => "Presence",
         Issue::InvalidDate { .. } | Issue::TextTooLong { .. } => "Format",
         Issue::DataTypeMismatch { .. } => "Type",
-        Issue::DuplicateSequence { .. } => "Consistency",
+        Issue::DuplicateSequence { .. }
+        | Issue::UsubjidNotInDm { .. }
+        | Issue::ParentNotFound { .. } => "Consistency",
         Issue::CtViolation { .. } => "Terminology",
     }
 }

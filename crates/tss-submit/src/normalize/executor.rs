@@ -114,6 +114,9 @@ fn execute_constant(
 }
 
 /// Execute USUBJID derivation (STUDYID-SUBJID pattern).
+///
+/// Empty SUBJID values produce empty USUBJID (not malformed "STUDY-").
+/// This triggers downstream validation to flag the issue properly.
 fn execute_usubjid(
     df: &DataFrame,
     target_name: &str,
@@ -139,14 +142,28 @@ fn execute_usubjid(
         .map_err(|_| NormalizationError::ColumnNotFound(source_col.to_string()))?;
 
     let mut values = Vec::with_capacity(row_count);
+    let mut empty_count = 0usize;
 
     for idx in 0..row_count {
         let subjid = any_to_string(source_series.get(idx)?);
-        if subjid.trim().is_empty() {
+        let trimmed = subjid.trim();
+
+        if trimmed.is_empty() {
+            // Empty SUBJID produces empty USUBJID (triggers validation)
+            empty_count += 1;
             values.push(String::new());
         } else {
-            values.push(format!("{}-{}", context.study_id, subjid.trim()));
+            values.push(format!("{}-{}", context.study_id, trimmed));
         }
+    }
+
+    // Log warning for data quality visibility (#113)
+    if empty_count > 0 {
+        tracing::warn!(
+            target = %target_name,
+            empty_count,
+            "Found rows with empty SUBJID - USUBJID will be empty"
+        );
     }
 
     Ok(Series::new(target_name.into(), values))

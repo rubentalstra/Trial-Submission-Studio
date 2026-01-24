@@ -95,7 +95,10 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 .as_mut()
                 .and_then(|s| s.domain_mut(&domain_code))
             {
-                let _ = domain.mapping.accept_suggestion(&variable);
+                // Explicit error handling for mapping operations (#273)
+                if let Err(e) = domain.mapping.accept_suggestion(&variable) {
+                    tracing::error!(variable = %variable, error = %e, "Failed to accept suggestion");
+                }
                 domain.invalidate_validation();
                 state.dirty_tracker.mark_dirty();
             }
@@ -127,7 +130,10 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 .as_mut()
                 .and_then(|s| s.domain_mut(&domain_code))
             {
-                let _ = domain.mapping.accept_manual(&variable, &column);
+                // Explicit error handling for mapping operations (#273)
+                if let Err(e) = domain.mapping.accept_manual(&variable, &column) {
+                    tracing::error!(variable = %variable, column = %column, error = %e, "Failed to accept manual mapping");
+                }
                 domain.invalidate_validation();
                 state.dirty_tracker.mark_dirty();
             }
@@ -418,7 +424,8 @@ fn handle_preview_message(state: &mut AppState, msg: PreviewMessage) -> Task<Mes
                 preview_ui.current_page = 0;
             }
             state.settings.display.preview_rows_per_page = rows;
-            let _ = state.settings.save();
+            // Best-effort: preference saving is non-critical (#273)
+            crate::util::best_effort!(state.settings.save(), "saving display preference");
             Task::none()
         }
 

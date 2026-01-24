@@ -93,6 +93,21 @@ pub enum Issue {
         invalid_values: Vec<String>,
         allowed_count: usize,
     },
+
+    // Cross-domain reference checks (#114)
+    /// USUBJID values not found in DM domain
+    UsubjidNotInDm {
+        domain: String,
+        missing_count: u64,
+        samples: Vec<String>,
+    },
+    /// Parent record reference not found (e.g., --SPID references)
+    ParentNotFound {
+        variable: String,
+        parent_domain: String,
+        missing_count: u64,
+        samples: Vec<String>,
+    },
 }
 
 impl Issue {
@@ -108,6 +123,9 @@ impl Issue {
             Issue::DataTypeMismatch { variable, .. } => variable,
             Issue::DuplicateSequence { variable, .. } => variable,
             Issue::CtViolation { variable, .. } => variable,
+            // Cross-domain issues use USUBJID or the specific variable
+            Issue::UsubjidNotInDm { .. } => "USUBJID",
+            Issue::ParentNotFound { variable, .. } => variable,
         }
     }
 
@@ -127,6 +145,8 @@ impl Issue {
                 duplicate_count, ..
             } => Some(*duplicate_count),
             Issue::CtViolation { invalid_count, .. } => Some(*invalid_count),
+            Issue::UsubjidNotInDm { missing_count, .. } => Some(*missing_count),
+            Issue::ParentNotFound { missing_count, .. } => Some(*missing_count),
         }
     }
 
@@ -147,6 +167,9 @@ impl Issue {
             Issue::DuplicateSequence { .. } => Category::Consistency,
             // Terminology checks
             Issue::CtViolation { .. } => Category::Terminology,
+            // Cross-domain reference checks
+            Issue::UsubjidNotInDm { .. } => Category::Consistency,
+            Issue::ParentNotFound { .. } => Category::Consistency,
         }
     }
 
@@ -158,6 +181,9 @@ impl Issue {
             Issue::CtViolation {
                 extensible: true, ..
             } => Severity::Warning,
+            // Cross-domain reference issues are errors (data integrity)
+            Issue::UsubjidNotInDm { .. } => Severity::Error,
+            Issue::ParentNotFound { .. } => Severity::Error,
             _ => Severity::Error,
         }
     }
@@ -268,6 +294,39 @@ impl Issue {
                 format!(
                     "Variable {} has {} values not in codelist {}{}{}",
                     variable, invalid_count, codelist_name, ext_str, values_str
+                )
+            }
+
+            Issue::UsubjidNotInDm {
+                domain,
+                missing_count,
+                samples,
+            } => {
+                let sample_str = if samples.is_empty() {
+                    String::new()
+                } else {
+                    format!(" (e.g., {})", samples.join(", "))
+                };
+                format!(
+                    "Domain {} has {} USUBJID values not found in DM{}",
+                    domain, missing_count, sample_str
+                )
+            }
+
+            Issue::ParentNotFound {
+                variable,
+                parent_domain,
+                missing_count,
+                samples,
+            } => {
+                let sample_str = if samples.is_empty() {
+                    String::new()
+                } else {
+                    format!(" (e.g., {})", samples.join(", "))
+                };
+                format!(
+                    "Variable {} has {} references not found in {}{}",
+                    variable, missing_count, parent_domain, sample_str
                 )
             }
         }

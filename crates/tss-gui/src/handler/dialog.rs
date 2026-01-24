@@ -7,6 +7,7 @@
 //! - Update check dialog (using Task::perform and Task::run for streaming)
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use futures_util::StreamExt;
 use iced::Task;
@@ -24,6 +25,23 @@ use crate::state::{AppState, Settings};
 use crate::view::dialog::update::{
     DownloadStats, RetryContext, UpdateErrorInfo, UpdateState, parse_changelog,
 };
+
+/// Execute a blocking operation with timeout (#149).
+///
+/// Prevents indefinite hangs on file I/O operations by enforcing a deadline.
+async fn with_timeout<T, F>(timeout_secs: u64, operation: &str, f: F) -> Result<T, String>
+where
+    F: FnOnce() -> T + Send + 'static,
+    T: Send + 'static,
+{
+    let duration = Duration::from_secs(timeout_secs);
+
+    match tokio::time::timeout(duration, tokio::task::spawn_blocking(f)).await {
+        Ok(Ok(result)) => Ok(result),
+        Ok(Err(e)) => Err(format!("{} task panicked: {}", operation, e)),
+        Err(_) => Err(format!("{} timed out after {}s", operation, timeout_secs)),
+    }
+}
 
 /// Handler for dialog-related messages.
 pub struct DialogHandler;
@@ -64,15 +82,17 @@ fn handle_about_message(state: &mut AppState, msg: AboutMessage) -> Task<Message
             copy_task
         }
         AboutMessage::OpenWebsite => {
+            // Best-effort: URL opening may fail on systems without default browser (#273)
             let _ = open::that("https://trialsubmissionstudio.com");
             Task::none()
         }
         AboutMessage::OpenGitHub => {
+            // Best-effort: URL opening may fail on systems without default browser (#273)
             let _ = open::that("https://github.com/rubentalstra/trial-submission-studio");
             Task::none()
         }
         AboutMessage::OpenOpenSource => {
-            // Open the third-party licenses or open source page
+            // Best-effort: URL opening may fail on systems without default browser (#273)
             let _ = open::that(
                 "https://github.com/rubentalstra/trial-submission-studio/blob/main/THIRD_PARTY_LICENSES.md",
             );
@@ -93,8 +113,8 @@ fn handle_settings_message(state: &mut AppState, msg: SettingsMessage) -> Task<M
             Task::none()
         }
         SettingsMessage::Apply => {
-            // Save settings
-            let _ = state.settings.save();
+            // Save settings (#273 - use best_effort! for non-critical operation)
+            crate::util::best_effort!(state.settings.save(), "saving settings");
             tracing::info!("Settings saved");
 
             // Close dialog window in multi-window mode
@@ -335,15 +355,15 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
                     Some((id, UpdateState::Installing { info: info.clone() }));
             }
 
-            // Spawn async installation
+            // Spawn async installation with timeout (#149)
             let version = info.version.clone();
             Task::perform(
                 async move {
-                    tokio::task::spawn_blocking(move || {
+                    // 120s timeout for installation (may involve large file operations)
+                    with_timeout(120, "Installation", move || {
                         tss_updater::install_and_restart(&data, &info)
                     })
-                    .await
-                    .map_err(|e| format!("Installation task failed: {}", e))?
+                    .await?
                     .map(|_| version)
                     .map_err(|e| e.user_message().to_string())
                 },
@@ -545,13 +565,14 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
                             Some((id, UpdateState::Verifying { info: info.clone() }));
                     }
 
-                    // Spawn verification task
+                    // Spawn verification task with timeout (#149)
                     let data = download_result.data;
                     let expected_digest = info.asset.digest.clone();
 
                     Task::perform(
                         async move {
-                            tokio::task::spawn_blocking(move || {
+                            // 30s timeout for SHA-256 verification
+                            with_timeout(30, "Verification", move || {
                                 match expected_digest {
                                     Some(expected) => {
                                         match tss_updater::verify_sha256(&data, &expected) {
@@ -579,8 +600,7 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
                                     }
                                 }
                             })
-                            .await
-                            .map_err(|e| format!("Verification task failed: {}", e))?
+                            .await?
                         },
                         move |result| match result {
                             Ok(outcome) => Message::Dialog(DialogMessage::Update(

@@ -342,17 +342,15 @@ fn view_variable_detail<'a>(
             Space::new().height(0.0).into()
         };
 
-    let is_editing_not_collected = not_collected_edit
-        .map(|e| e.variable == var.name)
-        .unwrap_or(false);
     let is_required = var.core == Some(CoreDesignation::Required);
 
-    let actions: Element<'a, Message> = if is_editing_not_collected {
-        view_not_collected_inline_edit(var, not_collected_edit.unwrap())
-    } else if is_required && !matches!(status, VariableStatus::Accepted) {
-        Space::new().height(0.0).into()
-    } else {
-        view_mapping_actions(domain, var, status)
+    // Use explicit pattern matching to avoid conditional unwrap (#268)
+    let actions: Element<'a, Message> = match not_collected_edit {
+        Some(edit) if edit.variable == var.name => view_not_collected_inline_edit(var, edit),
+        _ if is_required && !matches!(status, VariableStatus::Accepted) => {
+            Space::new().height(0.0).into()
+        }
+        _ => view_mapping_actions(domain, var, status),
     };
 
     scrollable(column![

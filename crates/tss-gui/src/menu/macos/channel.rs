@@ -63,11 +63,18 @@ pub fn init_menu_channel() {
     MENU_RECEIVER.get_or_init(|| MenuReceiver(Mutex::new(receiver)));
 
     // Start the forwarder thread (only once)
+    // Graceful degradation: menu events may not work if spawn fails (#147)
     FORWARDER_STARTED.get_or_init(|| {
-        thread::Builder::new()
+        match thread::Builder::new()
             .name("menu-event-forwarder".into())
             .spawn(forwarder_thread)
-            .expect("Failed to spawn menu event forwarder thread");
+        {
+            Ok(_) => tracing::debug!("Menu event forwarder thread started"),
+            Err(e) => tracing::error!(
+                error = %e,
+                "Failed to spawn menu forwarder thread - menu events may not work"
+            ),
+        }
     });
 }
 
