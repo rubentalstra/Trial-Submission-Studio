@@ -1,22 +1,19 @@
 //! SDTM-IG domain and variable loading.
 //!
-//! Loads SDTM Implementation Guide v3.4 definitions from CSV files
-//! in the `standards/sdtmig/v3_4/` directory.
+//! Loads SDTM Implementation Guide v3.4 definitions from embedded CSV data.
+//! All data is compiled into the binary for offline operation.
 
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::io::Cursor;
 
 use serde::Deserialize;
 
+use crate::embedded;
+use crate::error::{Result, StandardsError};
 use crate::sdtm::{SdtmDatasetClass, SdtmDomain, SdtmVariable};
 use crate::traits::VariableType;
 
-use crate::error::{Result, StandardsError};
-use crate::paths::sdtm_ig_path;
-
-/// Load SDTM-IG domains from the default location.
-///
-/// Loads from `standards/sdtmig/v3_4/` relative to the standards root.
+/// Load SDTM-IG domains from embedded data.
 ///
 /// # Example
 ///
@@ -26,27 +23,8 @@ use crate::paths::sdtm_ig_path;
 /// println!("AE has {} variables", ae.variables.len());
 /// ```
 pub fn load() -> Result<Vec<SdtmDomain>> {
-    load_from(&sdtm_ig_path())
-}
-
-/// Load SDTM-IG domains from a custom path.
-///
-/// # Arguments
-///
-/// * `base_dir` - Directory containing Datasets.csv and Variables.csv
-pub fn load_from(base_dir: &Path) -> Result<Vec<SdtmDomain>> {
-    if !base_dir.exists() {
-        return Err(StandardsError::DirectoryNotFound {
-            path: base_dir.to_path_buf(),
-        });
-    }
-
-    let datasets_path = base_dir.join("Datasets.csv");
-    let variables_path = base_dir.join("Variables.csv");
-
-    let datasets = load_datasets(&datasets_path)?;
-    let variables = load_variables(&variables_path)?;
-
+    let datasets = load_datasets_from_str(embedded::SDTM_IG_DATASETS)?;
+    let variables = load_variables_from_str(embedded::SDTM_IG_VARIABLES)?;
     build_domains(&datasets, variables)
 }
 
@@ -94,28 +72,19 @@ struct VariableCsvRow {
 // Loading Functions
 // =============================================================================
 
-/// Load Datasets.csv into a map of dataset metadata.
-fn load_datasets(path: &Path) -> Result<BTreeMap<String, DatasetMeta>> {
-    if !path.exists() {
-        return Err(StandardsError::FileNotFound {
-            path: path.to_path_buf(),
-        });
-    }
-
+/// Load Datasets.csv from embedded string content.
+fn load_datasets_from_str(content: &str) -> Result<BTreeMap<String, DatasetMeta>> {
+    let cursor = Cursor::new(content.as_bytes());
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(true)
-        .from_path(path)
-        .map_err(|e| StandardsError::CsvRead {
-            path: path.to_path_buf(),
-            source: e,
-        })?;
+        .from_reader(cursor);
 
     let mut datasets = BTreeMap::new();
 
     for result in reader.deserialize::<DatasetCsvRow>() {
-        let row = result.map_err(|e| StandardsError::CsvRead {
-            path: path.to_path_buf(),
-            source: e,
+        let row = result.map_err(|e| StandardsError::CsvParse {
+            file: "SDTM-IG Datasets.csv".to_string(),
+            message: e.to_string(),
         })?;
 
         let name = row.dataset_name.trim().to_uppercase();
@@ -138,28 +107,19 @@ fn load_datasets(path: &Path) -> Result<BTreeMap<String, DatasetMeta>> {
     Ok(datasets)
 }
 
-/// Load Variables.csv into a map of variables grouped by dataset.
-fn load_variables(path: &Path) -> Result<BTreeMap<String, Vec<SdtmVariable>>> {
-    if !path.exists() {
-        return Err(StandardsError::FileNotFound {
-            path: path.to_path_buf(),
-        });
-    }
-
+/// Load Variables.csv from embedded string content.
+fn load_variables_from_str(content: &str) -> Result<BTreeMap<String, Vec<SdtmVariable>>> {
+    let cursor = Cursor::new(content.as_bytes());
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(true)
-        .from_path(path)
-        .map_err(|e| StandardsError::CsvRead {
-            path: path.to_path_buf(),
-            source: e,
-        })?;
+        .from_reader(cursor);
 
     let mut grouped: BTreeMap<String, Vec<SdtmVariable>> = BTreeMap::new();
 
     for result in reader.deserialize::<VariableCsvRow>() {
-        let row = result.map_err(|e| StandardsError::CsvRead {
-            path: path.to_path_buf(),
-            source: e,
+        let row = result.map_err(|e| StandardsError::CsvParse {
+            file: "SDTM-IG Variables.csv".to_string(),
+            message: e.to_string(),
         })?;
 
         let dataset = row.dataset_name.trim().to_uppercase();

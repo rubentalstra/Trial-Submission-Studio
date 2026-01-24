@@ -23,6 +23,15 @@ pub enum StandardsError {
         source: csv::Error,
     },
 
+    /// Failed to parse embedded CSV content.
+    #[error("Failed to parse embedded CSV '{file}': {message}")]
+    CsvParse {
+        /// Source file/identifier
+        file: String,
+        /// Error message
+        message: String,
+    },
+
     /// Invalid value in CSV field.
     #[error("Invalid {field} value '{value}' in {file}")]
     InvalidValue {

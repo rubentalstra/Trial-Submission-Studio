@@ -76,7 +76,7 @@ impl App {
 
             // Escape: Go home or close dialogs
             keyboard::Key::Named(Named::Escape) => match &self.state.view {
-                ViewState::DomainEditor { .. } | ViewState::Export(_) => {
+                ViewState::DomainEditor(_) | ViewState::Export(_) => {
                     Task::done(Message::Navigate(ViewState::home()))
                 }
                 _ => Task::none(),
@@ -84,67 +84,54 @@ impl App {
 
             // Preview tab navigation (only when Preview tab is active)
             keyboard::Key::Named(Named::ArrowRight) | keyboard::Key::Named(Named::PageDown) => {
-                if let ViewState::DomainEditor {
-                    tab: EditorTab::Preview,
-                    ..
-                } = &self.state.view
+                if let ViewState::DomainEditor(editor) = &self.state.view
+                    && editor.tab == EditorTab::Preview
                 {
-                    Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
+                    return Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
                         PreviewMessage::NextPage,
-                    )))
-                } else {
-                    Task::none()
+                    )));
                 }
+                Task::none()
             }
 
             keyboard::Key::Named(Named::ArrowLeft) | keyboard::Key::Named(Named::PageUp) => {
-                if let ViewState::DomainEditor {
-                    tab: EditorTab::Preview,
-                    ..
-                } = &self.state.view
+                if let ViewState::DomainEditor(editor) = &self.state.view
+                    && editor.tab == EditorTab::Preview
                 {
-                    Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
+                    return Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
                         PreviewMessage::PreviousPage,
-                    )))
-                } else {
-                    Task::none()
+                    )));
                 }
+                Task::none()
             }
 
             keyboard::Key::Named(Named::Home) => {
-                if let ViewState::DomainEditor {
-                    tab: EditorTab::Preview,
-                    ..
-                } = &self.state.view
+                if let ViewState::DomainEditor(editor) = &self.state.view
+                    && editor.tab == EditorTab::Preview
                 {
-                    Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
+                    return Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
                         PreviewMessage::GoToPage(0),
-                    )))
-                } else {
-                    Task::none()
+                    )));
                 }
+                Task::none()
             }
 
             keyboard::Key::Named(Named::End) => {
-                if let ViewState::DomainEditor {
-                    tab: EditorTab::Preview,
-                    preview_cache,
-                    preview_ui,
-                    ..
-                } = &self.state.view
+                if let ViewState::DomainEditor(editor) = &self.state.view
+                    && editor.tab == EditorTab::Preview
                 {
-                    let total_rows = preview_cache
+                    let total_rows = editor
+                        .preview_cache
                         .as_ref()
                         .map(polars::prelude::DataFrame::height)
                         .unwrap_or(0);
-                    let page_size = preview_ui.rows_per_page;
+                    let page_size = editor.preview_ui.rows_per_page;
                     let last_page = total_rows.saturating_sub(1) / page_size;
-                    Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
+                    return Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
                         PreviewMessage::GoToPage(last_page),
-                    )))
-                } else {
-                    Task::none()
+                    )));
                 }
+                Task::none()
             }
 
             _ => Task::none(),

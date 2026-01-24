@@ -23,6 +23,3 @@ target
 # ignore output mockdata
 mockdata/*/output/*
 .DS_Store
-
-# exlcude Claude.md
-/CLAUDE.md

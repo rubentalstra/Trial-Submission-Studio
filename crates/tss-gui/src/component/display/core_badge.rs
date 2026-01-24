@@ -73,8 +73,8 @@ pub fn core_badge_if_important<'a, M: 'a>(
     designation: Option<CoreDesignation>,
 ) -> Option<Element<'a, M>> {
     match designation {
-        Some(CoreDesignation::Required) | Some(CoreDesignation::Expected) => {
-            Some(core_badge(designation.unwrap()))
+        Some(d @ CoreDesignation::Required) | Some(d @ CoreDesignation::Expected) => {
+            Some(core_badge(d))
         }
         _ => None,
     }

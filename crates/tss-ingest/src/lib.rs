@@ -39,7 +39,10 @@ mod metadata;
 pub use error::{IngestError, Result};
 
 // === CSV Reading ===
-pub use csv::{CsvHeaders, read_csv_schema, read_csv_table};
+pub use csv::{
+    CsvHeaders, MAX_CSV_FILE_SIZE, check_file_size, check_file_size_with_limit, read_csv_schema,
+    read_csv_table, validate_dataframe_shape, validate_encoding,
+};
 
 // === File Discovery ===
 pub use discovery::list_csv_files;

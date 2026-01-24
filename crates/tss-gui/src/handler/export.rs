@@ -302,6 +302,17 @@ fn cancel_export(state: &mut AppState) -> Task<Message> {
     Task::batch(tasks)
 }
 
+/// Validate and clamp progress to the valid 0.0-1.0 range.
+fn validate_progress(progress: f32) -> f32 {
+    if !(0.0..=1.0).contains(&progress) {
+        tracing::warn!(
+            progress,
+            "Export progress out of range, clamping to 0.0-1.0"
+        );
+    }
+    progress.clamp(0.0, 1.0)
+}
+
 /// Update export progress.
 fn update_export_progress(state: &mut AppState, progress: ExportProgress) {
     // Update both ViewState and dialog window state
@@ -323,7 +334,7 @@ fn update_export_progress(state: &mut AppState, progress: ExportProgress) {
                 // Domain done
             }
             ExportProgress::OverallProgress(p) => {
-                *prog = *p;
+                *prog = validate_progress(*p);
             }
         }
 
@@ -338,7 +349,7 @@ fn update_export_progress(state: &mut AppState, progress: ExportProgress) {
                 }
                 ExportProgress::DomainComplete(_) => {}
                 ExportProgress::OverallProgress(p) => {
-                    dialog_state.progress = p;
+                    dialog_state.progress = validate_progress(p);
                 }
             }
         }

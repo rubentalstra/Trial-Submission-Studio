@@ -350,7 +350,7 @@ impl App {
                     }
                     Err(err) => {
                         tracing::error!("Failed to load study: {}", err);
-                        self.state.error = Some(crate::error::GuiError::study_load(err));
+                        self.state.error = Some(err);
                         // Clear any pending restore on error
                         self.state.pending_project_restore = None;
                     }
@@ -359,22 +359,17 @@ impl App {
             }
 
             Message::PreviewReady { domain, result } => {
-                if let ViewState::DomainEditor {
-                    domain: current_domain,
-                    preview_cache,
-                    preview_ui,
-                    ..
-                } = &mut self.state.view
-                    && current_domain == &domain
+                if let ViewState::DomainEditor(editor) = &mut self.state.view
+                    && editor.domain == domain
                 {
-                    preview_ui.is_rebuilding = false;
+                    editor.preview_ui.is_rebuilding = false;
                     match result {
                         Ok(df) => {
-                            *preview_cache = Some(df);
-                            preview_ui.error = None;
+                            editor.preview_cache = Some(df);
+                            editor.preview_ui.error = None;
                         }
                         Err(e) => {
-                            preview_ui.error = Some(e);
+                            editor.preview_ui.error = Some(e);
                         }
                     }
                 }
@@ -560,8 +555,8 @@ impl App {
         let content: Element<'_, Message> = match &self.state.view {
             ViewState::Home { .. } => view_home(&self.state),
             ViewState::SourceAssignment { .. } => crate::view::view_source_assignment(&self.state),
-            ViewState::DomainEditor { domain, tab, .. } => {
-                view_domain_editor(&self.state, domain, *tab)
+            ViewState::DomainEditor(editor) => {
+                view_domain_editor(&self.state, &editor.domain, editor.tab)
             }
             ViewState::Export(_) => view_export(&self.state),
         };
@@ -660,10 +655,10 @@ impl App {
                     dirty_indicator
                 )
             }
-            ViewState::DomainEditor { domain, .. } => {
+            ViewState::DomainEditor(editor) => {
                 format!(
                     "{} ({}){} - Trial Submission Studio",
-                    domain, study_name, dirty_indicator
+                    editor.domain, study_name, dirty_indicator
                 )
             }
             ViewState::Export(_) => {

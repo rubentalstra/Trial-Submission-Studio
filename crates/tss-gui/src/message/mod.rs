@@ -48,7 +48,7 @@ pub use crate::component::feedback::toast::ToastMessage;
 pub type ValidationReport = tss_submit::ValidationReport;
 
 /// Result type for study loading (includes terminology registry).
-pub type StudyLoadResult = Result<(Study, TerminologyRegistry), String>;
+pub type StudyLoadResult = Result<(Study, TerminologyRegistry), crate::error::GuiError>;
 
 /// Menu bar menu identifier for in-app menu (Windows/Linux).
 ///

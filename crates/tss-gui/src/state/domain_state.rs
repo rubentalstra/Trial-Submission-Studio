@@ -9,6 +9,7 @@
 use polars::prelude::{DataFrame, PlSmallStr};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tss_submit::MappingState;
 use tss_submit::{NormalizationPipeline, Severity, ValidationReport, infer_normalization_rules};
 
@@ -125,13 +126,17 @@ pub enum SuppAction {
 ///
 /// Contains the original CSV file path and loaded DataFrame.
 /// This data never changes once loaded.
+///
+/// Uses `Arc<DataFrame>` for efficient cloning - the underlying
+/// DataFrame is shared across clones rather than deep-copied (#271).
 #[derive(Debug, Clone)]
 pub struct DomainSource {
     /// Path to the source CSV file.
     pub file_path: PathBuf,
 
     /// Source DataFrame (loaded once, never mutated).
-    pub data: DataFrame,
+    /// Wrapped in Arc for cheap cloning when sharing across async tasks.
+    pub data: Arc<DataFrame>,
 
     /// Human-readable label (e.g., "Demographics" for DM).
     pub label: Option<String>,
@@ -140,6 +145,15 @@ pub struct DomainSource {
 impl DomainSource {
     /// Create a new domain source.
     pub fn new(file_path: PathBuf, data: DataFrame, label: Option<String>) -> Self {
+        Self {
+            file_path,
+            data: Arc::new(data),
+            label,
+        }
+    }
+
+    /// Create a new domain source with pre-wrapped Arc data.
+    pub fn with_arc(file_path: PathBuf, data: Arc<DataFrame>, label: Option<String>) -> Self {
         Self {
             file_path,
             data,

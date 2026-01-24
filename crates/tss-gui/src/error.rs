@@ -150,6 +150,13 @@ pub enum GuiError {
         /// Description of the internal error.
         message: String,
     },
+
+    /// Security violation (path traversal, unauthorized access, etc.).
+    #[error("Security: {message}")]
+    Security {
+        /// Description of the security issue.
+        message: String,
+    },
 }
 
 impl GuiError {
@@ -164,7 +171,10 @@ impl GuiError {
     pub fn is_blocking(&self) -> bool {
         matches!(
             self,
-            Self::StudyNotFound { .. } | Self::NoStudyLoaded | Self::Internal { .. }
+            Self::StudyNotFound { .. }
+                | Self::NoStudyLoaded
+                | Self::Internal { .. }
+                | Self::Security { .. }
         )
     }
 
@@ -202,6 +212,7 @@ impl GuiError {
             Self::FileOperation { .. } => {
                 Some("Check file permissions and that the file is not in use.")
             }
+            Self::Security { .. } => Some("The requested path is outside the allowed directory."),
             Self::Operation { .. } | Self::Internal { .. } => None,
         }
     }
@@ -223,6 +234,8 @@ impl GuiError {
             Self::Export { .. } | Self::ExportDirectory { .. } => ErrorCategory::Export,
 
             Self::SettingsLoad { .. } | Self::SettingsSave { .. } => ErrorCategory::Settings,
+
+            Self::Security { .. } => ErrorCategory::Security,
 
             Self::FileOperation { .. } | Self::Operation { .. } | Self::Internal { .. } => {
                 ErrorCategory::General
@@ -278,6 +291,52 @@ impl GuiError {
             message: message.into(),
         }
     }
+
+    /// Create a security error.
+    pub fn security(message: impl Into<String>) -> Self {
+        Self::Security {
+            message: message.into(),
+        }
+    }
+
+    /// Create a security error for path traversal attempts.
+    pub fn path_traversal(path: impl std::fmt::Display) -> Self {
+        Self::Security {
+            message: format!("Path '{}' is outside the allowed directory", path),
+        }
+    }
+
+    /// Create an error from a preview computation error.
+    pub fn preview(err: impl std::fmt::Display) -> Self {
+        Self::Operation {
+            operation: "Preview".to_string(),
+            reason: err.to_string(),
+        }
+    }
+
+    /// Create an error from an export error.
+    pub fn export_error(message: impl Into<String>, domain: Option<String>) -> Self {
+        Self::Export {
+            domain,
+            reason: message.into(),
+        }
+    }
+}
+
+// =============================================================================
+// FROM IMPLEMENTATIONS FOR SERVICE ERRORS
+// =============================================================================
+
+impl From<crate::service::preview::PreviewError> for GuiError {
+    fn from(err: crate::service::preview::PreviewError) -> Self {
+        Self::preview(err)
+    }
+}
+
+impl From<crate::service::export::ExportError> for GuiError {
+    fn from(err: crate::service::export::ExportError) -> Self {
+        Self::export_error(err.message, err.domain)
+    }
 }
 
 /// Error category for grouping related errors.
@@ -295,6 +354,8 @@ pub enum ErrorCategory {
     Export,
     /// Settings errors.
     Settings,
+    /// Security errors (path traversal, unauthorized access).
+    Security,
     /// General/uncategorized errors.
     General,
 }
@@ -309,6 +370,7 @@ impl ErrorCategory {
             Self::Validation => "Validation",
             Self::Export => "Export",
             Self::Settings => "Settings",
+            Self::Security => "Security",
             Self::General => "Error",
         }
     }

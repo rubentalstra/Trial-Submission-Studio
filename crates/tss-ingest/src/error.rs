@@ -45,6 +45,29 @@ pub enum IngestError {
     #[error("could not detect header row in {path}")]
     NoHeaderDetected { path: PathBuf },
 
+    /// File is too large to load.
+    #[error("file too large: {path} ({size} bytes exceeds limit of {max_size} bytes)")]
+    FileTooLarge {
+        path: PathBuf,
+        size: u64,
+        max_size: u64,
+    },
+
+    /// DataFrame is empty (no rows).
+    #[error("empty DataFrame loaded from {path}: file contains only headers")]
+    EmptyDataFrame { path: PathBuf },
+
+    /// DataFrame contains empty column names.
+    #[error("empty column name found in {path}")]
+    EmptyColumnName { path: PathBuf },
+
+    /// Unsupported file encoding.
+    #[error("unsupported encoding '{encoding}' in {path}: only UTF-8 is supported")]
+    UnsupportedEncoding {
+        path: PathBuf,
+        encoding: &'static str,
+    },
+
     // === Metadata Errors ===
     /// Required column not found in metadata file.
     #[error("required column '{column}' not found in {path}")]

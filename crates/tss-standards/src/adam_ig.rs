@@ -1,44 +1,23 @@
 //! ADaM-IG dataset and variable loading.
 //!
-//! Loads ADaM Implementation Guide v1.3 definitions from CSV files
-//! in the `standards/adam/ig/v1.3/` directory.
+//! Loads ADaM Implementation Guide v1.3 definitions from embedded CSV data.
+//! All data is compiled into the binary for offline operation.
 
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::io::Cursor;
 
 use serde::Deserialize;
 
 use crate::adam::{AdamDataset, AdamDatasetType, AdamVariable, AdamVariableSource};
+use crate::embedded;
+use crate::error::{Result, StandardsError};
 use crate::traits::VariableType;
 
-use crate::error::{Result, StandardsError};
-use crate::paths::adam_ig_path;
-
-/// Load ADaM-IG datasets from the default location.
-///
-/// Loads from `standards/adam/ig/v1.3/` relative to the standards root.
+/// Load ADaM-IG datasets from embedded data.
 pub fn load() -> Result<Vec<AdamDataset>> {
-    load_from(&adam_ig_path())
-}
-
-/// Load ADaM-IG datasets from a custom path.
-///
-/// # Arguments
-///
-/// * `base_dir` - Directory containing DataStructures.csv and Variables.csv
-pub fn load_from(base_dir: &Path) -> Result<Vec<AdamDataset>> {
-    if !base_dir.exists() {
-        return Err(StandardsError::DirectoryNotFound {
-            path: base_dir.to_path_buf(),
-        });
-    }
-
-    let datasets_path = base_dir.join("DataStructures.csv");
-    let variables_path = base_dir.join("Variables.csv");
-
-    let (datasets, long_to_short) = load_data_structures(&datasets_path)?;
-    let variables = load_variables(&variables_path, &long_to_short)?;
-
+    let (datasets, long_to_short) =
+        load_data_structures_from_str(embedded::ADAM_IG_DATA_STRUCTURES)?;
+    let variables = load_variables_from_str(embedded::ADAM_IG_VARIABLES, &long_to_short)?;
     build_datasets(&datasets, variables)
 }
 
@@ -89,32 +68,23 @@ struct DatasetMeta {
     structure: Option<String>,
 }
 
-/// Load DataStructures.csv into a map of dataset metadata.
+/// Load DataStructures.csv from embedded string content.
 /// Also returns a map from long names (description) to short names.
-fn load_data_structures(
-    path: &Path,
+fn load_data_structures_from_str(
+    content: &str,
 ) -> Result<(BTreeMap<String, DatasetMeta>, BTreeMap<String, String>)> {
-    if !path.exists() {
-        return Err(StandardsError::FileNotFound {
-            path: path.to_path_buf(),
-        });
-    }
-
+    let cursor = Cursor::new(content.as_bytes());
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(true)
-        .from_path(path)
-        .map_err(|e| StandardsError::CsvRead {
-            path: path.to_path_buf(),
-            source: e,
-        })?;
+        .from_reader(cursor);
 
     let mut datasets = BTreeMap::new();
     let mut long_to_short = BTreeMap::new();
 
     for result in reader.deserialize::<DataStructureCsvRow>() {
-        let row = result.map_err(|e| StandardsError::CsvRead {
-            path: path.to_path_buf(),
-            source: e,
+        let row = result.map_err(|e| StandardsError::CsvParse {
+            file: "ADaM-IG DataStructures.csv".to_string(),
+            message: e.to_string(),
         })?;
 
         let short_name = row.name.trim().to_uppercase();
@@ -151,32 +121,23 @@ fn load_data_structures(
     Ok((datasets, long_to_short))
 }
 
-/// Load Variables.csv into a map of variables grouped by dataset short name.
-fn load_variables(
-    path: &Path,
+/// Load Variables.csv from embedded string content.
+fn load_variables_from_str(
+    content: &str,
     long_to_short: &BTreeMap<String, String>,
 ) -> Result<BTreeMap<String, Vec<AdamVariable>>> {
-    if !path.exists() {
-        return Err(StandardsError::FileNotFound {
-            path: path.to_path_buf(),
-        });
-    }
-
+    let cursor = Cursor::new(content.as_bytes());
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(true)
-        .from_path(path)
-        .map_err(|e| StandardsError::CsvRead {
-            path: path.to_path_buf(),
-            source: e,
-        })?;
+        .from_reader(cursor);
 
     let mut grouped: BTreeMap<String, Vec<AdamVariable>> = BTreeMap::new();
     let mut order_counter: BTreeMap<String, u32> = BTreeMap::new();
 
     for result in reader.deserialize::<VariableCsvRow>() {
-        let row = result.map_err(|e| StandardsError::CsvRead {
-            path: path.to_path_buf(),
-            source: e,
+        let row = result.map_err(|e| StandardsError::CsvParse {
+            file: "ADaM-IG Variables.csv".to_string(),
+            message: e.to_string(),
         })?;
 
         let long_name = row.data_structure.trim().to_uppercase();

@@ -188,7 +188,7 @@ impl MessageHandler<SourceAssignmentMessage> for SourceAssignmentHandler {
                     }
                     Err(e) => {
                         tracing::error!("Failed to create study: {}", e);
-                        state.error = Some(crate::error::GuiError::study_load(e));
+                        state.error = Some(e);
                     }
                 }
                 Task::none()

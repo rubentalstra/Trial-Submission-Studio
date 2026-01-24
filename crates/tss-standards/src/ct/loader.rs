@@ -1,15 +1,15 @@
 //! Controlled Terminology (CT) loading.
 //!
-//! Loads CDISC Controlled Terminology from CSV files in the
-//! `standards/Terminology/` directory. Supports multiple CT versions.
+//! Loads CDISC Controlled Terminology from embedded CSV data.
+//! All CT files are embedded at compile time for offline operation.
 
-use std::path::Path;
+use std::io::Cursor;
 
 use serde::Deserialize;
 
 use super::types::{Codelist, Term, TerminologyCatalog, TerminologyRegistry};
+use crate::embedded;
 use crate::error::{Result, StandardsError};
-use crate::paths::ct_path;
 
 // =============================================================================
 // CT Version Enum
@@ -18,12 +18,14 @@ use crate::paths::ct_path;
 /// Controlled Terminology version.
 ///
 /// CDISC publishes CT updates quarterly. This enum represents
-/// the available versions in the standards directory.
+/// the available versions embedded in the binary.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum CtVersion {
     /// CT version 2024-03-29 (current production default).
     #[default]
     V2024_03_29,
+    /// CT version 2025-03-28.
+    V2025_03_28,
     /// CT version 2025-09-26 (latest).
     V2025_09_26,
 }
@@ -33,13 +35,14 @@ impl CtVersion {
     pub const fn dir_name(&self) -> &'static str {
         match self {
             Self::V2024_03_29 => "2024-03-29",
+            Self::V2025_03_28 => "2025-03-28",
             Self::V2025_09_26 => "2025-09-26",
         }
     }
 
     /// Get all available CT versions.
     pub const fn all() -> &'static [CtVersion] {
-        &[Self::V2024_03_29, Self::V2025_09_26]
+        &[Self::V2024_03_29, Self::V2025_03_28, Self::V2025_09_26]
     }
 
     /// Get the latest CT version.
@@ -58,7 +61,7 @@ impl std::fmt::Display for CtVersion {
 // Public Loading Functions
 // =============================================================================
 
-/// Load a CT registry for a specific version.
+/// Load a CT registry for a specific version from embedded data.
 ///
 /// # Arguments
 ///
@@ -73,79 +76,39 @@ impl std::fmt::Display for CtVersion {
 /// let ny = registry.resolve("NY", None);
 /// ```
 pub fn load(version: CtVersion) -> Result<TerminologyRegistry> {
-    let dir = ct_path(version.dir_name());
-    if !dir.exists() {
-        return Err(StandardsError::DirectoryNotFound { path: dir });
-    }
-    load_from(&dir)
-}
-
-/// Load a CT registry from a custom directory.
-///
-/// Scans the directory for `*_CT_*.csv` files and loads all of them.
-pub fn load_from(dir: &Path) -> Result<TerminologyRegistry> {
-    if !dir.exists() {
-        return Err(StandardsError::DirectoryNotFound {
-            path: dir.to_path_buf(),
-        });
-    }
-
     let mut registry = TerminologyRegistry::new();
 
-    let entries = std::fs::read_dir(dir).map_err(|_| StandardsError::DirectoryNotFound {
-        path: dir.to_path_buf(),
-    })?;
-
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-
-        let name = path.file_name().and_then(|v| v.to_str()).unwrap_or("");
-        if !name.contains("_CT_") || !name.ends_with(".csv") {
-            continue;
-        }
-
-        let catalog = load_catalog(&path)?;
+    for (filename, content) in embedded::ct_files_for_version(version) {
+        let catalog = load_catalog_from_str(content, filename)?;
         registry.add_catalog(catalog);
     }
 
     Ok(registry)
 }
 
-/// Load a single CT catalog from a CSV file.
+/// Load a single CT catalog from CSV string content.
 ///
 /// # CSV Structure
 ///
 /// Per CDISC CT format:
 /// - Codelist definition rows: `Codelist Code` is blank, `Code` is the NCI code
 /// - Term rows: `Codelist Code` is the parent codelist code
-pub fn load_catalog(path: &Path) -> Result<TerminologyCatalog> {
-    if !path.exists() {
-        return Err(StandardsError::FileNotFound {
-            path: path.to_path_buf(),
-        });
-    }
-
+pub fn load_catalog_from_str(content: &str, filename: &str) -> Result<TerminologyCatalog> {
+    let cursor = Cursor::new(content.as_bytes());
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(true)
-        .from_path(path)
-        .map_err(|e| StandardsError::CsvRead {
-            path: path.to_path_buf(),
-            source: e,
-        })?;
+        .from_reader(cursor);
 
-    let (label, version, publishing_set) = parse_ct_metadata(path);
+    let (label, version, publishing_set) = parse_ct_metadata_from_filename(filename);
     let mut catalog = TerminologyCatalog::new(label, version, publishing_set);
-    catalog.source = path.file_name().and_then(|v| v.to_str()).map(String::from);
+    catalog.source = Some(filename.to_string());
 
     // Collect all rows
     let mut rows: Vec<CtCsvRow> = Vec::new();
     for result in reader.deserialize::<CtCsvRow>() {
-        let row = result.map_err(|e| StandardsError::CsvRead {
-            path: path.to_path_buf(),
-            source: e,
+        let row = result.map_err(|e| StandardsError::CsvParse {
+            file: filename.to_string(),
+            message: e.to_string(),
         })?;
         rows.push(row);
     }
@@ -195,30 +158,12 @@ pub fn load_catalog(path: &Path) -> Result<TerminologyCatalog> {
     Ok(catalog)
 }
 
-/// Load only SDTM CT for a specific version.
+/// Load only SDTM CT for a specific version from embedded data.
 ///
 /// Returns a single catalog containing only SDTM terminology.
 pub fn load_sdtm_only(version: CtVersion) -> Result<TerminologyCatalog> {
-    let dir = ct_path(version.dir_name());
-    if !dir.exists() {
-        return Err(StandardsError::DirectoryNotFound { path: dir });
-    }
-
-    // Find the SDTM CT file
-    let entries = std::fs::read_dir(&dir)
-        .map_err(|_| StandardsError::DirectoryNotFound { path: dir.clone() })?;
-
-    for entry in entries.flatten() {
-        let path = entry.path();
-        let name = path.file_name().and_then(|v| v.to_str()).unwrap_or("");
-        if name.starts_with("SDTM_CT_") && name.ends_with(".csv") {
-            return load_catalog(&path);
-        }
-    }
-
-    Err(StandardsError::FileNotFound {
-        path: dir.join("SDTM_CT_*.csv"),
-    })
+    let (filename, content) = embedded::sdtm_ct_for_version(version);
+    load_catalog_from_str(content, filename)
 }
 
 // =============================================================================
@@ -250,9 +195,10 @@ struct CtCsvRow {
 // Helpers
 // =============================================================================
 
-/// Parse CT metadata from filename (e.g., "SDTM_CT_2024-03-29.csv").
-fn parse_ct_metadata(path: &Path) -> (String, Option<String>, Option<String>) {
-    let stem = path.file_stem().and_then(|v| v.to_str()).unwrap_or("");
+/// Parse CT metadata from filename string (e.g., "SDTM_CT_2024-03-29.csv").
+fn parse_ct_metadata_from_filename(filename: &str) -> (String, Option<String>, Option<String>) {
+    // Strip .csv extension if present
+    let stem = filename.strip_suffix(".csv").unwrap_or(filename);
 
     // Pattern: PREFIX_CT_YYYY-MM-DD
     if let Some((prefix, date)) = stem.split_once("_CT_") {
@@ -264,6 +210,8 @@ fn parse_ct_metadata(path: &Path) -> (String, Option<String>, Option<String>) {
             "PROTOCOL" => "Protocol",
             "DDF" => "DDF",
             "MRCT" => "MRCT",
+            "CDASH" => "CDASH",
+            "GLOSSARY" => "Glossary",
             _ => prefix,
         };
 
@@ -342,14 +290,16 @@ mod tests {
     #[test]
     fn test_ct_version_dir_names() {
         assert_eq!(CtVersion::V2024_03_29.dir_name(), "2024-03-29");
+        assert_eq!(CtVersion::V2025_03_28.dir_name(), "2025-03-28");
         assert_eq!(CtVersion::V2025_09_26.dir_name(), "2025-09-26");
     }
 
     #[test]
     fn test_ct_version_all() {
         let all = CtVersion::all();
-        assert_eq!(all.len(), 2);
+        assert_eq!(all.len(), 3);
         assert!(all.contains(&CtVersion::V2024_03_29));
+        assert!(all.contains(&CtVersion::V2025_03_28));
         assert!(all.contains(&CtVersion::V2025_09_26));
     }
 

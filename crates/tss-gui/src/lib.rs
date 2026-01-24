@@ -5,6 +5,9 @@
 //!
 //! Built with Iced 0.14.0 using the Elm architecture.
 
+// Application constants
+pub mod constants;
+
 // Error types
 pub mod error;
 

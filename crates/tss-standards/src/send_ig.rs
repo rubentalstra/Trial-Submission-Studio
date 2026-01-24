@@ -1,44 +1,22 @@
 //! SEND-IG domain and variable loading.
 //!
-//! Loads SEND Implementation Guide v3.1.1 definitions from CSV files
-//! in the `standards/send/ig/v3.1.1/` directory.
+//! Loads SEND Implementation Guide v3.1.1 definitions from embedded CSV data.
+//! All data is compiled into the binary for offline operation.
 
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::io::Cursor;
 
 use serde::Deserialize;
 
+use crate::embedded;
+use crate::error::{Result, StandardsError};
 use crate::send::{SendDatasetClass, SendDomain, SendVariable};
 use crate::traits::VariableType;
 
-use crate::error::{Result, StandardsError};
-use crate::paths::send_ig_path;
-
-/// Load SEND-IG domains from the default location.
-///
-/// Loads from `standards/send/ig/v3.1.1/` relative to the standards root.
+/// Load SEND-IG domains from embedded data.
 pub fn load() -> Result<Vec<SendDomain>> {
-    load_from(&send_ig_path())
-}
-
-/// Load SEND-IG domains from a custom path.
-///
-/// # Arguments
-///
-/// * `base_dir` - Directory containing Datasets.csv and Variables.csv
-pub fn load_from(base_dir: &Path) -> Result<Vec<SendDomain>> {
-    if !base_dir.exists() {
-        return Err(StandardsError::DirectoryNotFound {
-            path: base_dir.to_path_buf(),
-        });
-    }
-
-    let datasets_path = base_dir.join("Datasets.csv");
-    let variables_path = base_dir.join("Variables.csv");
-
-    let datasets = load_datasets(&datasets_path)?;
-    let variables = load_variables(&variables_path)?;
-
+    let datasets = load_datasets_from_str(embedded::SEND_IG_DATASETS)?;
+    let variables = load_variables_from_str(embedded::SEND_IG_VARIABLES)?;
     build_domains(&datasets, variables)
 }
 
@@ -91,28 +69,19 @@ struct DatasetMeta {
     structure: Option<String>,
 }
 
-/// Load Datasets.csv into a map of dataset metadata.
-fn load_datasets(path: &Path) -> Result<BTreeMap<String, DatasetMeta>> {
-    if !path.exists() {
-        return Err(StandardsError::FileNotFound {
-            path: path.to_path_buf(),
-        });
-    }
-
+/// Load Datasets.csv from embedded string content.
+fn load_datasets_from_str(content: &str) -> Result<BTreeMap<String, DatasetMeta>> {
+    let cursor = Cursor::new(content.as_bytes());
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(true)
-        .from_path(path)
-        .map_err(|e| StandardsError::CsvRead {
-            path: path.to_path_buf(),
-            source: e,
-        })?;
+        .from_reader(cursor);
 
     let mut datasets = BTreeMap::new();
 
     for result in reader.deserialize::<DatasetCsvRow>() {
-        let row = result.map_err(|e| StandardsError::CsvRead {
-            path: path.to_path_buf(),
-            source: e,
+        let row = result.map_err(|e| StandardsError::CsvParse {
+            file: "SEND-IG Datasets.csv".to_string(),
+            message: e.to_string(),
         })?;
 
         let name = row.dataset_name.trim().to_uppercase();
@@ -135,28 +104,19 @@ fn load_datasets(path: &Path) -> Result<BTreeMap<String, DatasetMeta>> {
     Ok(datasets)
 }
 
-/// Load Variables.csv into a map of variables grouped by dataset.
-fn load_variables(path: &Path) -> Result<BTreeMap<String, Vec<SendVariable>>> {
-    if !path.exists() {
-        return Err(StandardsError::FileNotFound {
-            path: path.to_path_buf(),
-        });
-    }
-
+/// Load Variables.csv from embedded string content.
+fn load_variables_from_str(content: &str) -> Result<BTreeMap<String, Vec<SendVariable>>> {
+    let cursor = Cursor::new(content.as_bytes());
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(true)
-        .from_path(path)
-        .map_err(|e| StandardsError::CsvRead {
-            path: path.to_path_buf(),
-            source: e,
-        })?;
+        .from_reader(cursor);
 
     let mut grouped: BTreeMap<String, Vec<SendVariable>> = BTreeMap::new();
 
     for result in reader.deserialize::<VariableCsvRow>() {
-        let row = result.map_err(|e| StandardsError::CsvRead {
-            path: path.to_path_buf(),
-            source: e,
+        let row = result.map_err(|e| StandardsError::CsvParse {
+            file: "SEND-IG Variables.csv".to_string(),
+            message: e.to_string(),
         })?;
 
         let dataset = row.dataset_name.trim().to_uppercase();

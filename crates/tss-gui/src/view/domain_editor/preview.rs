@@ -98,11 +98,7 @@ pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
 
     // Get preview UI state and cached DataFrame
     let (preview_cache, preview_ui) = match &state.view {
-        ViewState::DomainEditor {
-            preview_cache,
-            preview_ui,
-            ..
-        } => (preview_cache, preview_ui),
+        ViewState::DomainEditor(editor) => (&editor.preview_cache, &editor.preview_ui),
         _ => return text("Invalid view state").into(),
     };
 

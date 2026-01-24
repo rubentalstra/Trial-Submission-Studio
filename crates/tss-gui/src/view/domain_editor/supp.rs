@@ -61,7 +61,7 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
 
     // Get UI state
     let supp_ui = match &state.view {
-        ViewState::DomainEditor { supp_ui, .. } => supp_ui,
+        ViewState::DomainEditor(editor) => &editor.supp_ui,
         _ => return text("Invalid view state").into(),
     };
 
@@ -330,15 +330,15 @@ fn build_detail_panel(
                 .cloned()
                 .unwrap_or_else(|| SuppColumnConfig::from_column(col));
 
-            let is_editing = ui.edit_draft.is_some();
-
-            match config.action {
-                SuppAction::Pending => build_pending_view(domain, col, &config, domain_code),
-                SuppAction::Include if is_editing => {
-                    build_edit_view(domain, col, ui.edit_draft.as_ref().unwrap(), domain_code)
+            match (&config.action, ui.edit_draft.as_ref()) {
+                (SuppAction::Pending, _) => build_pending_view(domain, col, &config, domain_code),
+                (SuppAction::Include, Some(draft)) => {
+                    build_edit_view(domain, col, draft, domain_code)
                 }
-                SuppAction::Include => build_included_view(domain, col, &config, domain_code),
-                SuppAction::Skip => build_skipped_view(domain, col, domain_code),
+                (SuppAction::Include, None) => {
+                    build_included_view(domain, col, &config, domain_code)
+                }
+                (SuppAction::Skip, _) => build_skipped_view(domain, col, domain_code),
             }
         }
         None => build_no_selection_state(),

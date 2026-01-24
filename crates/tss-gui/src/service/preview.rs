@@ -3,6 +3,7 @@
 //! Uses `Task::perform` pattern for background computation.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use polars::prelude::DataFrame;
 use tss_standards::TerminologyRegistry;
@@ -20,10 +21,12 @@ impl std::fmt::Display for PreviewError {
 }
 
 /// Input for preview computation.
+///
+/// Uses `Arc<DataFrame>` for efficient sharing of source data (#271).
 #[derive(Clone)]
 pub struct PreviewInput {
-    /// Source DataFrame.
-    pub source_df: DataFrame,
+    /// Source DataFrame (Arc for cheap cloning).
+    pub source_df: Arc<DataFrame>,
     /// Mapping state for extracting accepted mappings.
     pub mapping: MappingState,
     /// Optional CT registry for normalization.
@@ -70,6 +73,7 @@ fn compute_preview_sync(input: PreviewInput) -> Result<DataFrame, PreviewError> 
     let study_id = mapping.study_id();
 
     // Build preview using normalization crate
+    // Dereference Arc to pass reference to underlying DataFrame
     build_preview_dataframe_with_omitted(
         &source_df,
         &mappings,

@@ -5,6 +5,9 @@
 //!
 //! Built with Iced 0.14.0 using the Elm architecture (State, Message, Update, View).
 
+// Hide console window on Windows release builds (#103)
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 // Use library modules - all types come from tss_gui crate
 use tss_gui::app::App;
 use tss_gui::component::LUCIDE_FONT_BYTES;
