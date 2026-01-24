@@ -42,7 +42,7 @@ pub fn view_validation_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Ele
 
     // Get validation UI state from view
     let validation_ui = match &state.view {
-        ViewState::DomainEditor { validation_ui, .. } => validation_ui,
+        ViewState::DomainEditor(editor) => &editor.validation_ui,
         _ => return text("Invalid view state").into(),
     };
 

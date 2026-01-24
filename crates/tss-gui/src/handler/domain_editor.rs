@@ -25,11 +25,8 @@ impl MessageHandler<DomainEditorMessage> for DomainEditorHandler {
     fn handle(&self, state: &mut AppState, msg: DomainEditorMessage) -> Task<Message> {
         match msg {
             DomainEditorMessage::TabSelected(tab) => {
-                if let ViewState::DomainEditor {
-                    tab: current_tab, ..
-                } = &mut state.view
-                {
-                    *current_tab = tab;
+                if let ViewState::DomainEditor(editor) = &mut state.view {
+                    editor.tab = tab;
                 }
                 Task::none()
             }
@@ -57,34 +54,62 @@ impl MessageHandler<DomainEditorMessage> for DomainEditorHandler {
 }
 
 // =============================================================================
+// HELPER: TRIGGER PREVIEW REBUILD (#79)
+// =============================================================================
+
+/// Trigger automatic preview rebuild after mapping changes.
+/// Returns a Task that computes the preview in the background.
+fn trigger_preview_rebuild(state: &AppState, domain_code: &str) -> Task<Message> {
+    let domain = match state.study.as_ref().and_then(|s| s.domain(domain_code)) {
+        Some(d) => d,
+        None => return Task::none(),
+    };
+
+    let input = PreviewInput {
+        source_df: domain.source.data.clone(),
+        mapping: domain.mapping.clone(),
+        ct_registry: state.terminology.clone(),
+    };
+
+    let domain_for_result = domain_code.to_string();
+
+    Task::perform(compute_preview(input), move |result| {
+        Message::PreviewReady {
+            domain: domain_for_result,
+            result: result.map_err(|e| e.to_string()),
+        }
+    })
+}
+
+// =============================================================================
 // MAPPING HANDLER
 // =============================================================================
 
 fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Message> {
     // Get current domain code
     let domain_code = match &state.view {
-        ViewState::DomainEditor { domain, .. } => domain.clone(),
+        ViewState::DomainEditor(editor) => editor.domain.clone(),
         _ => return Task::none(),
     };
 
     match msg {
         MappingMessage::VariableSelected(idx) => {
-            if let ViewState::DomainEditor { mapping_ui, .. } = &mut state.view {
-                mapping_ui.selected_variable = Some(idx);
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.mapping_ui.selected_variable = Some(idx);
             }
             Task::none()
         }
 
         MappingMessage::SearchChanged(text) => {
-            if let ViewState::DomainEditor { mapping_ui, .. } = &mut state.view {
-                mapping_ui.search_filter = text;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.mapping_ui.search_filter = text;
             }
             Task::none()
         }
 
         MappingMessage::SearchCleared => {
-            if let ViewState::DomainEditor { mapping_ui, .. } = &mut state.view {
-                mapping_ui.search_filter.clear();
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.mapping_ui.search_filter.clear();
             }
             Task::none()
         }
@@ -95,17 +120,20 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 .as_mut()
                 .and_then(|s| s.domain_mut(&domain_code))
             {
-                // Explicit error handling for mapping operations (#273)
                 if let Err(e) = domain.mapping.accept_suggestion(&variable) {
                     tracing::error!(variable = %variable, error = %e, "Failed to accept suggestion");
                 }
                 domain.invalidate_validation();
                 state.dirty_tracker.mark_dirty();
             }
-            if let ViewState::DomainEditor { preview_cache, .. } = &mut state.view {
-                *preview_cache = None;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.preview_cache = None;
+                editor.preview_dirty = true;
+                editor.validation_dirty = true;
+                editor.preview_ui.is_rebuilding = true;
             }
-            Task::none()
+            // Automatically rebuild preview (#79)
+            trigger_preview_rebuild(state, &domain_code)
         }
 
         MappingMessage::ClearMapping(variable) => {
@@ -118,10 +146,14 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 domain.invalidate_validation();
                 state.dirty_tracker.mark_dirty();
             }
-            if let ViewState::DomainEditor { preview_cache, .. } = &mut state.view {
-                *preview_cache = None;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.preview_cache = None;
+                editor.preview_dirty = true;
+                editor.validation_dirty = true;
+                editor.preview_ui.is_rebuilding = true;
             }
-            Task::none()
+            // Automatically rebuild preview (#79)
+            trigger_preview_rebuild(state, &domain_code)
         }
 
         MappingMessage::ManualMap { variable, column } => {
@@ -130,22 +162,25 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 .as_mut()
                 .and_then(|s| s.domain_mut(&domain_code))
             {
-                // Explicit error handling for mapping operations (#273)
                 if let Err(e) = domain.mapping.accept_manual(&variable, &column) {
                     tracing::error!(variable = %variable, column = %column, error = %e, "Failed to accept manual mapping");
                 }
                 domain.invalidate_validation();
                 state.dirty_tracker.mark_dirty();
             }
-            if let ViewState::DomainEditor { preview_cache, .. } = &mut state.view {
-                *preview_cache = None;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.preview_cache = None;
+                editor.preview_dirty = true;
+                editor.validation_dirty = true;
+                editor.preview_ui.is_rebuilding = true;
             }
-            Task::none()
+            // Automatically rebuild preview (#79)
+            trigger_preview_rebuild(state, &domain_code)
         }
 
         MappingMessage::MarkNotCollected { variable } => {
-            if let ViewState::DomainEditor { mapping_ui, .. } = &mut state.view {
-                mapping_ui.not_collected_edit = Some(NotCollectedEdit {
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.mapping_ui.not_collected_edit = Some(NotCollectedEdit {
                     variable,
                     reason: String::new(),
                 });
@@ -154,10 +189,10 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
         }
 
         MappingMessage::NotCollectedReasonChanged(reason) => {
-            if let ViewState::DomainEditor { mapping_ui, .. } = &mut state.view
-                && let Some(edit) = &mut mapping_ui.not_collected_edit
-            {
-                edit.reason = reason;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                if let Some(edit) = &mut editor.mapping_ui.not_collected_edit {
+                    edit.reason = reason;
+                }
             }
             Task::none()
         }
@@ -175,21 +210,20 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 domain.invalidate_validation();
                 state.dirty_tracker.mark_dirty();
             }
-            if let ViewState::DomainEditor {
-                mapping_ui,
-                preview_cache,
-                ..
-            } = &mut state.view
-            {
-                mapping_ui.not_collected_edit = None;
-                *preview_cache = None;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.mapping_ui.not_collected_edit = None;
+                editor.preview_cache = None;
+                editor.preview_dirty = true;
+                editor.validation_dirty = true;
+                editor.preview_ui.is_rebuilding = true;
             }
-            Task::none()
+            // Automatically rebuild preview (#79)
+            trigger_preview_rebuild(state, &domain_code)
         }
 
         MappingMessage::NotCollectedCancel => {
-            if let ViewState::DomainEditor { mapping_ui, .. } = &mut state.view {
-                mapping_ui.not_collected_edit = None;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.mapping_ui.not_collected_edit = None;
             }
             Task::none()
         }
@@ -198,8 +232,8 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
             variable,
             current_reason,
         } => {
-            if let ViewState::DomainEditor { mapping_ui, .. } = &mut state.view {
-                mapping_ui.not_collected_edit = Some(NotCollectedEdit {
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.mapping_ui.not_collected_edit = Some(NotCollectedEdit {
                     variable,
                     reason: current_reason,
                 });
@@ -217,10 +251,14 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 domain.invalidate_validation();
                 state.dirty_tracker.mark_dirty();
             }
-            if let ViewState::DomainEditor { preview_cache, .. } = &mut state.view {
-                *preview_cache = None;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.preview_cache = None;
+                editor.preview_dirty = true;
+                editor.validation_dirty = true;
+                editor.preview_ui.is_rebuilding = true;
             }
-            Task::none()
+            // Automatically rebuild preview (#79)
+            trigger_preview_rebuild(state, &domain_code)
         }
 
         MappingMessage::MarkOmitted(variable) => {
@@ -233,10 +271,14 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 domain.invalidate_validation();
                 state.dirty_tracker.mark_dirty();
             }
-            if let ViewState::DomainEditor { preview_cache, .. } = &mut state.view {
-                *preview_cache = None;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.preview_cache = None;
+                editor.preview_dirty = true;
+                editor.validation_dirty = true;
+                editor.preview_ui.is_rebuilding = true;
             }
-            Task::none()
+            // Automatically rebuild preview (#79)
+            trigger_preview_rebuild(state, &domain_code)
         }
 
         MappingMessage::ClearOmitted(variable) => {
@@ -249,22 +291,26 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 domain.invalidate_validation();
                 state.dirty_tracker.mark_dirty();
             }
-            if let ViewState::DomainEditor { preview_cache, .. } = &mut state.view {
-                *preview_cache = None;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.preview_cache = None;
+                editor.preview_dirty = true;
+                editor.validation_dirty = true;
+                editor.preview_ui.is_rebuilding = true;
             }
-            Task::none()
+            // Automatically rebuild preview (#79)
+            trigger_preview_rebuild(state, &domain_code)
         }
 
         MappingMessage::FilterUnmappedToggled(enabled) => {
-            if let ViewState::DomainEditor { mapping_ui, .. } = &mut state.view {
-                mapping_ui.filter_unmapped = enabled;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.mapping_ui.filter_unmapped = enabled;
             }
             Task::none()
         }
 
         MappingMessage::FilterRequiredToggled(enabled) => {
-            if let ViewState::DomainEditor { mapping_ui, .. } = &mut state.view {
-                mapping_ui.filter_required = enabled;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.mapping_ui.filter_required = enabled;
             }
             Task::none()
         }
@@ -279,11 +325,8 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
 fn handle_normalization_message(state: &mut AppState, msg: NormalizationMessage) -> Task<Message> {
     match msg {
         NormalizationMessage::RuleSelected(idx) => {
-            if let ViewState::DomainEditor {
-                normalization_ui, ..
-            } = &mut state.view
-            {
-                normalization_ui.selected_rule = Some(idx);
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.normalization_ui.selected_rule = Some(idx);
             }
             Task::none()
         }
@@ -296,7 +339,7 @@ fn handle_normalization_message(state: &mut AppState, msg: NormalizationMessage)
 
 fn handle_validation_message(state: &mut AppState, msg: ValidationMessage) -> Task<Message> {
     let domain_code = match &state.view {
-        ViewState::DomainEditor { domain, .. } => domain.clone(),
+        ViewState::DomainEditor(editor) => editor.domain.clone(),
         _ => return Task::none(),
     };
 
@@ -308,11 +351,14 @@ fn handle_validation_message(state: &mut AppState, msg: ValidationMessage) -> Ta
             };
 
             let df = match &state.view {
-                ViewState::DomainEditor {
-                    preview_cache: Some(df),
-                    ..
-                } => df.clone(),
-                _ => domain.source.data.clone(),
+                ViewState::DomainEditor(editor) => {
+                    // Use preview cache if available, otherwise clone from Arc<DataFrame>
+                    editor
+                        .preview_cache
+                        .clone()
+                        .unwrap_or_else(|| (*domain.source.data).clone())
+                }
+                _ => (*domain.source.data).clone(),
             };
 
             let sdtm_domain = domain.mapping.domain().clone();
@@ -337,15 +383,15 @@ fn handle_validation_message(state: &mut AppState, msg: ValidationMessage) -> Ta
         }
 
         ValidationMessage::IssueSelected(idx) => {
-            if let ViewState::DomainEditor { validation_ui, .. } = &mut state.view {
-                validation_ui.selected_issue = Some(idx);
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.validation_ui.selected_issue = Some(idx);
             }
             Task::none()
         }
 
         ValidationMessage::SeverityFilterChanged(filter) => {
-            if let ViewState::DomainEditor { validation_ui, .. } = &mut state.view {
-                validation_ui.severity_filter = match filter {
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.validation_ui.severity_filter = match filter {
                     crate::message::domain_editor::SeverityFilter::All => {
                         crate::state::SeverityFilter::All
                     }
@@ -364,11 +410,8 @@ fn handle_validation_message(state: &mut AppState, msg: ValidationMessage) -> Ta
         }
 
         ValidationMessage::GoToIssueSource { variable } => {
-            if let ViewState::DomainEditor {
-                tab, mapping_ui, ..
-            } = &mut state.view
-            {
-                *tab = EditorTab::Mapping;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.tab = EditorTab::Mapping;
                 if let Some(domain) = state.study.as_ref().and_then(|s| s.domain(&domain_code)) {
                     let sdtm_domain = domain.mapping.domain();
                     if let Some(idx) = sdtm_domain
@@ -376,7 +419,7 @@ fn handle_validation_message(state: &mut AppState, msg: ValidationMessage) -> Ta
                         .iter()
                         .position(|v| v.name == variable)
                     {
-                        mapping_ui.selected_variable = Some(idx);
+                        editor.mapping_ui.selected_variable = Some(idx);
                     }
                 }
             }
@@ -392,36 +435,36 @@ fn handle_validation_message(state: &mut AppState, msg: ValidationMessage) -> Ta
 #[allow(clippy::needless_pass_by_value)]
 fn handle_preview_message(state: &mut AppState, msg: PreviewMessage) -> Task<Message> {
     let domain_code = match &state.view {
-        ViewState::DomainEditor { domain, .. } => domain.clone(),
+        ViewState::DomainEditor(editor) => editor.domain.clone(),
         _ => return Task::none(),
     };
 
     match msg {
         PreviewMessage::GoToPage(page) => {
-            if let ViewState::DomainEditor { preview_ui, .. } = &mut state.view {
-                preview_ui.current_page = page;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.preview_ui.current_page = page;
             }
             Task::none()
         }
 
         PreviewMessage::NextPage => {
-            if let ViewState::DomainEditor { preview_ui, .. } = &mut state.view {
-                preview_ui.current_page = preview_ui.current_page.saturating_add(1);
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.preview_ui.current_page = editor.preview_ui.current_page.saturating_add(1);
             }
             Task::none()
         }
 
         PreviewMessage::PreviousPage => {
-            if let ViewState::DomainEditor { preview_ui, .. } = &mut state.view {
-                preview_ui.current_page = preview_ui.current_page.saturating_sub(1);
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.preview_ui.current_page = editor.preview_ui.current_page.saturating_sub(1);
             }
             Task::none()
         }
 
         PreviewMessage::RowsPerPageChanged(rows) => {
-            if let ViewState::DomainEditor { preview_ui, .. } = &mut state.view {
-                preview_ui.rows_per_page = rows;
-                preview_ui.current_page = 0;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.preview_ui.rows_per_page = rows;
+                editor.preview_ui.current_page = 0;
             }
             state.settings.display.preview_rows_per_page = rows;
             // Best-effort: preference saving is non-critical (#273)
@@ -434,6 +477,11 @@ fn handle_preview_message(state: &mut AppState, msg: PreviewMessage) -> Task<Mes
                 Some(d) => d,
                 None => return Task::none(),
             };
+
+            // Mark as rebuilding
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.preview_ui.is_rebuilding = true;
+            }
 
             let input = PreviewInput {
                 source_df: domain.source.data.clone(),
@@ -459,16 +507,16 @@ fn handle_preview_message(state: &mut AppState, msg: PreviewMessage) -> Task<Mes
 
 fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> {
     let domain_code = match &state.view {
-        ViewState::DomainEditor { domain, .. } => domain.clone(),
+        ViewState::DomainEditor(editor) => editor.domain.clone(),
         _ => return Task::none(),
     };
 
     match msg {
         SuppMessage::ColumnSelected(col_name) => {
             // Clear any edit draft when changing selection
-            if let ViewState::DomainEditor { supp_ui, .. } = &mut state.view {
-                supp_ui.selected_column = Some(col_name.clone());
-                supp_ui.edit_draft = None;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.supp_ui.selected_column = Some(col_name.clone());
+                editor.supp_ui.edit_draft = None;
             }
             // Initialize config if not exists
             if let Some(domain) = state
@@ -485,15 +533,15 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
         }
 
         SuppMessage::SearchChanged(text) => {
-            if let ViewState::DomainEditor { supp_ui, .. } = &mut state.view {
-                supp_ui.search_filter = text;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.supp_ui.search_filter = text;
             }
             Task::none()
         }
 
         SuppMessage::FilterModeChanged(mode) => {
-            if let ViewState::DomainEditor { supp_ui, .. } = &mut state.view {
-                supp_ui.filter_mode = mode;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.supp_ui.filter_mode = mode;
             }
             Task::none()
         }
@@ -546,86 +594,93 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
 
         SuppMessage::AddToSupp => {
             let col = match &state.view {
-                ViewState::DomainEditor { supp_ui, .. } => supp_ui.selected_column.clone(),
+                ViewState::DomainEditor(editor) => editor.supp_ui.selected_column.clone(),
                 _ => None,
             };
 
-            if let Some(col_name) = col
-                && let Some(domain) = state
+            if let Some(col_name) = col {
+                if let Some(domain) = state
                     .study
                     .as_mut()
                     .and_then(|s| s.domain_mut(&domain_code))
-                && let Some(config) = domain.supp_config.get_mut(&col_name)
-            {
-                if config.qnam.trim().is_empty() || config.qlabel.trim().is_empty() {
-                    return Task::none();
+                {
+                    if let Some(config) = domain.supp_config.get_mut(&col_name) {
+                        if config.qnam.trim().is_empty() || config.qlabel.trim().is_empty() {
+                            return Task::none();
+                        }
+                        config.action = SuppAction::Include;
+                        state.dirty_tracker.mark_dirty();
+                    }
                 }
-                config.action = SuppAction::Include;
-                state.dirty_tracker.mark_dirty();
             }
-            if let ViewState::DomainEditor { supp_ui, .. } = &mut state.view {
-                supp_ui.edit_draft = None;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.supp_ui.edit_draft = None;
             }
             Task::none()
         }
 
         SuppMessage::Skip => {
             let col = match &state.view {
-                ViewState::DomainEditor { supp_ui, .. } => supp_ui.selected_column.clone(),
+                ViewState::DomainEditor(editor) => editor.supp_ui.selected_column.clone(),
                 _ => None,
             };
 
-            if let Some(col_name) = col
-                && let Some(domain) = state
+            if let Some(col_name) = col {
+                if let Some(domain) = state
                     .study
                     .as_mut()
                     .and_then(|s| s.domain_mut(&domain_code))
-                && let Some(config) = domain.supp_config.get_mut(&col_name)
-            {
-                config.action = SuppAction::Skip;
-                state.dirty_tracker.mark_dirty();
+                {
+                    if let Some(config) = domain.supp_config.get_mut(&col_name) {
+                        config.action = SuppAction::Skip;
+                        state.dirty_tracker.mark_dirty();
+                    }
+                }
             }
-            if let ViewState::DomainEditor { supp_ui, .. } = &mut state.view {
-                supp_ui.edit_draft = None;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.supp_ui.edit_draft = None;
             }
             Task::none()
         }
 
         SuppMessage::UndoAction => {
             let col = match &state.view {
-                ViewState::DomainEditor { supp_ui, .. } => supp_ui.selected_column.clone(),
+                ViewState::DomainEditor(editor) => editor.supp_ui.selected_column.clone(),
                 _ => None,
             };
 
-            if let Some(col_name) = col
-                && let Some(domain) = state
+            if let Some(col_name) = col {
+                if let Some(domain) = state
                     .study
                     .as_mut()
                     .and_then(|s| s.domain_mut(&domain_code))
-                && let Some(config) = domain.supp_config.get_mut(&col_name)
-            {
-                config.action = SuppAction::Pending;
-                state.dirty_tracker.mark_dirty();
+                {
+                    if let Some(config) = domain.supp_config.get_mut(&col_name) {
+                        config.action = SuppAction::Pending;
+                        state.dirty_tracker.mark_dirty();
+                    }
+                }
             }
-            if let ViewState::DomainEditor { supp_ui, .. } = &mut state.view {
-                supp_ui.edit_draft = None;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.supp_ui.edit_draft = None;
             }
             Task::none()
         }
 
         SuppMessage::StartEdit => {
             let col = match &state.view {
-                ViewState::DomainEditor { supp_ui, .. } => supp_ui.selected_column.clone(),
+                ViewState::DomainEditor(editor) => editor.supp_ui.selected_column.clone(),
                 _ => None,
             };
 
-            if let Some(col_name) = &col
-                && let Some(domain) = state.study.as_ref().and_then(|s| s.domain(&domain_code))
-                && let Some(config) = domain.supp_config.get(col_name)
-            {
-                let draft = SuppEditDraft::from_config(config);
-                if let ViewState::DomainEditor { supp_ui, .. } = &mut state.view {
-                    supp_ui.edit_draft = Some(draft);
+            if let Some(col_name) = &col {
+                if let Some(domain) = state.study.as_ref().and_then(|s| s.domain(&domain_code)) {
+                    if let Some(config) = domain.supp_config.get(col_name) {
+                        let draft = SuppEditDraft::from_config(config);
+                        if let ViewState::DomainEditor(editor) = &mut state.view {
+                            editor.supp_ui.edit_draft = Some(draft);
+                        }
+                    }
                 }
             }
             Task::none()
@@ -633,9 +688,10 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
 
         SuppMessage::SaveEdit => {
             let (col, draft) = match &state.view {
-                ViewState::DomainEditor { supp_ui, .. } => {
-                    (supp_ui.selected_column.clone(), supp_ui.edit_draft.clone())
-                }
+                ViewState::DomainEditor(editor) => (
+                    editor.supp_ui.selected_column.clone(),
+                    editor.supp_ui.edit_draft.clone(),
+                ),
                 _ => (None, None),
             };
 
@@ -648,28 +704,29 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                     .study
                     .as_mut()
                     .and_then(|s| s.domain_mut(&domain_code))
-                    && let Some(config) = domain.supp_config.get_mut(&col_name)
                 {
-                    config.qnam = draft.qnam;
-                    config.qlabel = draft.qlabel;
-                    config.qorig = draft.qorig;
-                    config.qeval = if draft.qeval.is_empty() {
-                        None
-                    } else {
-                        Some(draft.qeval)
-                    };
-                    state.dirty_tracker.mark_dirty();
+                    if let Some(config) = domain.supp_config.get_mut(&col_name) {
+                        config.qnam = draft.qnam;
+                        config.qlabel = draft.qlabel;
+                        config.qorig = draft.qorig;
+                        config.qeval = if draft.qeval.is_empty() {
+                            None
+                        } else {
+                            Some(draft.qeval)
+                        };
+                        state.dirty_tracker.mark_dirty();
+                    }
                 }
             }
-            if let ViewState::DomainEditor { supp_ui, .. } = &mut state.view {
-                supp_ui.edit_draft = None;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.supp_ui.edit_draft = None;
             }
             Task::none()
         }
 
         SuppMessage::CancelEdit => {
-            if let ViewState::DomainEditor { supp_ui, .. } = &mut state.view {
-                supp_ui.edit_draft = None;
+            if let ViewState::DomainEditor(editor) = &mut state.view {
+                editor.supp_ui.edit_draft = None;
             }
             Task::none()
         }
@@ -682,27 +739,27 @@ where
     F: FnOnce(&mut SuppColumnConfig, Option<&mut SuppEditDraft>),
 {
     let col = match &state.view {
-        ViewState::DomainEditor { supp_ui, .. } => supp_ui.selected_column.clone(),
+        ViewState::DomainEditor(editor) => editor.supp_ui.selected_column.clone(),
         _ => return,
     };
 
     let Some(col_name) = col else { return };
 
     let is_editing = match &state.view {
-        ViewState::DomainEditor { supp_ui, .. } => supp_ui.edit_draft.is_some(),
+        ViewState::DomainEditor(editor) => editor.supp_ui.edit_draft.is_some(),
         _ => false,
     };
 
     if is_editing {
-        if let ViewState::DomainEditor { supp_ui, .. } = &mut state.view
-            && let Some(draft) = &mut supp_ui.edit_draft
-        {
-            let mut dummy = SuppColumnConfig::from_column("");
-            update(&mut dummy, Some(draft));
+        if let ViewState::DomainEditor(editor) = &mut state.view {
+            if let Some(draft) = &mut editor.supp_ui.edit_draft {
+                let mut dummy = SuppColumnConfig::from_column("");
+                update(&mut dummy, Some(draft));
+            }
         }
-    } else if let Some(domain) = state.study.as_mut().and_then(|s| s.domain_mut(domain_code))
-        && let Some(config) = domain.supp_config.get_mut(&col_name)
-    {
-        update(config, None);
+    } else if let Some(domain) = state.study.as_mut().and_then(|s| s.domain_mut(domain_code)) {
+        if let Some(config) = domain.supp_config.get_mut(&col_name) {
+            update(config, None);
+        }
     }
 }

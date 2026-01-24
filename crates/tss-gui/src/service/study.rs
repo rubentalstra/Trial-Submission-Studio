@@ -5,6 +5,7 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+use crate::error::GuiError;
 use crate::state::{DomainSource, DomainState, Study, WorkflowMode};
 use tss_standards::TerminologyRegistry;
 
@@ -27,9 +28,9 @@ pub async fn create_study_from_assignments(
     header_rows: usize,
     confidence_threshold: f32,
     workflow_mode: WorkflowMode,
-) -> Result<(Study, TerminologyRegistry), String> {
+) -> Result<(Study, TerminologyRegistry), GuiError> {
     if assignments.is_empty() {
-        return Err("No domains assigned".to_string());
+        return Err(GuiError::operation("Create study", "No domains assigned"));
     }
 
     // Create study from folder
@@ -47,13 +48,17 @@ pub async fn create_study_from_assignments(
     // Load standards based on workflow mode
     let (ig_domains, terminology) = match workflow_mode {
         WorkflowMode::Sdtm => {
-            let domains = tss_standards::load_sdtm_ig()
-                .map_err(|e| format!("Failed to load SDTM-IG: {}", e))?;
+            let domains = tss_standards::load_sdtm_ig().map_err(|e| {
+                GuiError::operation("Load standards", format!("Failed to load SDTM-IG: {}", e))
+            })?;
             let ct_version = tss_standards::ct::CtVersion::default();
             let ct = tss_standards::ct::load(ct_version).map_err(|e| {
-                format!(
-                    "Failed to load Controlled Terminology ({}): {}",
-                    ct_version, e
+                GuiError::operation(
+                    "Load standards",
+                    format!(
+                        "Failed to load Controlled Terminology ({}): {}",
+                        ct_version, e
+                    ),
                 )
             })?;
             tracing::info!(
@@ -64,9 +69,12 @@ pub async fn create_study_from_assignments(
             (domains, ct)
         }
         WorkflowMode::Adam | WorkflowMode::Send => {
-            return Err(format!(
-                "{} workflow not yet fully supported",
-                workflow_mode.display_name()
+            return Err(GuiError::operation(
+                "Create study",
+                format!(
+                    "{} workflow not yet fully supported",
+                    workflow_mode.display_name()
+                ),
             ));
         }
     };
@@ -80,8 +88,9 @@ pub async fn create_study_from_assignments(
             .unwrap_or_default()
             .to_string();
 
-        let (df, _headers) = tss_ingest::read_csv_table(&file_path, header_rows)
-            .map_err(|e| format!("Failed to load {}: {}", file_stem, e))?;
+        let (df, _headers) = tss_ingest::read_csv_table(&file_path, header_rows).map_err(|e| {
+            GuiError::domain_load(&domain_code, format!("Failed to load {}: {}", file_stem, e))
+        })?;
 
         // Find domain in IG
         let ig_domain = ig_domains
@@ -118,7 +127,10 @@ pub async fn create_study_from_assignments(
     }
 
     if study.domain_count() == 0 {
-        return Err("No valid domains created from assignments".to_string());
+        return Err(GuiError::operation(
+            "Create study",
+            "No valid domains created from assignments",
+        ));
     }
 
     Ok((study, terminology))

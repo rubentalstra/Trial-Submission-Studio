@@ -3,9 +3,12 @@
 //! This crate provides:
 //!
 //! - **Type definitions** for SDTM, ADaM, and SEND standards
-//! - **Standards loaders** from offline CSV files
+//! - **Standards loaders** with all data embedded at compile time
 //! - **Controlled Terminology** (CT) support with validation
 //! - **Polars utilities** for data manipulation
+//!
+//! All standards data is embedded in the binary at compile time using `include_str!()`.
+//! No external files are required at runtime - the application works offline.
 //!
 //! # Module Organization
 //!
@@ -16,31 +19,23 @@
 //! - [`ct`]: Controlled Terminology types and loaders
 //! - [`polars`]: Polars AnyValue utility functions
 //! - [`registry`]: Unified standards registry
+//! - [`embedded`]: Embedded standards data (CSV content as `&'static str`)
 //!
-//! # Standards Directory Structure
+//! # Embedded Standards
 //!
-//! ```text
-//! standards/
-//! ├── Terminology/             # Controlled Terminology by version
-//! │   ├── 2024-03-29/          # CT version (default)
-//! │   └── 2025-09-26/          # CT version (latest)
-//! ├── sdtm/ig/v3.4/            # SDTM-IG v3.4
-//! │   ├── Datasets.csv
-//! │   └── Variables.csv
-//! ├── adam/ig/v1.3/            # ADaM-IG v1.3
-//! │   ├── DataStructures.csv
-//! │   └── Variables.csv
-//! └── send/ig/v3.1.1/          # SEND-IG v3.1.1
-//!     ├── Datasets.csv
-//!     └── Variables.csv
-//! ```
+//! The following standards are embedded:
+//!
+//! - **SDTM-IG v3.4**: 60+ domains with variables
+//! - **ADaM-IG v1.3**: ADSL, BDS, OCCDS, and TTE structures
+//! - **SEND-IG v3.1.1**: 10+ domains with variables
+//! - **Controlled Terminology**: Versions 2024-03-29, 2025-03-28, 2025-09-26
 //!
 //! # Example
 //!
 //! ```rust,ignore
 //! use tss_standards::{StandardsRegistry, StandardsConfig, CdiscDomain};
 //!
-//! // Load all standards
+//! // Load all standards (from embedded data)
 //! let registry = StandardsRegistry::load_all()?;
 //!
 //! // Access domains
@@ -63,10 +58,12 @@ pub mod sdtm;
 pub mod send;
 pub mod traits;
 
+// Embedded standards data
+pub mod embedded;
+
 // Loader modules
 pub mod adam_ig;
 pub mod error;
-pub mod paths;
 pub mod registry;
 pub mod sdtm_ig;
 pub mod send_ig;
@@ -77,9 +74,6 @@ pub mod send_ig;
 
 // Error types
 pub use error::{Result, StandardsError};
-
-// Path utilities
-pub use paths::{STANDARDS_ENV_VAR, standards_root};
 
 // Registry
 pub use registry::{StandardsConfig, StandardsRegistry};

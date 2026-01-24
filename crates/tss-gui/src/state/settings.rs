@@ -39,31 +39,76 @@ pub struct Settings {
 impl Settings {
     /// Load settings from the default path.
     pub fn load() -> Self {
-        let mut settings = Self::load_from(&Self::config_path());
-        settings.migrate();
+        let path = Self::config_path();
+        let mut settings = match Self::load_from(&path) {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::warn!(error = %e, path = %path.display(), "Failed to load settings, using defaults");
+                Self::default()
+            }
+        };
+
+        // Validate and clamp values
+        if let Err(validation_errors) = settings.validate() {
+            tracing::warn!(
+                errors = ?validation_errors,
+                "Settings validation failed, clamping to valid bounds"
+            );
+            settings.clamp_to_bounds();
+        }
+
         settings
     }
 
     /// Load settings from a specific path.
-    pub fn load_from(path: &PathBuf) -> Self {
-        std::fs::read_to_string(path)
-            .ok()
-            .and_then(|content| toml::from_str(&content).ok())
-            .unwrap_or_default()
+    pub fn load_from(path: &PathBuf) -> Result<Self, String> {
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| format!("Failed to read settings file: {}", e))?;
+        toml::from_str(&content).map_err(|e| format!("Failed to parse settings: {}", e))
     }
 
-    /// Migrate old settings values to current defaults.
+    /// Validate settings values are within acceptable bounds.
     ///
-    /// This handles breaking changes in settings, such as:
-    /// - `header_rows` changed from default 1 to 2 (for label + column name rows)
-    fn migrate(&mut self) {
-        // Migration: header_rows was incorrectly defaulting to 1
-        // Clinical data CSVs typically have 2 header rows (labels + column names)
-        if self.general.header_rows == 1 {
-            self.general.header_rows = 2;
-            // Save the migrated settings
-            let _ = self.save();
+    /// Returns a list of validation errors if any values are out of bounds.
+    pub fn validate(&self) -> Result<(), Vec<String>> {
+        let mut errors = vec![];
+
+        // General settings
+        if self.general.header_rows == 0 {
+            errors.push("header_rows must be >= 1".into());
         }
+        if !(0.0..=1.0).contains(&self.general.mapping_confidence_threshold) {
+            errors.push("mapping_confidence_threshold must be 0.0-1.0".into());
+        }
+        if self.general.max_recent == 0 || self.general.max_recent > 100 {
+            errors.push("max_recent must be 1-100".into());
+        }
+        if self.general.auto_save_debounce_ms > 60_000 {
+            errors.push("auto_save_debounce_ms must be <= 60000".into());
+        }
+
+        // Display settings
+        if self.display.preview_rows_per_page == 0 || self.display.preview_rows_per_page > 1000 {
+            errors.push("preview_rows_per_page must be 1-1000".into());
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+
+    /// Clamp all settings values to valid bounds.
+    ///
+    /// Call this after loading settings that may have invalid values.
+    pub fn clamp_to_bounds(&mut self) {
+        self.general.header_rows = self.general.header_rows.max(1);
+        self.general.mapping_confidence_threshold =
+            self.general.mapping_confidence_threshold.clamp(0.0, 1.0);
+        self.general.max_recent = self.general.max_recent.clamp(1, 100);
+        self.general.auto_save_debounce_ms = self.general.auto_save_debounce_ms.min(60_000);
+        self.display.preview_rows_per_page = self.display.preview_rows_per_page.clamp(1, 1000);
     }
 
     /// Save settings to the default path.

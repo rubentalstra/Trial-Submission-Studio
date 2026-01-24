@@ -2,15 +2,17 @@
 //!
 //! This module provides:
 //! - CT types: `Codelist`, `Term`, `TerminologyCatalog`, `TerminologyRegistry`
-//! - CT loaders: `load()`, `load_from()`, `load_catalog()`, `load_sdtm_only()`
+//! - CT loaders: `load()`, `load_sdtm_only()`, `load_catalog_from_str()`
 //! - Version management: `CtVersion`
+//!
+//! All CT data is embedded at compile time - no file I/O required at runtime.
 //!
 //! # Usage
 //!
 //! ```rust,ignore
 //! use tss_standards::ct::{self, CtVersion};
 //!
-//! // Load all CT for a version
+//! // Load all CT for a version (from embedded data)
 //! let registry = ct::load(CtVersion::default())?;
 //!
 //! // Validate a value against a codelist
@@ -33,4 +35,4 @@ pub use types::{
 };
 
 // Re-export loader
-pub use loader::{CtVersion, load, load_catalog, load_from, load_sdtm_only};
+pub use loader::{CtVersion, load, load_catalog_from_str, load_sdtm_only};

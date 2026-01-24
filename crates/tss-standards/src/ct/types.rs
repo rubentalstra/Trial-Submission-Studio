@@ -201,22 +201,6 @@ impl Codelist {
 
         None
     }
-
-    /// Normalize a value to its canonical submission value.
-    ///
-    /// Returns the original value if not found (for extensible codelists).
-    #[deprecated(note = "Use find_submission_value() for explicit handling")]
-    pub fn normalize(&self, value: &str) -> String {
-        self.find_submission_value(value)
-            .map(ToString::to_string)
-            .unwrap_or_else(|| value.to_string())
-    }
-
-    /// Legacy method for backwards compatibility.
-    #[deprecated(note = "Use is_valid_submission_value() or matches_any()")]
-    pub fn is_valid(&self, value: &str) -> bool {
-        self.matches_any(value)
-    }
 }
 
 /// A CT catalog representing a specific CT release.

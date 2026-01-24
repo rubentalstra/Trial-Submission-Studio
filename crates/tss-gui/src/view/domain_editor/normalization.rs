@@ -52,9 +52,7 @@ pub fn view_normalization_tab<'a>(
     };
 
     let normalization_ui = match &state.view {
-        ViewState::DomainEditor {
-            normalization_ui, ..
-        } => normalization_ui,
+        ViewState::DomainEditor(editor) => &editor.normalization_ui,
         _ => return text("Invalid view state").into(),
     };
 

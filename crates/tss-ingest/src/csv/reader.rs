@@ -1,7 +1,7 @@
 //! CSV file reading with explicit header row configuration.
 
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 
 use polars::prelude::*;
@@ -9,6 +9,122 @@ use polars::prelude::*;
 use crate::error::{IngestError, Result};
 
 use super::header::{CsvHeaders, parse_csv_line};
+
+/// Maximum file size for CSV loading (500 MB default).
+pub const MAX_CSV_FILE_SIZE: u64 = 500 * 1024 * 1024;
+
+/// Check file size before loading.
+///
+/// This is a sync function meant to be called via `spawn_blocking` from async contexts.
+pub fn check_file_size(path: &Path) -> Result<()> {
+    check_file_size_with_limit(path, MAX_CSV_FILE_SIZE)
+}
+
+/// Check file size against a custom limit.
+pub fn check_file_size_with_limit(path: &Path, max_size: u64) -> Result<()> {
+    let metadata = std::fs::metadata(path).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            IngestError::FileNotFound {
+                path: path.to_path_buf(),
+            }
+        } else {
+            IngestError::FileRead {
+                path: path.to_path_buf(),
+                source: e,
+            }
+        }
+    })?;
+
+    if metadata.len() > max_size {
+        return Err(IngestError::FileTooLarge {
+            path: path.to_path_buf(),
+            size: metadata.len(),
+            max_size,
+        });
+    }
+
+    Ok(())
+}
+
+/// Detect encoding and validate it's supported (UTF-8 only).
+///
+/// Checks for UTF-16 BOM markers which are not supported.
+pub fn validate_encoding(path: &Path) -> Result<()> {
+    let mut file = File::open(path).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            IngestError::FileNotFound {
+                path: path.to_path_buf(),
+            }
+        } else {
+            IngestError::FileRead {
+                path: path.to_path_buf(),
+                source: e,
+            }
+        }
+    })?;
+
+    let mut buffer = [0u8; 4];
+    let bytes_read = file.read(&mut buffer).map_err(|e| IngestError::FileRead {
+        path: path.to_path_buf(),
+        source: e,
+    })?;
+
+    // Check for UTF-16 BOM (not supported)
+    if bytes_read >= 2 {
+        // UTF-16 LE BOM
+        if buffer[0..2] == [0xFF, 0xFE] {
+            return Err(IngestError::UnsupportedEncoding {
+                path: path.to_path_buf(),
+                encoding: "UTF-16 LE",
+            });
+        }
+        // UTF-16 BE BOM
+        if buffer[0..2] == [0xFE, 0xFF] {
+            return Err(IngestError::UnsupportedEncoding {
+                path: path.to_path_buf(),
+                encoding: "UTF-16 BE",
+            });
+        }
+    }
+
+    // UTF-8 BOM is acceptable (handled in read_first_lines)
+    Ok(())
+}
+
+/// Validate DataFrame shape after loading.
+///
+/// Checks for:
+/// - Empty DataFrame (no rows)
+/// - Empty column names
+/// - Warns about wide datasets (>500 columns)
+pub fn validate_dataframe_shape(df: &DataFrame, path: &Path) -> Result<()> {
+    // Empty DataFrame check
+    if df.height() == 0 {
+        return Err(IngestError::EmptyDataFrame {
+            path: path.to_path_buf(),
+        });
+    }
+
+    // Wide dataset warning (>500 columns)
+    if df.width() > 500 {
+        tracing::warn!(
+            path = %path.display(),
+            columns = df.width(),
+            "Dataset has more than 500 columns - may impact performance"
+        );
+    }
+
+    // Check for empty column names
+    for name in df.get_column_names() {
+        if name.trim().is_empty() {
+            return Err(IngestError::EmptyColumnName {
+                path: path.to_path_buf(),
+            });
+        }
+    }
+
+    Ok(())
+}
 
 /// Reads the first N lines from a file.
 fn read_first_lines(path: &Path, n: usize) -> Result<Vec<String>> {

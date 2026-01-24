@@ -137,6 +137,15 @@ fn handle_close_project_cancelled(state: &mut AppState) -> Task<Message> {
 /// This navigates to the source assignment screen where users manually
 /// map CSV files to CDISC domains.
 pub fn load_study(state: &mut AppState, path: PathBuf) -> Task<Message> {
+    // Check for macOS quarantine (#104)
+    if let Some(quarantine_msg) = crate::util::check_macos_quarantine(&path) {
+        state.error = Some(GuiError::Operation {
+            operation: "Load Study Folder".to_string(),
+            reason: quarantine_msg,
+        });
+        return Task::none();
+    }
+
     // Get workflow mode
     let workflow_mode = state.view.workflow_mode();
 

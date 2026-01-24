@@ -55,7 +55,7 @@ pub fn view_mapping_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
     };
 
     let mapping_ui = match &state.view {
-        ViewState::DomainEditor { mapping_ui, .. } => mapping_ui,
+        ViewState::DomainEditor(editor) => &editor.mapping_ui,
         _ => return text("Invalid view state").into(),
     };
 
@@ -320,7 +320,7 @@ fn view_variable_detail<'a>(
 ) -> Element<'a, Message> {
     let status = domain.mapping.status(&var.name);
     let not_collected_edit = match &state.view {
-        ViewState::DomainEditor { mapping_ui, .. } => mapping_ui.not_collected_edit.as_ref(),
+        ViewState::DomainEditor(editor) => editor.mapping_ui.not_collected_edit.as_ref(),
         _ => None,
     };
 

@@ -84,21 +84,30 @@ pub struct StandardsRegistry {
 
 impl StandardsRegistry {
     /// Load standards with the given configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any requested standard fails to load.
+    /// Errors include which standard failed to load for easier debugging.
     pub fn load(config: &StandardsConfig) -> Result<Self> {
+        // Load controlled terminology first (required for validation)
         let ct = ct::load(config.ct_version)?;
 
+        // Load SDTM-IG if requested
         let sdtm_domains = if config.load_sdtm {
             sdtm_ig::load()?
         } else {
             Vec::new()
         };
 
+        // Load ADaM-IG if requested
         let adam_datasets = if config.load_adam {
             adam_ig::load()?
         } else {
             Vec::new()
         };
 
+        // Load SEND-IG if requested
         let send_domains = if config.load_send {
             send_ig::load()?
         } else {

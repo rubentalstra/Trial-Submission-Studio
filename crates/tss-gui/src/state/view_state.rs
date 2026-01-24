@@ -26,6 +26,12 @@ use super::domain_state::{SuppColumnConfig, SuppOrigin};
 /// When navigating, the entire view state is replaced, which automatically
 /// clears any transient UI state.
 ///
+/// # Memory Optimization
+///
+/// Large variants (DomainEditor) are boxed to reduce the size of the enum.
+/// This improves cache locality and reduces memory usage when the view
+/// is not in that state.
+///
 /// # Example
 ///
 /// ```ignore
@@ -33,12 +39,11 @@ use super::domain_state::{SuppColumnConfig, SuppOrigin};
 /// state.view = ViewState::domain_editor("DM", EditorTab::Mapping);
 ///
 /// // Access domain editor state
-/// if let ViewState::DomainEditor { mapping_ui, .. } = &mut state.view {
-///     mapping_ui.selected_variable = Some(0);
+/// if let ViewState::DomainEditor(editor) = &mut state.view {
+///     editor.mapping_ui.selected_variable = Some(0);
 /// }
 /// ```
 #[derive(Debug, Clone)]
-#[allow(clippy::large_enum_variant)]
 pub enum ViewState {
     /// Home screen - study selection and overview.
     Home {
@@ -54,28 +59,39 @@ pub enum ViewState {
         assignment_ui: SourceAssignmentUiState,
     },
 
-    /// Domain editor with tabbed interface.
-    DomainEditor {
-        /// Domain code being edited (e.g., "DM", "AE").
-        domain: String,
-        /// Active tab.
-        tab: EditorTab,
-        /// Mapping tab UI state.
-        mapping_ui: MappingUiState,
-        /// Normalization tab UI state.
-        normalization_ui: NormalizationUiState,
-        /// Validation tab UI state.
-        validation_ui: ValidationUiState,
-        /// Preview tab UI state.
-        preview_ui: PreviewUiState,
-        /// SUPP tab UI state.
-        supp_ui: SuppUiState,
-        /// Cached preview DataFrame (computed on demand).
-        preview_cache: Option<DataFrame>,
-    },
+    /// Domain editor with tabbed interface (boxed for memory efficiency).
+    DomainEditor(Box<DomainEditorState>),
 
     /// Export screen.
     Export(ExportViewState),
+}
+
+/// State for the domain editor view.
+///
+/// Extracted as a separate struct to enable boxing in ViewState enum,
+/// which reduces the overall enum size and improves memory efficiency.
+#[derive(Debug, Clone)]
+pub struct DomainEditorState {
+    /// Domain code being edited (e.g., "DM", "AE").
+    pub domain: String,
+    /// Active tab.
+    pub tab: EditorTab,
+    /// Mapping tab UI state.
+    pub mapping_ui: MappingUiState,
+    /// Normalization tab UI state.
+    pub normalization_ui: NormalizationUiState,
+    /// Validation tab UI state.
+    pub validation_ui: ValidationUiState,
+    /// Preview tab UI state.
+    pub preview_ui: PreviewUiState,
+    /// SUPP tab UI state.
+    pub supp_ui: SuppUiState,
+    /// Cached preview DataFrame (computed on demand).
+    pub preview_cache: Option<DataFrame>,
+    /// Flag indicating validation needs refresh after mapping change.
+    pub validation_dirty: bool,
+    /// Flag indicating preview needs refresh after mapping change.
+    pub preview_dirty: bool,
 }
 
 impl Default for ViewState {
@@ -114,7 +130,7 @@ impl ViewState {
         tab: EditorTab,
         rows_per_page: usize,
     ) -> Self {
-        Self::DomainEditor {
+        Self::DomainEditor(Box::new(DomainEditorState {
             domain: domain.into(),
             tab,
             mapping_ui: MappingUiState::default(),
@@ -123,7 +139,9 @@ impl ViewState {
             preview_ui: PreviewUiState::with_rows_per_page(rows_per_page),
             supp_ui: SuppUiState::default(),
             preview_cache: None,
-        }
+            validation_dirty: false,
+            preview_dirty: false,
+        }))
     }
 
     /// Create export view state.
@@ -154,7 +172,7 @@ impl ViewState {
     #[inline]
     pub fn current_domain(&self) -> Option<&str> {
         match self {
-            Self::DomainEditor { domain, .. } => Some(domain),
+            Self::DomainEditor(editor) => Some(&editor.domain),
             _ => None,
         }
     }
@@ -165,7 +183,7 @@ impl ViewState {
     #[inline]
     pub fn current_tab(&self) -> Option<EditorTab> {
         match self {
-            Self::DomainEditor { tab, .. } => Some(*tab),
+            Self::DomainEditor(editor) => Some(editor.tab),
             _ => None,
         }
     }
@@ -173,7 +191,7 @@ impl ViewState {
     /// Check if currently in domain editor view.
     #[inline]
     pub fn is_domain_editor(&self) -> bool {
-        matches!(self, Self::DomainEditor { .. })
+        matches!(self, Self::DomainEditor(_))
     }
 
     /// Check if currently in home view.
@@ -207,7 +225,7 @@ impl ViewState {
     #[inline]
     pub fn mapping_ui_mut(&mut self) -> Option<&mut MappingUiState> {
         match self {
-            Self::DomainEditor { mapping_ui, .. } => Some(mapping_ui),
+            Self::DomainEditor(editor) => Some(&mut editor.mapping_ui),
             _ => None,
         }
     }
@@ -218,7 +236,7 @@ impl ViewState {
     #[inline]
     pub fn mapping_ui(&self) -> Option<&MappingUiState> {
         match self {
-            Self::DomainEditor { mapping_ui, .. } => Some(mapping_ui),
+            Self::DomainEditor(editor) => Some(&editor.mapping_ui),
             _ => None,
         }
     }
@@ -229,7 +247,7 @@ impl ViewState {
     #[inline]
     pub fn validation_ui_mut(&mut self) -> Option<&mut ValidationUiState> {
         match self {
-            Self::DomainEditor { validation_ui, .. } => Some(validation_ui),
+            Self::DomainEditor(editor) => Some(&mut editor.validation_ui),
             _ => None,
         }
     }
@@ -240,7 +258,7 @@ impl ViewState {
     #[inline]
     pub fn preview_ui_mut(&mut self) -> Option<&mut PreviewUiState> {
         match self {
-            Self::DomainEditor { preview_ui, .. } => Some(preview_ui),
+            Self::DomainEditor(editor) => Some(&mut editor.preview_ui),
             _ => None,
         }
     }
@@ -251,9 +269,7 @@ impl ViewState {
     #[inline]
     pub fn normalization_ui_mut(&mut self) -> Option<&mut NormalizationUiState> {
         match self {
-            Self::DomainEditor {
-                normalization_ui, ..
-            } => Some(normalization_ui),
+            Self::DomainEditor(editor) => Some(&mut editor.normalization_ui),
             _ => None,
         }
     }
@@ -264,7 +280,7 @@ impl ViewState {
     #[inline]
     pub fn supp_ui_mut(&mut self) -> Option<&mut SuppUiState> {
         match self {
-            Self::DomainEditor { supp_ui, .. } => Some(supp_ui),
+            Self::DomainEditor(editor) => Some(&mut editor.supp_ui),
             _ => None,
         }
     }
@@ -274,8 +290,8 @@ impl ViewState {
     /// Call this when data changes that would affect the preview.
     /// The preview will be rebuilt on next access.
     pub fn invalidate_preview(&mut self) {
-        if let Self::DomainEditor { preview_cache, .. } = self {
-            *preview_cache = None;
+        if let Self::DomainEditor(editor) = self {
+            editor.preview_cache = None;
         }
     }
 
@@ -283,15 +299,15 @@ impl ViewState {
     #[inline]
     pub fn preview_cache(&self) -> Option<&DataFrame> {
         match self {
-            Self::DomainEditor { preview_cache, .. } => preview_cache.as_ref(),
+            Self::DomainEditor(editor) => editor.preview_cache.as_ref(),
             _ => None,
         }
     }
 
     /// Set the preview cache.
     pub fn set_preview_cache(&mut self, df: DataFrame) {
-        if let Self::DomainEditor { preview_cache, .. } = self {
-            *preview_cache = Some(df);
+        if let Self::DomainEditor(editor) = self {
+            editor.preview_cache = Some(df);
         }
     }
 

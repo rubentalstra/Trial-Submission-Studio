@@ -1,6 +1,28 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with this repository.
+
+---
+
+## STOP. READ THIS FIRST.
+
+### THE #1 RULE: MANDATORY DELIBERATION
+
+Before writing, editing, or modifying ANY code - even a single character:
+
+1. **Identify 2-3 different approaches**
+2. **List pros and cons for each**
+3. **Present your analysis**
+4. **Wait for explicit approval**
+
+**NO EXCEPTIONS.** Not for "obvious" fixes. Not for typos. NOTHING.
+
+If you find yourself saying "Let me fix this..." and reaching for an edit tool - **STOP**.
+You are about to violate this rule.
+
+See `.claude/rules/00-deliberation.md` for the full process and real examples of failures.
+
+---
 
 ## Critical Decisions - Ask First
 
@@ -12,30 +34,35 @@ IMPORTANT: Before making these changes, STOP and ask for approval:
 - **Public APIs**: Breaking changes to function signatures or types
 - **Persistence format**: Any changes to .tss file structure
 
-For ambiguous tasks with multiple valid approaches, present options and ask which to use.
+---
 
 ## Workflow Expectations
 
-- **Ask questions early**: If requirements are unclear, ask before coding
-- **Present options**: When multiple approaches exist, list them with trade-offs
-- **Minimal changes**: Only modify what's explicitly requested - no "improvements"
-- **Verify scope**: Before editing, confirm which files should be touched
+- **DELIBERATE FIRST**: Before ANY code change, present 2-3 approaches with pros/cons
+- **No quick fixes**: The "obvious" solution is often wrong. Always consider alternatives
+- **Present options**: Even if you have a recommendation, show the alternatives
+- **Wait for approval**: Never assume. Always ask "Which approach would you like?"
+- **Minimal changes**: Only modify what's explicitly approved
+- **Challenge yourself**: If your first instinct is to edit a file, ask "Is there a better architectural solution?"
+
+---
 
 ## Available Tools & Plugins
 
 Use these plugins proactively:
 
-| Plugin | When to Use |
-|--------|-------------|
-| `/feature-dev` | New features - starts with requirements gathering |
-| `context7` | Look up current docs for Iced, Polars, or any dependency |
-| `serena` | Navigate codebase symbolically (find references, symbols) |
-| `rust-analyzer-lsp` | Get diagnostics and type information |
-| `/code-simplifier` | After implementation, simplify code |
-| `playwright` | Browser-based testing if needed |
-| `/claude-md-improver` | Periodically audit CLAUDE.md |
+| Plugin                | When to Use                                               |
+|-----------------------|-----------------------------------------------------------|
+| `/feature-dev`        | New features - starts with requirements gathering         |
+| `context7`            | Look up current docs for Iced, Polars, or any dependency  |
+| `serena`              | Navigate codebase symbolically (find references, symbols) |
+| `rust-analyzer-lsp`   | Get diagnostics and type information                      |
+| `/code-simplifier`    | After implementation, simplify code                       |
+| `/claude-md-improver` | Periodically audit CLAUDE.md                              |
 
 For feature development, ALWAYS start with `/feature-dev` to gather requirements first.
+
+---
 
 ## Project Overview
 
@@ -44,16 +71,20 @@ It's a cross-platform desktop application written in Rust using the Iced GUI fra
 
 **Status**: Alpha software (v0.0.4-alpha). Not for production regulatory submissions.
 
+---
+
 ## Key Files
 
-| File | Purpose |
-|------|---------|
-| `crates/tss-gui/src/main.rs` | Application entry point |
-| `crates/tss-gui/src/app.rs` | Main App struct, update() and view() |
-| `crates/tss-gui/src/state/mod.rs` | AppState definition |
-| `crates/tss-gui/src/message/mod.rs` | Message enum definitions |
-| `crates/tss-submit/src/lib.rs` | Submission pipeline entry |
-| `crates/tss-standards/src/lib.rs` | Standards registry entry |
+| File                                | Purpose                              |
+|-------------------------------------|--------------------------------------|
+| `crates/tss-gui/src/main.rs`        | Application entry point              |
+| `crates/tss-gui/src/app.rs`         | Main App struct, update() and view() |
+| `crates/tss-gui/src/state/mod.rs`   | AppState definition                  |
+| `crates/tss-gui/src/message/mod.rs` | Message enum definitions             |
+| `crates/tss-submit/src/lib.rs`      | Submission pipeline entry            |
+| `crates/tss-standards/src/lib.rs`   | Standards registry entry             |
+
+---
 
 ## Build Commands
 
@@ -83,6 +114,8 @@ cargo about generate about.hbs -o THIRD_PARTY_LICENSES.md
 
 **Requirements**: Rust 1.92+ (managed by `rust-toolchain.toml`)
 
+---
+
 ## Architecture
 
 ### Crate Structure
@@ -102,14 +135,14 @@ The workspace contains 7 crates with clear separation of concerns:
 ### Data Flow
 
 ```
-CSV Input → [tss-ingest] → [tss-standards] → [tss-submit] → [tss-gui] → Export (XPT/XML)
-                              ↓                                ↓
-                         CDISC/CT validation            [tss-persistence]
+CSV Input -> [tss-ingest] -> [tss-standards] -> [tss-submit] -> [tss-gui] -> Export (XPT/XML)
+                                 |                                 |
+                            CDISC/CT validation            [tss-persistence]
 ```
 
 ### GUI Architecture (tss-gui)
 
-The GUI follows the **Elm architecture** (State → Message → Update → View):
+The GUI follows the **Elm architecture** (State -> Message -> Update -> View):
 
 - **`state/`** - Application state (`AppState`, `ViewState`, `Settings`)
 - **`message/`** - Message enums for state transitions
@@ -144,6 +177,8 @@ Project files use `.tss` format:
 - Auto-save with debounce, SHA-256 change detection
 - Atomic writes for data integrity
 
+---
+
 ## Key Dependencies
 
 - **Iced 0.14.0** - GUI framework (Elm architecture)
@@ -152,6 +187,8 @@ Project files use `.tss` format:
 - **rkyv** - Zero-copy serialization for project files
 - **quick-xml** - Dataset-XML and Define-XML generation
 - **xportrs** - SAS XPT v5/v8 read/write
+
+---
 
 ## Coding Conventions
 
@@ -162,34 +199,58 @@ Project files use `.tss` format:
 - Address all `cargo clippy` warnings
 - Prefer explicit types for public APIs
 
+---
+
 ## Development Philosophy
 
 This is **greenfield development** - we are building a new desktop application with no legacy constraints.
 
-**Key principles**:
+### Key Principles
+
 - **No backwards compatibility needed** - break anything that improves the codebase
 - **Full rewrites encouraged** - don't patch bad code, replace it
 - **Best practices only** - no legacy wrappers, no compatibility shims
 - **Clean architecture** - if it's not the best design, change it
 - **Zero technical debt** - fix issues properly, not with workarounds
 
-**Anti-over-engineering rules:**
+### The Anti-Quick-Fix Rule
+
+This project prioritizes **good decisions over fast fixes**. Claude must:
+
+- Never jump to implementation without presenting alternatives
+- Never assume the first solution is correct
+- Always ask "Is there a better way?" before any edit
+- Present architectural solutions alongside local fixes
+- Let the user choose between quick fix and proper solution
+
+**Real example of what NOT to do:**
+> "Standards folder not bundled -> Let me modify packaging scripts"
+
+This is wrong because there's a better solution (embedding in binary).
+The quick fix creates technical debt. The user should choose.
+
+### Anti-Over-Engineering Rules
+
 - Don't add features beyond what was requested
 - Don't refactor code outside the change scope
 - Don't add "defensive" error handling for impossible cases
 - Don't create abstractions for one-time operations
 - If unsure whether something is needed, ask
 
-**Error handling**:
+### Error Handling
+
 - Never use `.unwrap()` in production code (except after explicit validation)
 - Use `total_cmp()` for float comparisons (NaN-safe)
 - Propagate errors with `?` operator and custom error types
 - Log best-effort operation failures with `tracing::warn!`
 
-**Async patterns**:
+### Async Patterns
+
 - All blocking I/O must use `tokio::task::spawn_blocking`
 - Add timeouts to long-running operations
 - Use `Task::perform` for Iced async operations
+
+---
 
 ## Directory Structure
 
@@ -201,6 +262,8 @@ docs/            # mdBook documentation
 scripts/         # Build and utility scripts
 resources/       # Asset files (icons, etc.)
 ```
+
+---
 
 ## Gotchas
 
