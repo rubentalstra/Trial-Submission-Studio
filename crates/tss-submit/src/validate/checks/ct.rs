@@ -52,15 +52,16 @@ fn check_ct_values(
         return None;
     }
 
+    // Capture total count before truncating sample list
+    let total_invalid = invalid.len() as u64;
     let invalid_values: Vec<String> = invalid.into_iter().take(MAX_INVALID_VALUES).collect();
-    let invalid_count = invalid_values.len() as u64;
 
     Some(Issue::CtViolation {
         variable: variable.name.clone(),
         codelist_code: ct.code.clone(),
         codelist_name: ct.name.clone(),
         extensible: ct.extensible,
-        invalid_count,
+        total_invalid,
         invalid_values,
         allowed_count: ct.terms.len(),
     })

@@ -203,7 +203,7 @@ pub fn read_csv_table(path: &Path, header_rows: usize) -> Result<(DataFrame, Csv
     let df = CsvReadOptions::default()
         .with_has_header(true)
         .with_skip_rows(skip_rows)
-        .with_infer_schema_length(Some(100))
+        .with_infer_schema_length(None) // Scan all rows for accurate schema inference
         .try_into_reader_with_file_path(Some(path.to_path_buf()))
         .map_err(|e| IngestError::CsvParse {
             path: path.to_path_buf(),

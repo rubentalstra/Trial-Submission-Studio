@@ -89,7 +89,9 @@ pub enum Issue {
         codelist_code: String,
         codelist_name: String,
         extensible: bool,
-        invalid_count: u64,
+        /// Total count of distinct invalid values (not truncated)
+        total_invalid: u64,
+        /// Sample of invalid values (up to 5)
         invalid_values: Vec<String>,
         allowed_count: usize,
     },
@@ -144,7 +146,7 @@ impl Issue {
             Issue::DuplicateSequence {
                 duplicate_count, ..
             } => Some(*duplicate_count),
-            Issue::CtViolation { invalid_count, .. } => Some(*invalid_count),
+            Issue::CtViolation { total_invalid, .. } => Some(*total_invalid),
             Issue::UsubjidNotInDm { missing_count, .. } => Some(*missing_count),
             Issue::ParentNotFound { missing_count, .. } => Some(*missing_count),
         }
@@ -277,7 +279,7 @@ impl Issue {
                 variable,
                 codelist_name,
                 extensible,
-                invalid_count,
+                total_invalid,
                 invalid_values,
                 ..
             } => {
@@ -286,14 +288,23 @@ impl Issue {
                 } else {
                     " (non-extensible)"
                 };
+                let sample_count = invalid_values.len() as u64;
                 let values_str = if invalid_values.is_empty() {
                     String::new()
+                } else if sample_count < *total_invalid {
+                    // Show truncation info when samples are limited
+                    format!(
+                        " (showing {} of {}): {}",
+                        sample_count,
+                        total_invalid,
+                        invalid_values.join(", ")
+                    )
                 } else {
                     format!(": {}", invalid_values.join(", "))
                 };
                 format!(
-                    "Variable {} has {} values not in codelist {}{}{}",
-                    variable, invalid_count, codelist_name, ext_str, values_str
+                    "Variable {} has {} distinct invalid values not in codelist {}{}{}",
+                    variable, total_invalid, codelist_name, ext_str, values_str
                 )
             }
 

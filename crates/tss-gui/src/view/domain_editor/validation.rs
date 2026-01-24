@@ -390,14 +390,14 @@ fn view_issue_metadata<'a>(
             codelist_code,
             codelist_name,
             extensible,
-            invalid_count,
+            total_invalid,
             invalid_values,
             allowed_count,
             ..
         } => {
             metadata = metadata.row("Codelist", format!("{} ({})", codelist_name, codelist_code));
             metadata = metadata.row("Extensible", if *extensible { "Yes" } else { "No" });
-            metadata = metadata.row("Invalid Values", invalid_count.to_string());
+            metadata = metadata.row("Invalid Values", total_invalid.to_string());
             metadata = metadata.row("Allowed Terms", allowed_count.to_string());
             if !invalid_values.is_empty() {
                 let display_values: Vec<&str> =
