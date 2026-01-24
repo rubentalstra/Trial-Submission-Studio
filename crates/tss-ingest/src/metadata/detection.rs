@@ -174,7 +174,8 @@ pub fn detect_items_schema(df: &DataFrame, path: &std::path::Path) -> Result<Ite
             // Score = uniqueness / (1 + avg_length/10) - prioritize short unique columns
             let score_a = a.uniqueness / (1.0 + a.avg_length / 10.0);
             let score_b = b.uniqueness / (1.0 + b.avg_length / 10.0);
-            score_a.partial_cmp(&score_b).unwrap()
+            // Use total_cmp for NaN-safe comparison (NaN sorts as greater than all values)
+            score_a.total_cmp(&score_b)
         })
         .ok_or_else(|| IngestError::SchemaDetection {
             file_type: "Items".to_string(),
@@ -192,7 +193,8 @@ pub fn detect_items_schema(df: &DataFrame, path: &std::path::Path) -> Result<Ite
     let label_scores = scores
         .iter()
         .filter(|s| s.index != id.index)
-        .max_by(|a, b| a.avg_length.partial_cmp(&b.avg_length).unwrap())
+        // Use total_cmp for NaN-safe comparison
+        .max_by(|a, b| a.avg_length.total_cmp(&b.avg_length))
         .ok_or_else(|| IngestError::SchemaDetection {
             file_type: "Items".to_string(),
             path: path.to_path_buf(),
@@ -255,7 +257,8 @@ pub fn detect_items_schema(df: &DataFrame, path: &std::path::Path) -> Result<Ite
                 && s.empty_ratio > 0.2 // Many empty values (not all items have formats)
                 && s.avg_length < 20.0
         })
-        .max_by(|a, b| a.empty_ratio.partial_cmp(&b.empty_ratio).unwrap())
+        // Use total_cmp for NaN-safe comparison
+        .max_by(|a, b| a.empty_ratio.total_cmp(&b.empty_ratio))
         .map(|s| ColumnRole {
             index: s.index,
             name: s.name.clone(),

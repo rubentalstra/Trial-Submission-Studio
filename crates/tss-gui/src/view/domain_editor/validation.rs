@@ -579,6 +579,7 @@ fn issue_category(issue: &Issue) -> &'static str {
         Issue::InvalidDate { .. } | Issue::TextTooLong { .. } => "Format",
         Issue::DataTypeMismatch { .. } => "Type",
         Issue::DuplicateSequence { .. } => "Consistency",
+        Issue::UsubjidNotInDm { .. } | Issue::ParentNotFound { .. } => "Cross Reference",
         Issue::CtViolation { .. } => "Terminology",
     }
 }

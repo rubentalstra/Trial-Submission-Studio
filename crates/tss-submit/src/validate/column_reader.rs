@@ -107,7 +107,13 @@ impl<'a> ColumnReader<'a> {
     }
 
     /// Count non-null/non-empty values in a column.
+    ///
+    /// Returns 0 if the column doesn't exist.
     pub fn count_non_nulls(&self, column: &str) -> u64 {
+        // Return 0 for nonexistent columns (safer than total - 0 = total)
+        if !self.has_column(column) {
+            return 0;
+        }
         let total = self.df.height() as u64;
         total.saturating_sub(self.count_nulls(column))
     }
@@ -349,5 +355,153 @@ mod tests {
         let values: Vec<_> = reader.values("USUBJID").unwrap().collect();
         assert_eq!(values.len(), 3);
         assert_eq!(values[0], (0, "SUBJ01".to_string()));
+    }
+
+    // ==========================================================================
+    // Edge case tests - verifying safety guarantees (#112)
+    // ==========================================================================
+
+    /// Test that all methods handle empty DataFrames gracefully without panicking.
+    #[test]
+    fn test_empty_dataframe_safety() {
+        let df = DataFrame::empty();
+        let reader = ColumnReader::new(&df);
+
+        // Basic properties
+        assert_eq!(reader.height(), 0);
+        assert!(!reader.has_column("ANY"));
+
+        // Counting operations return 0
+        assert_eq!(reader.count_nulls("STUDYID"), 0);
+        assert_eq!(reader.count_non_nulls("STUDYID"), 0);
+        assert_eq!(reader.count_matching("STUDYID", |_| true), 0);
+
+        // Collection operations return empty results
+        let (count, values) = reader.collect_matching("STUDYID", |_| true, 10);
+        assert_eq!(count, 0);
+        assert!(values.is_empty());
+
+        let unique = reader.collect_unique_matching("STUDYID", |_| true);
+        assert!(unique.is_empty());
+
+        let by_subject = reader.values_by_subject("USUBJID", "AESEQ");
+        assert!(by_subject.is_empty());
+
+        // Length violations return zeros
+        let (violations, max_found) = reader.length_violations("STUDYID", 10);
+        assert_eq!(violations, 0);
+        assert_eq!(max_found, 0);
+
+        // all_null returns false for empty DataFrame
+        assert!(!reader.all_null("STUDYID"));
+
+        // get_string returns empty string
+        assert_eq!(reader.get_string("STUDYID", 0), "");
+    }
+
+    /// Test that methods return None/empty when column doesn't exist.
+    #[test]
+    fn test_missing_column_returns_none_or_empty() {
+        let df = test_df();
+        let reader = ColumnReader::new(&df);
+
+        // column() returns None
+        assert!(reader.column("NONEXISTENT").is_none());
+
+        // has_column returns false
+        assert!(!reader.has_column("NONEXISTENT"));
+
+        // values() returns None
+        assert!(reader.values("NONEXISTENT").is_none());
+
+        // get_string returns empty string
+        assert_eq!(reader.get_string("NONEXISTENT", 0), "");
+
+        // count operations return 0
+        assert_eq!(reader.count_nulls("NONEXISTENT"), 0);
+        assert_eq!(reader.count_non_nulls("NONEXISTENT"), 0);
+        assert_eq!(reader.count_matching("NONEXISTENT", |_| true), 0);
+
+        // collect operations return empty
+        let (count, values) = reader.collect_matching("NONEXISTENT", |_| true, 10);
+        assert_eq!(count, 0);
+        assert!(values.is_empty());
+
+        let unique = reader.collect_unique_matching("NONEXISTENT", |_| true);
+        assert!(unique.is_empty());
+
+        // length_violations returns zeros
+        let (violations, max_found) = reader.length_violations("NONEXISTENT", 10);
+        assert_eq!(violations, 0);
+        assert_eq!(max_found, 0);
+
+        // all_null returns false (column doesn't exist = not all null)
+        assert!(!reader.all_null("NONEXISTENT"));
+
+        // values_by_subject returns empty when either column is missing
+        let by_subject = reader.values_by_subject("NONEXISTENT", "AESEQ");
+        assert!(by_subject.is_empty());
+        let by_subject = reader.values_by_subject("USUBJID", "NONEXISTENT");
+        assert!(by_subject.is_empty());
+    }
+
+    /// Test that out-of-bounds row access doesn't panic.
+    #[test]
+    fn test_out_of_bounds_row_access() {
+        let df = test_df();
+        let reader = ColumnReader::new(&df);
+
+        // get_string with out-of-bounds index returns empty string
+        assert_eq!(reader.get_string("STUDYID", 999), "");
+        assert_eq!(reader.get_string("STUDYID", usize::MAX), "");
+    }
+
+    /// Test handling of DataFrame with columns but zero rows.
+    #[test]
+    fn test_empty_columns_no_rows() {
+        let df = df! {
+            "STUDYID" => Vec::<String>::new(),
+            "USUBJID" => Vec::<String>::new(),
+        }
+        .unwrap();
+        let reader = ColumnReader::new(&df);
+
+        assert_eq!(reader.height(), 0);
+        assert!(reader.has_column("STUDYID"));
+        assert_eq!(reader.count_nulls("STUDYID"), 0);
+        assert!(!reader.all_null("STUDYID")); // Empty = not all null
+
+        let values: Vec<_> = reader.values("STUDYID").unwrap().collect();
+        assert!(values.is_empty());
+    }
+
+    /// Test that null values in polars are handled correctly.
+    #[test]
+    fn test_null_values_handling() {
+        let df = df! {
+            "COL" => &[Some("A"), None, Some(""), None, Some("B")],
+        }
+        .unwrap();
+        let reader = ColumnReader::new(&df);
+
+        // Nulls and empty strings both count as "null" in our abstraction
+        assert_eq!(reader.count_nulls("COL"), 3); // 2 None + 1 empty string
+        assert_eq!(reader.count_non_nulls("COL"), 2); // "A" and "B"
+    }
+
+    /// Test exact size iterator implementation.
+    #[test]
+    fn test_values_iterator_exact_size() {
+        let df = test_df();
+        let reader = ColumnReader::new(&df);
+
+        let iter = reader.values("STUDYID").unwrap();
+        assert_eq!(iter.len(), 3);
+
+        // After consuming one, len should decrease
+        let mut iter = reader.values("STUDYID").unwrap();
+        assert_eq!(iter.len(), 3);
+        let _ = iter.next();
+        assert_eq!(iter.len(), 2);
     }
 }

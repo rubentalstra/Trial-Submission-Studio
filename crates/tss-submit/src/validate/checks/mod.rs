@@ -2,6 +2,7 @@
 //!
 //! Each module performs a specific type of validation check.
 
+pub mod cross_domain;
 mod ct;
 mod datatype;
 pub mod dates;

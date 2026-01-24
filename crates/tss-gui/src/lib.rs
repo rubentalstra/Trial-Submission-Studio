@@ -8,6 +8,9 @@
 // Error types
 pub mod error;
 
+// Utility macros
+mod util;
+
 // Core modules (new Iced implementation)
 pub mod app;
 pub mod component;

@@ -82,3 +82,50 @@ pub fn validate_domain_with_not_collected(
 ) -> ValidationReport {
     checks::run_all(domain, df, ct_registry, not_collected)
 }
+
+/// Validate cross-domain references across all domains.
+///
+/// Checks that:
+/// - All USUBJIDs in non-DM domains exist in the DM domain
+///
+/// # Arguments
+/// * `domains` - List of (domain_name, DataFrame) pairs
+///
+/// # Returns
+/// A vector of (domain_name, issues) pairs for domains with issues.
+pub fn validate_cross_domain(domains: &[(&str, &DataFrame)]) -> Vec<(String, Vec<Issue>)> {
+    // Find the DM domain
+    let dm_df = domains
+        .iter()
+        .find(|(name, _)| *name == "DM")
+        .map(|(_, df)| *df);
+
+    let Some(dm_df) = dm_df else {
+        // No DM domain - can't validate cross-domain references
+        tracing::debug!("No DM domain found - skipping cross-domain validation");
+        return vec![];
+    };
+
+    // Extract valid USUBJIDs from DM
+    let dm_subjects = checks::cross_domain::extract_dm_subjects(dm_df);
+
+    if dm_subjects.is_empty() {
+        tracing::warn!(
+            "DM domain has no USUBJIDs - cross-domain validation may report false positives"
+        );
+    }
+
+    // Check each non-DM domain
+    domains
+        .iter()
+        .filter(|(name, _)| *name != "DM")
+        .filter_map(|(name, df)| {
+            let issues = checks::cross_domain::check_usubjid_in_dm(name, df, &dm_subjects);
+            if issues.is_empty() {
+                None
+            } else {
+                Some((name.to_string(), issues))
+            }
+        })
+        .collect()
+}

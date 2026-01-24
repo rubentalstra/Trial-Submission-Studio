@@ -760,8 +760,10 @@ fn check_update_status() -> Option<crate::component::feedback::toast::ToastState
     let content = std::fs::read_to_string(&status_path).ok()?;
     let status: UpdateStatusJson = serde_json::from_str(&content).ok()?;
 
-    // Delete the status file after reading
-    let _ = std::fs::remove_file(&status_path);
+    // Delete the status file after reading (#273 - log cleanup failures on debug)
+    if let Err(e) = std::fs::remove_file(&status_path) {
+        tracing::debug!(path = %status_path.display(), error = %e, "Cleanup of status file failed (non-critical)");
+    }
 
     if status.success {
         tracing::info!(
