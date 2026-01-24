@@ -189,10 +189,10 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
         }
 
         MappingMessage::NotCollectedReasonChanged(reason) => {
-            if let ViewState::DomainEditor(editor) = &mut state.view {
-                if let Some(edit) = &mut editor.mapping_ui.not_collected_edit {
-                    edit.reason = reason;
-                }
+            if let ViewState::DomainEditor(editor) = &mut state.view
+                && let Some(edit) = &mut editor.mapping_ui.not_collected_edit
+            {
+                edit.reason = reason;
             }
             Task::none()
         }
@@ -598,20 +598,18 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                 _ => None,
             };
 
-            if let Some(col_name) = col {
-                if let Some(domain) = state
+            if let Some(col_name) = col
+                && let Some(domain) = state
                     .study
                     .as_mut()
                     .and_then(|s| s.domain_mut(&domain_code))
-                {
-                    if let Some(config) = domain.supp_config.get_mut(&col_name) {
-                        if config.qnam.trim().is_empty() || config.qlabel.trim().is_empty() {
-                            return Task::none();
-                        }
-                        config.action = SuppAction::Include;
-                        state.dirty_tracker.mark_dirty();
-                    }
+                && let Some(config) = domain.supp_config.get_mut(&col_name)
+            {
+                if config.qnam.trim().is_empty() || config.qlabel.trim().is_empty() {
+                    return Task::none();
                 }
+                config.action = SuppAction::Include;
+                state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor(editor) = &mut state.view {
                 editor.supp_ui.edit_draft = None;
@@ -625,17 +623,15 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                 _ => None,
             };
 
-            if let Some(col_name) = col {
-                if let Some(domain) = state
+            if let Some(col_name) = col
+                && let Some(domain) = state
                     .study
                     .as_mut()
                     .and_then(|s| s.domain_mut(&domain_code))
-                {
-                    if let Some(config) = domain.supp_config.get_mut(&col_name) {
-                        config.action = SuppAction::Skip;
-                        state.dirty_tracker.mark_dirty();
-                    }
-                }
+                && let Some(config) = domain.supp_config.get_mut(&col_name)
+            {
+                config.action = SuppAction::Skip;
+                state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor(editor) = &mut state.view {
                 editor.supp_ui.edit_draft = None;
@@ -649,17 +645,15 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                 _ => None,
             };
 
-            if let Some(col_name) = col {
-                if let Some(domain) = state
+            if let Some(col_name) = col
+                && let Some(domain) = state
                     .study
                     .as_mut()
                     .and_then(|s| s.domain_mut(&domain_code))
-                {
-                    if let Some(config) = domain.supp_config.get_mut(&col_name) {
-                        config.action = SuppAction::Pending;
-                        state.dirty_tracker.mark_dirty();
-                    }
-                }
+                && let Some(config) = domain.supp_config.get_mut(&col_name)
+            {
+                config.action = SuppAction::Pending;
+                state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor(editor) = &mut state.view {
                 editor.supp_ui.edit_draft = None;
@@ -673,14 +667,13 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                 _ => None,
             };
 
-            if let Some(col_name) = &col {
-                if let Some(domain) = state.study.as_ref().and_then(|s| s.domain(&domain_code)) {
-                    if let Some(config) = domain.supp_config.get(col_name) {
-                        let draft = SuppEditDraft::from_config(config);
-                        if let ViewState::DomainEditor(editor) = &mut state.view {
-                            editor.supp_ui.edit_draft = Some(draft);
-                        }
-                    }
+            if let Some(col_name) = &col
+                && let Some(domain) = state.study.as_ref().and_then(|s| s.domain(&domain_code))
+                && let Some(config) = domain.supp_config.get(col_name)
+            {
+                let draft = SuppEditDraft::from_config(config);
+                if let ViewState::DomainEditor(editor) = &mut state.view {
+                    editor.supp_ui.edit_draft = Some(draft);
                 }
             }
             Task::none()
@@ -704,18 +697,17 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                     .study
                     .as_mut()
                     .and_then(|s| s.domain_mut(&domain_code))
+                    && let Some(config) = domain.supp_config.get_mut(&col_name)
                 {
-                    if let Some(config) = domain.supp_config.get_mut(&col_name) {
-                        config.qnam = draft.qnam;
-                        config.qlabel = draft.qlabel;
-                        config.qorig = draft.qorig;
-                        config.qeval = if draft.qeval.is_empty() {
-                            None
-                        } else {
-                            Some(draft.qeval)
-                        };
-                        state.dirty_tracker.mark_dirty();
-                    }
+                    config.qnam = draft.qnam;
+                    config.qlabel = draft.qlabel;
+                    config.qorig = draft.qorig;
+                    config.qeval = if draft.qeval.is_empty() {
+                        None
+                    } else {
+                        Some(draft.qeval)
+                    };
+                    state.dirty_tracker.mark_dirty();
                 }
             }
             if let ViewState::DomainEditor(editor) = &mut state.view {
@@ -751,15 +743,15 @@ where
     };
 
     if is_editing {
-        if let ViewState::DomainEditor(editor) = &mut state.view {
-            if let Some(draft) = &mut editor.supp_ui.edit_draft {
-                let mut dummy = SuppColumnConfig::from_column("");
-                update(&mut dummy, Some(draft));
-            }
+        if let ViewState::DomainEditor(editor) = &mut state.view
+            && let Some(draft) = &mut editor.supp_ui.edit_draft
+        {
+            let mut dummy = SuppColumnConfig::from_column("");
+            update(&mut dummy, Some(draft));
         }
-    } else if let Some(domain) = state.study.as_mut().and_then(|s| s.domain_mut(domain_code)) {
-        if let Some(config) = domain.supp_config.get_mut(&col_name) {
-            update(config, None);
-        }
+    } else if let Some(domain) = state.study.as_mut().and_then(|s| s.domain_mut(domain_code))
+        && let Some(config) = domain.supp_config.get_mut(&col_name)
+    {
+        update(config, None);
     }
 }

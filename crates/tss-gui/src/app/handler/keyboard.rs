@@ -84,52 +84,52 @@ impl App {
 
             // Preview tab navigation (only when Preview tab is active)
             keyboard::Key::Named(Named::ArrowRight) | keyboard::Key::Named(Named::PageDown) => {
-                if let ViewState::DomainEditor(editor) = &self.state.view {
-                    if editor.tab == EditorTab::Preview {
-                        return Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
-                            PreviewMessage::NextPage,
-                        )));
-                    }
+                if let ViewState::DomainEditor(editor) = &self.state.view
+                    && editor.tab == EditorTab::Preview
+                {
+                    return Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
+                        PreviewMessage::NextPage,
+                    )));
                 }
                 Task::none()
             }
 
             keyboard::Key::Named(Named::ArrowLeft) | keyboard::Key::Named(Named::PageUp) => {
-                if let ViewState::DomainEditor(editor) = &self.state.view {
-                    if editor.tab == EditorTab::Preview {
-                        return Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
-                            PreviewMessage::PreviousPage,
-                        )));
-                    }
+                if let ViewState::DomainEditor(editor) = &self.state.view
+                    && editor.tab == EditorTab::Preview
+                {
+                    return Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
+                        PreviewMessage::PreviousPage,
+                    )));
                 }
                 Task::none()
             }
 
             keyboard::Key::Named(Named::Home) => {
-                if let ViewState::DomainEditor(editor) = &self.state.view {
-                    if editor.tab == EditorTab::Preview {
-                        return Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
-                            PreviewMessage::GoToPage(0),
-                        )));
-                    }
+                if let ViewState::DomainEditor(editor) = &self.state.view
+                    && editor.tab == EditorTab::Preview
+                {
+                    return Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
+                        PreviewMessage::GoToPage(0),
+                    )));
                 }
                 Task::none()
             }
 
             keyboard::Key::Named(Named::End) => {
-                if let ViewState::DomainEditor(editor) = &self.state.view {
-                    if editor.tab == EditorTab::Preview {
-                        let total_rows = editor
-                            .preview_cache
-                            .as_ref()
-                            .map(polars::prelude::DataFrame::height)
-                            .unwrap_or(0);
-                        let page_size = editor.preview_ui.rows_per_page;
-                        let last_page = total_rows.saturating_sub(1) / page_size;
-                        return Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
-                            PreviewMessage::GoToPage(last_page),
-                        )));
-                    }
+                if let ViewState::DomainEditor(editor) = &self.state.view
+                    && editor.tab == EditorTab::Preview
+                {
+                    let total_rows = editor
+                        .preview_cache
+                        .as_ref()
+                        .map(polars::prelude::DataFrame::height)
+                        .unwrap_or(0);
+                    let page_size = editor.preview_ui.rows_per_page;
+                    let last_page = total_rows.saturating_sub(1) / page_size;
+                    return Task::done(Message::DomainEditor(DomainEditorMessage::Preview(
+                        PreviewMessage::GoToPage(last_page),
+                    )));
                 }
                 Task::none()
             }

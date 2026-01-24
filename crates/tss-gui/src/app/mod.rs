@@ -359,17 +359,17 @@ impl App {
             }
 
             Message::PreviewReady { domain, result } => {
-                if let ViewState::DomainEditor(editor) = &mut self.state.view {
-                    if editor.domain == domain {
-                        editor.preview_ui.is_rebuilding = false;
-                        match result {
-                            Ok(df) => {
-                                editor.preview_cache = Some(df);
-                                editor.preview_ui.error = None;
-                            }
-                            Err(e) => {
-                                editor.preview_ui.error = Some(e);
-                            }
+                if let ViewState::DomainEditor(editor) = &mut self.state.view
+                    && editor.domain == domain
+                {
+                    editor.preview_ui.is_rebuilding = false;
+                    match result {
+                        Ok(df) => {
+                            editor.preview_cache = Some(df);
+                            editor.preview_ui.error = None;
+                        }
+                        Err(e) => {
+                            editor.preview_ui.error = Some(e);
                         }
                     }
                 }
