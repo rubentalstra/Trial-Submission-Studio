@@ -5,6 +5,9 @@ REPO="rubentalstra/Trial-Submission-Studio"
 MS_NUM="${1:-}"
 LIMIT="${2:-500}"
 
+# Optional: cap how many blockers to print per group (0 = unlimited)
+MAX_BLOCKERS="${MAX_BLOCKERS:-0}"
+
 if [[ -z "$MS_NUM" || ! "$MS_NUM" =~ ^[0-9]+$ ]]; then
   echo "Usage: $0 <milestone-number> [limit]" >&2
   echo "Example: $0 1 500" >&2
@@ -29,6 +32,35 @@ HEADERS=(
 repeat_char() {
   local ch="$1" n="$2"
   printf "%*s" "$n" "" | tr " " "$ch"
+}
+
+format_blockers_csv() {
+  # Turns "1,2,3" into "#1,#2,#3" (+ optional limit)
+  local csv="${1:-}"
+  if [[ -z "$csv" ]]; then
+    echo ""
+    return
+  fi
+
+  IFS=',' read -r -a nums <<< "$csv"
+  local total="${#nums[@]}"
+  local show_total="$total"
+  local suffix=""
+
+  if (( MAX_BLOCKERS > 0 && total > MAX_BLOCKERS )); then
+    show_total="$MAX_BLOCKERS"
+    suffix=" (+$((total - MAX_BLOCKERS)) more)"
+  fi
+
+  local out=""
+  for ((i=0; i<show_total; i++)); do
+    [[ -z "${nums[$i]}" ]] && continue
+    if [[ -n "$out" ]]; then out+=","
+    fi
+    out+="#${nums[$i]}"
+  done
+
+  echo "${out}${suffix}"
 }
 
 bold_on=$'\033[1m'
@@ -98,7 +130,22 @@ while IFS=$'\t' read -r num title labels state is_pr; do
   blockers_csv="$(
     gh api "${HEADERS[@]}" \
       "repos/$REPO/issues/$num/dependencies/blocked_by?per_page=100" \
-      --jq '[.[].number] | join(",")' 2>/dev/null || true
+      --jq '
+        # Some endpoints return arrays, others wrap in {items:[]}/{nodes:[]}
+        def items:
+          if type=="array" then .
+          elif has("items") then .items
+          elif has("nodes") then .nodes
+          else [] end;
+
+        [ items[]? as $x
+          | ($x.number // $x.issue.number // $x.content.number // empty) as $n
+          | (($x.state // $x.issue.state // $x.content.state // "open") | ascii_downcase) as $s
+          | select($n != null and $n != "")
+          | select($s != "closed")
+          | $n
+        ] | join(",")
+      ' 2>/dev/null || true
   )"
 
   if [[ -n "$blockers_csv" ]]; then
