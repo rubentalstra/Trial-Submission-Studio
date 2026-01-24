@@ -1,9 +1,10 @@
 //! CSV file reading with explicit header row configuration.
 
 use std::fs::File;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader, Cursor, Read};
 use std::path::Path;
 
+use encoding_rs::{UTF_16BE, UTF_16LE};
 use polars::prelude::*;
 
 use crate::error::{IngestError, Result};
@@ -12,6 +13,38 @@ use super::header::{CsvHeaders, parse_csv_line};
 
 /// Maximum file size for CSV loading (500 MB default).
 pub const MAX_CSV_FILE_SIZE: u64 = 500 * 1024 * 1024;
+
+/// Maximum path length on Windows (MAX_PATH).
+/// TODO: Consider supporting extended-length paths (\\?\) prefix in the future
+/// to allow paths up to 32,767 characters on Windows.
+#[cfg(windows)]
+const MAX_PATH_LENGTH: usize = 260;
+
+/// Check path length on Windows.
+///
+/// Windows has a MAX_PATH limit of 260 characters. Paths exceeding this
+/// may cause silent failures or cryptic errors.
+#[cfg(windows)]
+pub fn check_path_length(path: &Path) -> Result<()> {
+    let path_str = path.to_string_lossy();
+    let length = path_str.len();
+
+    if length > MAX_PATH_LENGTH {
+        return Err(IngestError::PathTooLong {
+            path: path.to_path_buf(),
+            length,
+            max_length: MAX_PATH_LENGTH,
+        });
+    }
+
+    Ok(())
+}
+
+/// No-op path length check on non-Windows platforms.
+#[cfg(not(windows))]
+pub fn check_path_length(_path: &Path) -> Result<()> {
+    Ok(())
+}
 
 /// Check file size before loading.
 ///
@@ -46,10 +79,22 @@ pub fn check_file_size_with_limit(path: &Path, max_size: u64) -> Result<()> {
     Ok(())
 }
 
-/// Detect encoding and validate it's supported (UTF-8 only).
+/// Encoding detection result.
+#[derive(Debug)]
+pub enum EncodingResult {
+    /// File is UTF-8 (with or without BOM), read directly.
+    Utf8,
+    /// File was transcoded from UTF-16, use this content.
+    Transcoded(String),
+}
+
+/// Detect encoding and transcode if necessary.
 ///
-/// Checks for UTF-16 BOM markers which are not supported.
-pub fn validate_encoding(path: &Path) -> Result<()> {
+/// - UTF-8 (with or without BOM): Returns `Utf8`, file can be read directly
+/// - UTF-16 LE/BE: Transcodes to UTF-8 and returns `Transcoded(content)`
+///
+/// This handles Windows/Excel exports that often use UTF-16.
+pub fn detect_and_transcode(path: &Path) -> Result<EncodingResult> {
     let mut file = File::open(path).map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
             IngestError::FileNotFound {
@@ -63,32 +108,62 @@ pub fn validate_encoding(path: &Path) -> Result<()> {
         }
     })?;
 
-    let mut buffer = [0u8; 4];
-    let bytes_read = file.read(&mut buffer).map_err(|e| IngestError::FileRead {
+    // Read first 4 bytes to detect BOM
+    let mut bom_buffer = [0u8; 4];
+    let bytes_read = file
+        .read(&mut bom_buffer)
+        .map_err(|e| IngestError::FileRead {
+            path: path.to_path_buf(),
+            source: e,
+        })?;
+
+    if bytes_read >= 2 {
+        // UTF-16 LE BOM: FF FE
+        if bom_buffer[0..2] == [0xFF, 0xFE] {
+            return transcode_utf16(path, UTF_16LE, 2);
+        }
+        // UTF-16 BE BOM: FE FF
+        if bom_buffer[0..2] == [0xFE, 0xFF] {
+            return transcode_utf16(path, UTF_16BE, 2);
+        }
+    }
+
+    // UTF-8 (with or without BOM)
+    Ok(EncodingResult::Utf8)
+}
+
+/// Transcode a UTF-16 file to UTF-8.
+fn transcode_utf16(
+    path: &Path,
+    encoding: &'static encoding_rs::Encoding,
+    bom_size: usize,
+) -> Result<EncodingResult> {
+    // Read entire file
+    let bytes = std::fs::read(path).map_err(|e| IngestError::FileRead {
         path: path.to_path_buf(),
         source: e,
     })?;
 
-    // Check for UTF-16 BOM (not supported)
-    if bytes_read >= 2 {
-        // UTF-16 LE BOM
-        if buffer[0..2] == [0xFF, 0xFE] {
-            return Err(IngestError::UnsupportedEncoding {
-                path: path.to_path_buf(),
-                encoding: "UTF-16 LE",
-            });
-        }
-        // UTF-16 BE BOM
-        if buffer[0..2] == [0xFE, 0xFF] {
-            return Err(IngestError::UnsupportedEncoding {
-                path: path.to_path_buf(),
-                encoding: "UTF-16 BE",
-            });
-        }
+    // Skip BOM and decode
+    let (decoded, _, had_errors) = encoding.decode(&bytes[bom_size..]);
+
+    if had_errors {
+        tracing::warn!(
+            path = %path.display(),
+            encoding = %encoding.name(),
+            "UTF-16 transcoding had replacement characters"
+        );
     }
 
-    // UTF-8 BOM is acceptable (handled in read_first_lines)
-    Ok(())
+    tracing::info!(
+        path = %path.display(),
+        encoding = %encoding.name(),
+        original_size = bytes.len(),
+        transcoded_size = decoded.len(),
+        "Transcoded UTF-16 file to UTF-8"
+    );
+
+    Ok(EncodingResult::Transcoded(decoded.into_owned()))
 }
 
 /// Validate DataFrame shape after loading.
@@ -193,27 +268,57 @@ pub fn read_csv_schema(path: &Path, header_rows: usize) -> Result<CsvHeaders> {
 /// - `header_rows = 1`: Single header row
 /// - `header_rows = 2`: Double header (labels + column names)
 ///
+/// Automatically handles:
+/// - UTF-8 files (with or without BOM)
+/// - UTF-16 LE/BE files (transcoded to UTF-8)
+/// - Windows path length validation
+///
 /// Returns both the DataFrame and the header information.
 pub fn read_csv_table(path: &Path, header_rows: usize) -> Result<(DataFrame, CsvHeaders)> {
+    // Check path length on Windows
+    check_path_length(path)?;
+
+    // Detect encoding and transcode if needed
+    let encoding_result = detect_and_transcode(path)?;
+
     let headers = read_csv_schema(path, header_rows)?;
 
     // Skip additional rows beyond the first header row
     let skip_rows = header_rows.saturating_sub(1);
 
-    let df = CsvReadOptions::default()
-        .with_has_header(true)
-        .with_skip_rows(skip_rows)
-        .with_infer_schema_length(None) // Scan all rows for accurate schema inference
-        .try_into_reader_with_file_path(Some(path.to_path_buf()))
-        .map_err(|e| IngestError::CsvParse {
-            path: path.to_path_buf(),
-            message: e.to_string(),
-        })?
-        .finish()
-        .map_err(|e| IngestError::CsvParse {
-            path: path.to_path_buf(),
-            message: e.to_string(),
-        })?;
+    let df = match encoding_result {
+        EncodingResult::Utf8 => {
+            // Read directly from file
+            CsvReadOptions::default()
+                .with_has_header(true)
+                .with_skip_rows(skip_rows)
+                .with_infer_schema_length(None)
+                .try_into_reader_with_file_path(Some(path.to_path_buf()))
+                .map_err(|e| IngestError::CsvParse {
+                    path: path.to_path_buf(),
+                    message: e.to_string(),
+                })?
+                .finish()
+                .map_err(|e| IngestError::CsvParse {
+                    path: path.to_path_buf(),
+                    message: e.to_string(),
+                })?
+        }
+        EncodingResult::Transcoded(content) => {
+            // Read from transcoded content
+            let cursor = Cursor::new(content.as_bytes());
+            CsvReadOptions::default()
+                .with_has_header(true)
+                .with_skip_rows(skip_rows)
+                .with_infer_schema_length(None)
+                .into_reader_with_file_handle(cursor)
+                .finish()
+                .map_err(|e| IngestError::CsvParse {
+                    path: path.to_path_buf(),
+                    message: e.to_string(),
+                })?
+        }
+    };
 
     Ok((df, headers))
 }
@@ -294,5 +399,59 @@ mod tests {
         );
         assert_eq!(df.height(), 2);
         assert_eq!(df.width(), 3);
+    }
+
+    #[test]
+    fn test_detect_and_transcode_utf8() {
+        let file = create_temp_csv("A,B,C\n1,2,3\n");
+        let result = detect_and_transcode(file.path()).unwrap();
+
+        assert!(matches!(result, EncodingResult::Utf8));
+    }
+
+    #[test]
+    fn test_detect_and_transcode_utf16le() {
+        // Create UTF-16 LE file with BOM
+        let content = "A,B,C\n1,2,3\n";
+        let mut bytes = vec![0xFF, 0xFE]; // UTF-16 LE BOM
+        for c in content.encode_utf16() {
+            bytes.extend_from_slice(&c.to_le_bytes());
+        }
+
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(&bytes).unwrap();
+
+        let result = detect_and_transcode(file.path()).unwrap();
+
+        match result {
+            EncodingResult::Transcoded(s) => {
+                assert!(s.contains("A,B,C"));
+                assert!(s.contains("1,2,3"));
+            }
+            EncodingResult::Utf8 => panic!("Expected Transcoded, got Utf8"),
+        }
+    }
+
+    #[test]
+    fn test_detect_and_transcode_utf16be() {
+        // Create UTF-16 BE file with BOM
+        let content = "A,B,C\n1,2,3\n";
+        let mut bytes = vec![0xFE, 0xFF]; // UTF-16 BE BOM
+        for c in content.encode_utf16() {
+            bytes.extend_from_slice(&c.to_be_bytes());
+        }
+
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(&bytes).unwrap();
+
+        let result = detect_and_transcode(file.path()).unwrap();
+
+        match result {
+            EncodingResult::Transcoded(s) => {
+                assert!(s.contains("A,B,C"));
+                assert!(s.contains("1,2,3"));
+            }
+            EncodingResult::Utf8 => panic!("Expected Transcoded, got Utf8"),
+        }
     }
 }

@@ -21,6 +21,7 @@ exclude = ["resources/"]
 
 [workspace.dependencies]
 anyhow = "1.0"
+encoding_rs = "0.8"
 chrono = { version = "0.4", features = ["serde"] }
 csv = "1.4.0"
 futures-util = "0.3"
