@@ -536,20 +536,21 @@ fn main() -> Result<()> {
     fs::create_dir_all(&data_dir)?;
 
     // Each entry: (pdf_name, ig_name, version, output_name, domains)
+    // NOTE: SEND first to test if order matters (SEND was timing out when second)
     let igs: &[(&str, &str, &str, &str, &[&str])] = &[
-        (
-            "SDTMIG_v3.4.pdf",
-            "SDTM-IG",
-            "3.4",
-            "sdtm-ig-v3.4.json",
-            SDTM_DOMAINS,
-        ),
         (
             "SENDIG_v3.1.1.pdf",
             "SEND-IG",
             "3.1.1",
             "send-ig-v3.1.1.json",
             SEND_DOMAINS,
+        ),
+        (
+            "SDTMIG_v3.4.pdf",
+            "SDTM-IG",
+            "3.4",
+            "sdtm-ig-v3.4.json",
+            SDTM_DOMAINS,
         ),
         (
             "ADaMIG_v1.3.pdf",
