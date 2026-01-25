@@ -83,9 +83,11 @@ pub fn write_define_xml(
         });
     }
     let study_id = normalize_study_id(study_id);
-    let study_oid = format!("STDY.{study_id}");
+    let sanitized_study_id = sanitize_oid_component(&study_id);
+    let sanitized_ig_version = sanitize_oid_component(&options.ig_version);
+    let study_oid = format!("STDY.{sanitized_study_id}");
     let file_oid = format!("{study_oid}.Define-XML_{DEFINE_XML_VERSION}");
-    let mdv_oid = format!("MDV.{study_oid}.SDTMIG.{}", options.ig_version);
+    let mdv_oid = format!("MDV.{study_oid}.SDTMIG.{sanitized_ig_version}");
     let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
 
     let domain_lookup = domain_map_by_code(domains);
@@ -115,7 +117,11 @@ pub fn write_define_xml(
                 continue;
             }
 
-            let oid = format!("IT.{}.{}", output_dataset_name, variable.name);
+            let oid = format!(
+                "IT.{}.{}",
+                sanitize_oid_component(&output_dataset_name),
+                sanitize_oid_component(&variable.name)
+            );
             let length = match variable.data_type {
                 VariableType::Char => Some(variable_length(variable, &frame.data)?),
                 VariableType::Num => None,
@@ -214,7 +220,7 @@ pub fn write_define_xml(
         let output_dataset_name = frame.dataset_name();
         let base_domain_code = frame.base_domain_code();
         let mut ig = BytesStart::new("ItemGroupDef");
-        let ig_oid = format!("IG.{}", output_dataset_name);
+        let ig_oid = format!("IG.{}", sanitize_oid_component(&output_dataset_name));
         let sas_dataset_name: String = output_dataset_name.chars().take(8).collect();
         ig.push_attribute(("OID", ig_oid.as_str()));
         ig.push_attribute(("Name", output_dataset_name.as_str()));
@@ -245,7 +251,11 @@ pub fn write_define_xml(
         let mut key_sequence = 1usize;
         for (idx, variable) in ordered_vars.iter().enumerate() {
             let mut item_ref = BytesStart::new("ItemRef");
-            let item_oid = format!("IT.{}.{}", output_dataset_name, variable.name);
+            let item_oid = format!(
+                "IT.{}.{}",
+                sanitize_oid_component(&output_dataset_name),
+                sanitize_oid_component(&variable.name)
+            );
             let order_number = format!("{}", idx + 1);
             item_ref.push_attribute(("ItemOID", item_oid.as_str()));
             item_ref.push_attribute(("OrderNumber", order_number.as_str()));
@@ -283,8 +293,9 @@ pub fn write_define_xml(
         }
 
         let core_designation = item_def.core.as_deref().and_then(|c| c.parse().ok());
+        // Define-XML 2.1 valid OriginTypes: Assigned, Collected, Derived, Not Available, Other, Predecessor, Protocol
         let origin_type = if is_expected(core_designation) && !item_def.has_data {
-            "Not Collected"
+            "Not Available"
         } else if item_def.has_data {
             "Collected"
         } else {
@@ -370,7 +381,11 @@ fn resolve_codelist(
                 catalog.and_then(|cat| {
                     let publishing_set = cat.publishing_set.as_ref()?;
                     let version = cat.version.as_ref()?;
-                    let oid = format!("STD.CT.{}.{}", publishing_set, version);
+                    let oid = format!(
+                        "STD.CT.{}.{}",
+                        sanitize_oid_component(publishing_set),
+                        sanitize_oid_component(version)
+                    );
 
                     ct_standards
                         .entry(oid.clone())
@@ -385,7 +400,11 @@ fn resolve_codelist(
                 })
             });
 
-    let oid = format!("CL.{}.{}", domain.name, variable.name);
+    let oid = format!(
+        "CL.{}.{}",
+        sanitize_oid_component(&domain.name),
+        sanitize_oid_component(&variable.name)
+    );
     if !code_lists.contains_key(&oid) {
         let mut values = BTreeSet::new();
         let mut names = BTreeSet::new();
@@ -420,5 +439,29 @@ fn parse_codelist_codes(raw: &str) -> Vec<String> {
         .map(str::trim)
         .filter(|part| !part.is_empty())
         .map(std::string::ToString::to_string)
+        .collect()
+}
+
+/// Sanitize a string for use in OID generation.
+///
+/// Per Define-XML 2.1 specification, OIDs must contain only:
+/// - Letters (A-Z, a-z)
+/// - Digits (0-9)
+/// - Underscores (_)
+/// - Periods (.)
+/// - Hyphens (-)
+///
+/// Invalid characters are replaced with underscores.
+/// Leading/trailing whitespace is trimmed.
+fn sanitize_oid_component(s: &str) -> String {
+    s.trim()
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '_' || c == '.' || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
