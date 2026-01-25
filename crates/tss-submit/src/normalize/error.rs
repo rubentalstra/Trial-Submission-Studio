@@ -30,6 +30,13 @@ pub enum NormalizationError {
     /// Invalid normalization configuration.
     #[error("Invalid normalization configuration: {0}")]
     InvalidConfig(String),
+
+    /// Unknown constant requested for normalization.
+    #[error("Unknown constant '{name}' - only STUDYID and DOMAIN are supported")]
+    UnknownConstant {
+        /// The unknown constant name.
+        name: String,
+    },
 }
 
 /// Result type for normalization operations.

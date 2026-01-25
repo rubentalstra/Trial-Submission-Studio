@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 # Workspace dependencies (alphabetical)
+encoding_rs.workspace = true
 polars.workspace = true
 serde = { workspace = true, features = ["derive"] }
 thiserror.workspace = true

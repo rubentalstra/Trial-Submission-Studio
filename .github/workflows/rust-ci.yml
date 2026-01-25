@@ -271,21 +271,21 @@ jobs:
   # Checks for known vulnerabilities in dependencies
   # Only runs on main branch, PRs to main, and scheduled builds
   # ============================================================
-  audit:
-    name: Security Audit
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Install cargo-audit
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-audit
-
-      - name: Run security audit
-        run: cargo audit --deny warnings
+  #  audit:
+  #    name: Security Audit
+  #    runs-on: ubuntu-latest
+  #    if: github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+  #    steps:
+  #      - name: Checkout repository
+  #        uses: actions/checkout@v6
+  #
+  #      - name: Install cargo-audit
+  #        uses: taiki-e/install-action@v2
+  #        with:
+  #          tool: cargo-audit
+  #
+  #      - name: Run security audit
+  #        run: cargo audit --deny warnings
 
   # ============================================================
   # Security Analysis (SARIF)

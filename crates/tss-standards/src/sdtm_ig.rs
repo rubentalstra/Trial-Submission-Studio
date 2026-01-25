@@ -264,4 +264,42 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_special_purpose_and_relationship_domains() {
+        let domains = load().expect("load SDTM-IG");
+
+        // Verify CO (Comments) domain loads with correct class
+        let co = domains
+            .iter()
+            .find(|d| d.name == "CO")
+            .expect("CO domain should exist");
+        assert_eq!(co.class, Some(SdtmDatasetClass::SpecialPurpose));
+        assert!(
+            co.variables.len() >= 10,
+            "CO should have at least 10 variables"
+        );
+
+        // Verify RELREC (Related Records) domain
+        let relrec = domains
+            .iter()
+            .find(|d| d.name == "RELREC")
+            .expect("RELREC domain should exist");
+        assert_eq!(relrec.class, Some(SdtmDatasetClass::Relationship));
+        assert!(!relrec.variables.is_empty(), "RELREC should have variables");
+
+        // Verify RELSPEC (Related Specimens) domain
+        let relspec = domains
+            .iter()
+            .find(|d| d.name == "RELSPEC")
+            .expect("RELSPEC domain should exist");
+        assert_eq!(relspec.class, Some(SdtmDatasetClass::Relationship));
+
+        // Verify RELSUB (Related Subjects) domain
+        let relsub = domains
+            .iter()
+            .find(|d| d.name == "RELSUB")
+            .expect("RELSUB domain should exist");
+        assert_eq!(relsub.class, Some(SdtmDatasetClass::Relationship));
+    }
 }

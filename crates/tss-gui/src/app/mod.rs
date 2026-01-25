@@ -16,12 +16,12 @@
 
 // Submodules - handlers are organized by category in handler/
 mod handler;
+mod subscription;
 pub mod util;
 
 // Re-export utility functions for internal use
 use util::load_app_icon;
 
-use iced::keyboard;
 use iced::widget::container;
 use iced::window;
 use iced::{Element, Size, Subscription, Task, Theme};
@@ -680,58 +680,11 @@ impl App {
     }
 
     /// Subscribe to runtime events.
+    ///
+    /// Delegates to `subscription::create_subscription` which manages all
+    /// application subscriptions in a centralized module.
     pub fn subscription(&self) -> Subscription<Message> {
-        use iced::{system, time};
-        use std::time::Duration;
-
-        // Keyboard events
-        let keyboard_sub = keyboard::listen().map(|event| match event {
-            keyboard::Event::KeyPressed { key, modifiers, .. } => {
-                Message::KeyPressed(key, modifiers)
-            }
-            _ => Message::Noop,
-        });
-
-        // System theme changes (for ThemeMode::System)
-        let system_theme_sub = system::theme_changes().map(Message::SystemThemeChanged);
-
-        // Native menu event polling (macOS only, polls every 50ms for responsiveness)
-        #[cfg(target_os = "macos")]
-        let menu_sub = crate::menu::menu_subscription().map(|action| match action {
-            Some(a) => Message::MenuAction(a),
-            None => Message::Noop,
-        });
-
-        #[cfg(not(target_os = "macos"))]
-        let menu_sub = Subscription::none();
-
-        // Window close events (for cleaning up dialog windows)
-        let window_sub = window::close_requests().map(Message::DialogWindowClosed);
-
-        // Toast auto-dismiss timer (5 seconds)
-        let toast_sub = if self.state.toast.is_some() {
-            time::every(Duration::from_secs(5))
-                .map(|_| Message::Toast(crate::message::ToastMessage::Dismiss))
-        } else {
-            Subscription::none()
-        };
-
-        // Auto-save timer (polls every 500ms to check if auto-save should trigger)
-        // The actual save only happens if the dirty tracker indicates it should
-        let auto_save_sub = if self.state.auto_save_config.enabled && self.state.study.is_some() {
-            time::every(Duration::from_millis(500)).map(|_| Message::AutoSaveTick)
-        } else {
-            Subscription::none()
-        };
-
-        Subscription::batch([
-            keyboard_sub,
-            system_theme_sub,
-            menu_sub,
-            window_sub,
-            toast_sub,
-            auto_save_sub,
-        ])
+        subscription::create_subscription(&self.state)
     }
 }
 

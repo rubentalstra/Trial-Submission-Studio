@@ -61,11 +61,22 @@ pub enum IngestError {
     #[error("empty column name found in {path}")]
     EmptyColumnName { path: PathBuf },
 
-    /// Unsupported file encoding.
-    #[error("unsupported encoding '{encoding}' in {path}: only UTF-8 is supported")]
+    /// Unsupported file encoding (cannot be transcoded).
+    #[error("unsupported encoding '{encoding}' in {path}: only UTF-8 and UTF-16 are supported")]
     UnsupportedEncoding {
         path: PathBuf,
         encoding: &'static str,
+    },
+
+    /// Path exceeds maximum length for the platform.
+    ///
+    /// On Windows, paths longer than 260 characters may fail.
+    /// TODO: Consider supporting extended-length paths (\\?\) prefix in the future.
+    #[error("path too long ({length} chars, max {max_length}): {path}")]
+    PathTooLong {
+        path: PathBuf,
+        length: usize,
+        max_length: usize,
     },
 
     // === Metadata Errors ===

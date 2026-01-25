@@ -170,9 +170,8 @@ fn start_export(state: &mut AppState) -> Task<Message> {
     }
 
     // Get study data
-    let study = match &state.study {
-        Some(s) => s,
-        None => return Task::none(),
+    let Some(study) = &state.study else {
+        return Task::none();
     };
 
     let study_id = study.study_id.clone();

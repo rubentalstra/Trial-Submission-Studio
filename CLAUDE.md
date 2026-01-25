@@ -69,7 +69,7 @@ For feature development, ALWAYS start with `/feature-dev` to gather requirements
 Trial Submission Studio transforms clinical trial source data (CSV) into FDA-compliant CDISC formats (SDTM, ADaM, SEND).
 It's a cross-platform desktop application written in Rust using the Iced GUI framework.
 
-**Status**: Alpha software (v0.0.4-alpha). Not for production regulatory submissions.
+**Status**: Alpha software (v0.0.5-alpha). Not for production regulatory submissions.
 
 ---
 
@@ -204,6 +204,23 @@ Project files use `.tss` format:
 ## Development Philosophy
 
 This is **greenfield development** - we are building a new desktop application with no legacy constraints.
+
+### NO LEGACY SUPPORT. EVER.
+
+**ABSOLUTELY FORBIDDEN:**
+
+- **Legacy wrappers** - NEVER wrap old code. Delete it.
+- **Backwards compatibility** - NEVER maintain old behavior. Replace it.
+- **Deprecation notices** - NEVER deprecate. Just remove.
+- **Migration code** - NEVER write migration paths. Just rewrite.
+- **Old API preservation** - NEVER keep old signatures "just in case". Delete them.
+- **Compatibility shims** - NEVER. EVER.
+- **Commented-out old code** - NEVER keep "for reference". Delete it.
+
+**THE ONLY ACCEPTABLE APPROACH: FULL REWRITES.**
+
+There are NO users depending on old behavior. There is NOTHING to be backwards compatible WITH.
+If code needs to change, REWRITE IT. Don't patch. Don't wrap. Don't preserve.
 
 ### Key Principles
 

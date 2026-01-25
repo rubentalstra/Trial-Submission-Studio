@@ -67,7 +67,7 @@ pub fn view_validation_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Ele
                 matches!(issue.severity(), Severity::Error | Severity::Reject)
             }
             SeverityFilter::Warnings => matches!(issue.severity(), Severity::Warning),
-            SeverityFilter::Info => false, // No info level in current model
+            SeverityFilter::Info => matches!(issue.severity(), Severity::Info),
         })
         .collect();
 
@@ -257,6 +257,7 @@ fn view_issue_row<'a>(issue: &'a Issue, idx: usize, is_selected: bool) -> Elemen
             lucide::circle_x().size(14).color(severity_color).into()
         }
         Severity::Warning => lucide::circle_alert().size(14).color(severity_color).into(),
+        Severity::Info => lucide::info().size(14).color(severity_color).into(),
     };
 
     // Short description (truncated)
@@ -280,6 +281,7 @@ fn get_severity_color(severity: Severity) -> iced::Color {
     match severity {
         Severity::Reject | Severity::Error => iced::Color::from_rgb(0.90, 0.30, 0.25),
         Severity::Warning => iced::Color::from_rgb(0.95, 0.65, 0.15),
+        Severity::Info => iced::Color::from_rgb(0.30, 0.60, 0.85), // Blue for informational
     }
 }
 
@@ -301,6 +303,7 @@ fn view_issue_detail<'a>(issue: &Issue) -> Element<'a, Message> {
             lucide::circle_x().size(12).color(severity_color).into()
         }
         Severity::Warning => lucide::circle_alert().size(12).color(severity_color).into(),
+        Severity::Info => lucide::info().size(12).color(severity_color).into(),
     };
 
     // Header with variable name and severity badge
@@ -390,14 +393,14 @@ fn view_issue_metadata<'a>(
             codelist_code,
             codelist_name,
             extensible,
-            invalid_count,
+            total_invalid,
             invalid_values,
             allowed_count,
             ..
         } => {
             metadata = metadata.row("Codelist", format!("{} ({})", codelist_name, codelist_code));
             metadata = metadata.row("Extensible", if *extensible { "Yes" } else { "No" });
-            metadata = metadata.row("Invalid Values", invalid_count.to_string());
+            metadata = metadata.row("Invalid Values", total_invalid.to_string());
             metadata = metadata.row("Allowed Terms", allowed_count.to_string());
             if !invalid_values.is_empty() {
                 let display_values: Vec<&str> =
@@ -579,7 +582,13 @@ fn issue_category(issue: &Issue) -> &'static str {
         Issue::InvalidDate { .. } | Issue::TextTooLong { .. } => "Format",
         Issue::DataTypeMismatch { .. } => "Type",
         Issue::DuplicateSequence { .. } => "Consistency",
-        Issue::UsubjidNotInDm { .. } | Issue::ParentNotFound { .. } => "Cross Reference",
+        Issue::UsubjidNotInDm { .. }
+        | Issue::ParentNotFound { .. }
+        | Issue::InvalidRdomain { .. }
+        | Issue::RelsubNotInDm { .. }
+        | Issue::RelsubNotBidirectional { .. }
+        | Issue::RelspecInvalidParent { .. }
+        | Issue::RelrecInvalidReference { .. } => "Cross Reference",
         Issue::CtViolation { .. } => "Terminology",
     }
 }

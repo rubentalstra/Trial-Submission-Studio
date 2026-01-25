@@ -8,7 +8,11 @@
 //! - SDTM-IG v3.4: Datasets and Variables
 //! - ADaM-IG v1.3: DataStructures and Variables
 //! - SEND-IG v3.1.1: Datasets and Variables
-//! - Controlled Terminology: Multiple versions (2024-03-29, 2025-03-28, 2025-09-26)
+//! - Controlled Terminology: Multiple versions
+//!
+//! # Adding New CT Versions
+//!
+//! See `data/terminology/README.md` for step-by-step instructions.
 
 // =============================================================================
 // SDTM-IG v3.4

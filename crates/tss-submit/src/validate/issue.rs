@@ -16,6 +16,8 @@ pub enum Severity {
     Error,
     /// Should review
     Warning,
+    /// Informational - no action required
+    Info,
 }
 
 impl Severity {
@@ -25,6 +27,7 @@ impl Severity {
             "reject" => Some(Self::Reject),
             "error" => Some(Self::Error),
             "warning" => Some(Self::Warning),
+            "info" => Some(Self::Info),
             _ => None,
         }
     }
@@ -35,6 +38,7 @@ impl Severity {
             Self::Reject => "Reject",
             Self::Error => "Error",
             Self::Warning => "Warning",
+            Self::Info => "Info",
         }
     }
 }
@@ -89,7 +93,9 @@ pub enum Issue {
         codelist_code: String,
         codelist_name: String,
         extensible: bool,
-        invalid_count: u64,
+        /// Total count of distinct invalid values (not truncated)
+        total_invalid: u64,
+        /// Sample of invalid values (up to 5)
         invalid_values: Vec<String>,
         allowed_count: usize,
     },
@@ -106,6 +112,35 @@ pub enum Issue {
         variable: String,
         parent_domain: String,
         missing_count: u64,
+        samples: Vec<String>,
+    },
+
+    // Special domain cross-reference checks (#38)
+    /// RDOMAIN references a domain that doesn't exist in the submission
+    InvalidRdomain {
+        domain: String,
+        invalid_count: u64,
+        samples: Vec<String>,
+    },
+    /// RSUBJID values not found in DM domain
+    RelsubNotInDm {
+        missing_count: u64,
+        samples: Vec<String>,
+    },
+    /// RELSUB relationship is not bidirectional (missing reciprocal record)
+    RelsubNotBidirectional {
+        missing_count: u64,
+        samples: Vec<String>,
+    },
+    /// RELSPEC PARENT references non-existent REFID
+    RelspecInvalidParent {
+        invalid_count: u64,
+        samples: Vec<String>,
+    },
+    /// RELREC references a record that doesn't exist
+    RelrecInvalidReference {
+        rdomain: String,
+        invalid_count: u64,
         samples: Vec<String>,
     },
 }
@@ -126,6 +161,12 @@ impl Issue {
             // Cross-domain issues use USUBJID or the specific variable
             Issue::UsubjidNotInDm { .. } => "USUBJID",
             Issue::ParentNotFound { variable, .. } => variable,
+            // Special domain cross-reference issues
+            Issue::InvalidRdomain { .. } => "RDOMAIN",
+            Issue::RelsubNotInDm { .. } => "RSUBJID",
+            Issue::RelsubNotBidirectional { .. } => "SREL",
+            Issue::RelspecInvalidParent { .. } => "PARENT",
+            Issue::RelrecInvalidReference { .. } => "IDVARVAL",
         }
     }
 
@@ -144,9 +185,15 @@ impl Issue {
             Issue::DuplicateSequence {
                 duplicate_count, ..
             } => Some(*duplicate_count),
-            Issue::CtViolation { invalid_count, .. } => Some(*invalid_count),
+            Issue::CtViolation { total_invalid, .. } => Some(*total_invalid),
             Issue::UsubjidNotInDm { missing_count, .. } => Some(*missing_count),
             Issue::ParentNotFound { missing_count, .. } => Some(*missing_count),
+            // Special domain cross-reference issues
+            Issue::InvalidRdomain { invalid_count, .. } => Some(*invalid_count),
+            Issue::RelsubNotInDm { missing_count, .. } => Some(*missing_count),
+            Issue::RelsubNotBidirectional { missing_count, .. } => Some(*missing_count),
+            Issue::RelspecInvalidParent { invalid_count, .. } => Some(*invalid_count),
+            Issue::RelrecInvalidReference { invalid_count, .. } => Some(*invalid_count),
         }
     }
 
@@ -170,6 +217,12 @@ impl Issue {
             // Cross-domain reference checks
             Issue::UsubjidNotInDm { .. } => Category::CrossReference,
             Issue::ParentNotFound { .. } => Category::CrossReference,
+            // Special domain cross-reference checks
+            Issue::InvalidRdomain { .. } => Category::CrossReference,
+            Issue::RelsubNotInDm { .. } => Category::CrossReference,
+            Issue::RelsubNotBidirectional { .. } => Category::CrossReference,
+            Issue::RelspecInvalidParent { .. } => Category::CrossReference,
+            Issue::RelrecInvalidReference { .. } => Category::CrossReference,
         }
     }
 
@@ -180,10 +233,16 @@ impl Issue {
             Issue::TextTooLong { .. } => Severity::Warning,
             Issue::CtViolation {
                 extensible: true, ..
-            } => Severity::Warning,
+            } => Severity::Info,
             // Cross-domain reference issues are errors (data integrity)
             Issue::UsubjidNotInDm { .. } => Severity::Error,
             Issue::ParentNotFound { .. } => Severity::Error,
+            // Special domain cross-reference issues
+            Issue::InvalidRdomain { .. } => Severity::Error,
+            Issue::RelsubNotInDm { .. } => Severity::Error,
+            Issue::RelsubNotBidirectional { .. } => Severity::Warning,
+            Issue::RelspecInvalidParent { .. } => Severity::Error,
+            Issue::RelrecInvalidReference { .. } => Severity::Error,
             _ => Severity::Error,
         }
     }
@@ -277,24 +336,37 @@ impl Issue {
                 variable,
                 codelist_name,
                 extensible,
-                invalid_count,
+                total_invalid,
                 invalid_values,
                 ..
             } => {
-                let ext_str = if *extensible {
-                    " (extensible)"
-                } else {
-                    " (non-extensible)"
-                };
+                let sample_count = invalid_values.len() as u64;
                 let values_str = if invalid_values.is_empty() {
                     String::new()
+                } else if sample_count < *total_invalid {
+                    format!(
+                        " (showing {} of {}): {}",
+                        sample_count,
+                        total_invalid,
+                        invalid_values.join(", ")
+                    )
                 } else {
                     format!(": {}", invalid_values.join(", "))
                 };
-                format!(
-                    "Variable {} has {} values not in codelist {}{}{}",
-                    variable, invalid_count, codelist_name, ext_str, values_str
-                )
+
+                if *extensible {
+                    // Info: custom values are allowed per CDISC for extensible codelists
+                    format!(
+                        "Variable {} uses {} custom values not in codelist {} (allowed - extensible codelist){}",
+                        variable, total_invalid, codelist_name, values_str
+                    )
+                } else {
+                    // Error: non-extensible codelist, values must be in codelist
+                    format!(
+                        "Variable {} has {} invalid values not in codelist {} (non-extensible){}",
+                        variable, total_invalid, codelist_name, values_str
+                    )
+                }
             }
 
             Issue::UsubjidNotInDm {
@@ -327,6 +399,84 @@ impl Issue {
                 format!(
                     "Variable {} has {} references not found in {}{}",
                     variable, missing_count, parent_domain, sample_str
+                )
+            }
+
+            // Special domain cross-reference issues
+            Issue::InvalidRdomain {
+                domain,
+                invalid_count,
+                samples,
+            } => {
+                let sample_str = if samples.is_empty() {
+                    String::new()
+                } else {
+                    format!(": {}", samples.join(", "))
+                };
+                format!(
+                    "{} domain has {} RDOMAIN values referencing non-existent domains{}",
+                    domain, invalid_count, sample_str
+                )
+            }
+
+            Issue::RelsubNotInDm {
+                missing_count,
+                samples,
+            } => {
+                let sample_str = if samples.is_empty() {
+                    String::new()
+                } else {
+                    format!(" (e.g., {})", samples.join(", "))
+                };
+                format!(
+                    "RELSUB has {} RSUBJID values not found in DM{}",
+                    missing_count, sample_str
+                )
+            }
+
+            Issue::RelsubNotBidirectional {
+                missing_count,
+                samples,
+            } => {
+                let sample_str = if samples.is_empty() {
+                    String::new()
+                } else {
+                    format!(" (e.g., {})", samples.join(", "))
+                };
+                format!(
+                    "RELSUB has {} relationships without reciprocal records{}",
+                    missing_count, sample_str
+                )
+            }
+
+            Issue::RelspecInvalidParent {
+                invalid_count,
+                samples,
+            } => {
+                let sample_str = if samples.is_empty() {
+                    String::new()
+                } else {
+                    format!(" (e.g., {})", samples.join(", "))
+                };
+                format!(
+                    "RELSPEC has {} PARENT values referencing non-existent REFID{}",
+                    invalid_count, sample_str
+                )
+            }
+
+            Issue::RelrecInvalidReference {
+                rdomain,
+                invalid_count,
+                samples,
+            } => {
+                let sample_str = if samples.is_empty() {
+                    String::new()
+                } else {
+                    format!(" (e.g., {})", samples.join(", "))
+                };
+                format!(
+                    "RELREC has {} references to non-existent records in {}{}",
+                    invalid_count, rdomain, sample_str
                 )
             }
         }

@@ -54,7 +54,7 @@ pub async fn create_study_from_assignments(
             let domains = tss_standards::load_sdtm_ig()
                 .map_err(|e| format!("Failed to load SDTM-IG: {}", e))?;
             let ct_version = tss_standards::ct::CtVersion::default();
-            let ct = tss_standards::ct::load(ct_version).map_err(|e| {
+            let ct = tss_standards::ct::load(ct_version, Some("SDTM")).map_err(|e| {
                 format!(
                     "Failed to load Controlled Terminology ({}): {}",
                     ct_version, e

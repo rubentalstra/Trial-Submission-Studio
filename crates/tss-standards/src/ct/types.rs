@@ -232,6 +232,10 @@ pub struct TerminologyCatalog {
     /// Source file name.
     pub source: Option<String>,
 
+    /// Whether this is the primary catalog for its publishing set.
+    /// Used to track if resolutions came from the expected catalog.
+    pub primary: bool,
+
     /// Codelists by NCI code (uppercase).
     pub codelists: BTreeMap<String, Codelist>,
 }
@@ -244,8 +248,14 @@ impl TerminologyCatalog {
             version,
             publishing_set,
             source: None,
+            primary: false,
             codelists: BTreeMap::new(),
         }
+    }
+
+    /// Mark this catalog as primary for its publishing set.
+    pub fn set_primary(&mut self, primary: bool) {
+        self.primary = primary;
     }
 
     /// Get a codelist by NCI code.
@@ -400,6 +410,14 @@ impl<'a> ResolvedCodelist<'a> {
     /// Get the catalog label (for reporting).
     pub fn source(&self) -> &str {
         &self.catalog.label
+    }
+
+    /// Check if the resolution came from a primary catalog.
+    ///
+    /// If false, the codelist was found in a fallback catalog,
+    /// which may indicate a configuration issue or missing data.
+    pub fn from_primary(&self) -> bool {
+        self.catalog.primary
     }
 
     /// Check if a value is a valid submission value.

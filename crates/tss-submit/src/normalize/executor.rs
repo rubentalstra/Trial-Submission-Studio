@@ -104,10 +104,14 @@ fn execute_constant(
     context: &NormalizationContext,
     row_count: usize,
 ) -> Result<Series, NormalizationError> {
-    let value = match target_name {
+    let value: &str = match target_name {
         "STUDYID" => &context.study_id,
         "DOMAIN" => &context.domain_code,
-        _ => "",
+        _ => {
+            return Err(NormalizationError::UnknownConstant {
+                name: target_name.to_string(),
+            });
+        }
     };
 
     Ok(Series::new(target_name.into(), vec![value; row_count]))
@@ -531,6 +535,26 @@ mod tests {
         assert_eq!(result.get(0).unwrap(), AnyValue::String("CDISC01"));
         assert_eq!(result.get(1).unwrap(), AnyValue::String("CDISC01"));
         assert_eq!(result.get(2).unwrap(), AnyValue::String("CDISC01"));
+    }
+
+    #[test]
+    fn test_execute_constant_domain() {
+        let context = NormalizationContext::new("CDISC01", "AE");
+        let result = execute_constant("DOMAIN", &context, 2).unwrap();
+
+        assert_eq!(result.len(), 2);
+        assert_eq!(result.get(0).unwrap(), AnyValue::String("AE"));
+        assert_eq!(result.get(1).unwrap(), AnyValue::String("AE"));
+    }
+
+    #[test]
+    fn test_execute_constant_unknown_returns_error() {
+        let context = NormalizationContext::new("CDISC01", "AE");
+        let result = execute_constant("UNKNOWN", &context, 3);
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, NormalizationError::UnknownConstant { name } if name == "UNKNOWN"));
     }
 
     #[test]
