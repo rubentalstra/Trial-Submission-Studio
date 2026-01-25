@@ -681,7 +681,7 @@ impl App {
 
     /// Subscribe to runtime events.
     ///
-    /// Delegates to [`subscription::create_subscription`] which manages all
+    /// Delegates to `subscription::create_subscription` which manages all
     /// application subscriptions in a centralized module.
     pub fn subscription(&self) -> Subscription<Message> {
         subscription::create_subscription(&self.state)

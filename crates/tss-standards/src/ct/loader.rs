@@ -81,7 +81,7 @@ impl std::fmt::Display for CtVersion {
 /// let registry = ct::load(CtVersion::default(), Some("SEND"))?;
 /// ```
 /// TODO: i think we should refactor and rewrite the whole logic and every file that ahs to do with dataset and use ENUM's so we can use these ENUM's troughout the whole codebase! i think this idead is way better right? no custom strings or using SOME() //// Foundational: CDISC Foundational Standards are the basis of a complete suite of data standards, enhancing the quality, efficiency and cost effectiveness of clinical research processes from beginning to end. Foundational Standards focus on the core principles for defining data standards and include models, domains and specifications for data representation.
-/// https://www.cdisc.org/standards/foundational
+/// <https://www.cdisc.org/standards/foundational>
 pub fn load(version: CtVersion, primary_set: Option<&str>) -> Result<TerminologyRegistry> {
     let mut registry = TerminologyRegistry::new();
 
