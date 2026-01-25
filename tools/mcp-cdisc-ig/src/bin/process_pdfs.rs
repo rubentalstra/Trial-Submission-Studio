@@ -119,21 +119,20 @@ fn main() -> Result<()> {
 
     // Each entry: (pdf_name, ig_name, version, output_name, domains)
     let igs: &[(&str, &str, &str, &str, &[&str])] = &[
-        // Commented out for faster dev iteration - ADaM is only 88 pages
-        // (
-        //     "SDTMIG_v3.4.pdf",
-        //     "SDTM Implementation Guide",
-        //     "3.4",
-        //     "sdtm-ig-v3.4.json",
-        //     SDTM_DOMAINS,
-        // ),
-        // (
-        //     "SENDIG_v3.1.1.pdf",
-        //     "SEND Implementation Guide",
-        //     "3.1.1",
-        //     "send-ig-v3.1.1.json",
-        //     SEND_DOMAINS,
-        // ),
+        (
+            "SDTMIG_v3.4.pdf",
+            "SDTM Implementation Guide",
+            "3.4",
+            "sdtm-ig-v3.4.json",
+            SDTM_DOMAINS,
+        ),
+        (
+            "SENDIG_v3.1.1.pdf",
+            "SEND Implementation Guide",
+            "3.1.1",
+            "send-ig-v3.1.1.json",
+            SEND_DOMAINS,
+        ),
         (
             "ADaMIG_v1.3.pdf",
             "ADaM Implementation Guide",

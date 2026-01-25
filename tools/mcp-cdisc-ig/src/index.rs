@@ -48,6 +48,14 @@ pub struct SearchResult {
     pub score: f32,
 }
 
+/// Information about a section (heading) in an IG
+#[derive(Debug, Serialize)]
+pub struct SectionInfo {
+    pub heading: String,
+    pub chunk_count: usize,
+    pub first_chunk_index: usize,
+}
+
 impl IgIndex {
     /// Load pre-processed IG data (embedded at compile time)
     pub fn load() -> anyhow::Result<Self> {
@@ -162,6 +170,90 @@ impl IgIndex {
         } else {
             Some(chunks)
         }
+    }
+
+    /// Get a single chunk by its index
+    pub fn get_chunk_by_index(&self, ig: &str, index: usize) -> Option<TextChunk> {
+        let ig_content = match ig.to_lowercase().as_str() {
+            "sdtm" => &self.sdtm,
+            "send" => &self.send,
+            "adam" => &self.adam,
+            _ => return None,
+        };
+
+        ig_content.chunks.iter().find(|c| c.index == index).cloned()
+    }
+
+    /// Get a chunk and all related chunks (parent + siblings sharing same parent)
+    ///
+    /// Given any chunk index, returns:
+    /// - If the chunk has no parent: that chunk plus all chunks that have it as parent
+    /// - If the chunk has a parent: the parent plus all siblings (chunks sharing the same parent)
+    pub fn get_related_chunks(&self, ig: &str, index: usize) -> Option<Vec<TextChunk>> {
+        let ig_content = match ig.to_lowercase().as_str() {
+            "sdtm" => &self.sdtm,
+            "send" => &self.send,
+            "adam" => &self.adam,
+            _ => return None,
+        };
+
+        // First, find the chunk
+        let chunk = ig_content.chunks.iter().find(|c| c.index == index)?;
+
+        // Determine the root index (either this chunk or its parent)
+        let root_index = chunk.parent_index.unwrap_or(index);
+
+        // Collect the root chunk and all children
+        let mut related: Vec<TextChunk> = ig_content
+            .chunks
+            .iter()
+            .filter(|c| c.index == root_index || c.parent_index == Some(root_index))
+            .cloned()
+            .collect();
+
+        // Sort by index to maintain document order
+        related.sort_by_key(|c| c.index);
+
+        if related.is_empty() {
+            None
+        } else {
+            Some(related)
+        }
+    }
+
+    /// List all unique section headings with chunk counts
+    pub fn list_sections(&self, ig: &str) -> Option<Vec<SectionInfo>> {
+        let ig_content = match ig.to_lowercase().as_str() {
+            "sdtm" => &self.sdtm,
+            "send" => &self.send,
+            "adam" => &self.adam,
+            _ => return None,
+        };
+
+        // Group chunks by heading, tracking count and first index
+        let mut section_map: std::collections::HashMap<String, (usize, usize)> =
+            std::collections::HashMap::new();
+
+        for chunk in &ig_content.chunks {
+            section_map
+                .entry(chunk.heading.clone())
+                .and_modify(|(count, _first_idx)| *count += 1)
+                .or_insert((1, chunk.index));
+        }
+
+        let mut sections: Vec<SectionInfo> = section_map
+            .into_iter()
+            .map(|(heading, (chunk_count, first_chunk_index))| SectionInfo {
+                heading,
+                chunk_count,
+                first_chunk_index,
+            })
+            .collect();
+
+        // Sort by first_chunk_index to maintain document order
+        sections.sort_by_key(|s| s.first_chunk_index);
+
+        Some(sections)
     }
 }
 
