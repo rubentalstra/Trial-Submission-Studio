@@ -40,6 +40,7 @@ struct App {
     igs: Vec<IgState>,
     current_ig: usize,
     start_time: Instant,
+    phase_start_time: Instant,
     total_chunks: usize,
     total_domains: HashSet<String>,
     spinner_frame: usize,
@@ -60,10 +61,12 @@ impl App {
             })
             .collect();
 
+        let now = Instant::now();
         Self {
             igs,
             current_ig: 0,
-            start_time: Instant::now(),
+            start_time: now,
+            phase_start_time: now,
             total_chunks: 0,
             total_domains: HashSet::new(),
             spinner_frame: 0,
@@ -84,6 +87,14 @@ impl App {
 
     fn current_spinner(&self) -> &'static str {
         SPINNER_FRAMES[self.spinner_frame]
+    }
+
+    fn reset_phase_timer(&mut self) {
+        self.phase_start_time = Instant::now();
+    }
+
+    fn phase_elapsed(&self) -> Duration {
+        self.phase_start_time.elapsed()
     }
 }
 
@@ -397,7 +408,17 @@ fn render_ig_list(frame: &mut Frame, area: Rect, app: &App) {
                     ig.domains,
                     ig.elapsed.map(|d| d.as_secs_f32()).unwrap_or(0.0)
                 ),
-                IgStatus::Processing(phase) => phase.description().to_string(),
+                IgStatus::Processing(phase) => {
+                    if i == app.current_ig {
+                        format!(
+                            "{} ({:.0}s)",
+                            phase.description(),
+                            app.phase_elapsed().as_secs_f32()
+                        )
+                    } else {
+                        phase.description().to_string()
+                    }
+                }
                 IgStatus::Waiting => "Waiting...".to_string(),
                 IgStatus::Error(e) => format!("Error: {}", e),
                 IgStatus::Skipped => "PDF not found".to_string(),
@@ -569,6 +590,7 @@ fn main() -> Result<()> {
         }
 
         // Phase 1: Extract text
+        app.reset_phase_timer();
         app.igs[i].status = IgStatus::Processing(Phase::Extracting);
         terminal.draw(|f| ui(f, &app))?;
 
@@ -586,6 +608,7 @@ fn main() -> Result<()> {
         };
 
         // Phase 2: Identify sections
+        app.reset_phase_timer();
         app.igs[i].status = IgStatus::Processing(Phase::IdentifyingSections);
         terminal.draw(|f| ui(f, &app))?;
 
@@ -596,6 +619,7 @@ fn main() -> Result<()> {
         }
 
         // Phase 3: Create chunks
+        app.reset_phase_timer();
         app.igs[i].status = IgStatus::Processing(Phase::CreatingChunks);
         terminal.draw(|f| ui(f, &app))?;
 
@@ -606,6 +630,7 @@ fn main() -> Result<()> {
         }
 
         // Phase 4: Save
+        app.reset_phase_timer();
         app.igs[i].status = IgStatus::Processing(Phase::Saving);
         terminal.draw(|f| ui(f, &app))?;
 
@@ -634,6 +659,11 @@ fn main() -> Result<()> {
         app.igs[i].status = IgStatus::Complete;
 
         terminal.draw(|f| ui(f, &app))?;
+
+        // Explicit cleanup and brief pause between PDFs to allow memory/resource cleanup
+        drop(content);
+        drop(json);
+        thread::sleep(Duration::from_millis(100));
     }
 
     // Show final state and wait for exit (unless user already quit)
@@ -665,11 +695,22 @@ fn extract_with_animation(
         tx.send(result).ok();
     });
 
-    // Animate while waiting
+    // Animate while waiting (with 15 minute timeout)
+    let extraction_start = Instant::now();
+    let timeout = Duration::from_secs(900); // 15 minutes
+
     loop {
         // Check for quit
         if check_for_quit()? {
             return Ok(None);
+        }
+
+        // Check for timeout
+        if extraction_start.elapsed() > timeout {
+            anyhow::bail!(
+                "PDF extraction timed out after {} seconds",
+                timeout.as_secs()
+            );
         }
 
         match rx.try_recv() {
