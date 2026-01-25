@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "cdisc-ig": {
+      "command": "./tools/mcp-cdisc-ig/target/release/mcp-cdisc-ig",
+      "args": [],
+      "env": {}
+    }
+  }
+}

@@ -6,10 +6,10 @@ use resvg::usvg::{Options, Tree};
 use serde::Deserialize;
 use std::fs;
 use std::path::{Path, PathBuf};
+use swash::FontRef;
 use swash::scale::{Render, ScaleContext, Source, StrikeWith};
 use swash::shape::ShapeContext;
 use swash::zeno::{Format, Vector};
-use swash::FontRef;
 
 #[derive(Debug, Deserialize)]
 struct Config {
@@ -97,8 +97,8 @@ fn render_svg_to_image(
     let transform = tiny_skia::Transform::from_scale(scale, scale);
     resvg::render(&tree, transform, &mut pixmap.as_mut());
 
-    let img =
-        ImageBuffer::from_raw(width, height, pixmap.take()).ok_or("Failed to create image buffer")?;
+    let img = ImageBuffer::from_raw(width, height, pixmap.take())
+        .ok_or("Failed to create image buffer")?;
     Ok(img)
 }
 
@@ -300,7 +300,11 @@ fn generate_image(
 
     // Use even number for thickness to avoid rounding issues with radius
     let underline_thickness = (14.0 * scale_factor).round() as i32;
-    let underline_thickness = if underline_thickness % 2 == 1 { underline_thickness + 1 } else { underline_thickness };
+    let underline_thickness = if underline_thickness % 2 == 1 {
+        underline_thickness + 1
+    } else {
+        underline_thickness
+    };
     let underline_radius = underline_thickness / 2;
 
     let underline_center_y = title_start_y
@@ -314,14 +318,26 @@ fn generate_image(
     let right_center_x = margin_left + underline_width - underline_radius;
 
     // Left rounded end
-    draw_filled_circle_mut(&mut img, (left_center_x, underline_center_y), underline_radius, accent_blue);
+    draw_filled_circle_mut(
+        &mut img,
+        (left_center_x, underline_center_y),
+        underline_radius,
+        accent_blue,
+    );
     // Right rounded end
-    draw_filled_circle_mut(&mut img, (right_center_x, underline_center_y), underline_radius, accent_blue);
+    draw_filled_circle_mut(
+        &mut img,
+        (right_center_x, underline_center_y),
+        underline_radius,
+        accent_blue,
+    );
     // Middle rectangle connecting the two circles
     draw_filled_rect_mut(
         &mut img,
-        Rect::at(left_center_x, underline_center_y - underline_radius)
-            .of_size((right_center_x - left_center_x) as u32, (underline_radius * 2 + 1) as u32),
+        Rect::at(left_center_x, underline_center_y - underline_radius).of_size(
+            (right_center_x - left_center_x) as u32,
+            (underline_radius * 2 + 1) as u32,
+        ),
         accent_blue,
     );
 
