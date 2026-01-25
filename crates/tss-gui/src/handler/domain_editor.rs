@@ -60,9 +60,8 @@ impl MessageHandler<DomainEditorMessage> for DomainEditorHandler {
 /// Trigger automatic preview rebuild after mapping changes.
 /// Returns a Task that computes the preview in the background.
 fn trigger_preview_rebuild(state: &AppState, domain_code: &str) -> Task<Message> {
-    let domain = match state.study.as_ref().and_then(|s| s.domain(domain_code)) {
-        Some(d) => d,
-        None => return Task::none(),
+    let Some(domain) = state.study.as_ref().and_then(|s| s.domain(domain_code)) else {
+        return Task::none();
     };
 
     let input = PreviewInput {
@@ -87,10 +86,10 @@ fn trigger_preview_rebuild(state: &AppState, domain_code: &str) -> Task<Message>
 
 fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Message> {
     // Get current domain code
-    let domain_code = match &state.view {
-        ViewState::DomainEditor(editor) => editor.domain.clone(),
-        _ => return Task::none(),
+    let ViewState::DomainEditor(editor) = &state.view else {
+        return Task::none();
     };
+    let domain_code = editor.domain.clone();
 
     match msg {
         MappingMessage::VariableSelected(idx) => {
@@ -338,16 +337,15 @@ fn handle_normalization_message(state: &mut AppState, msg: NormalizationMessage)
 // =============================================================================
 
 fn handle_validation_message(state: &mut AppState, msg: ValidationMessage) -> Task<Message> {
-    let domain_code = match &state.view {
-        ViewState::DomainEditor(editor) => editor.domain.clone(),
-        _ => return Task::none(),
+    let ViewState::DomainEditor(editor) = &state.view else {
+        return Task::none();
     };
+    let domain_code = editor.domain.clone();
 
     match msg {
         ValidationMessage::RefreshValidation => {
-            let domain = match state.study.as_ref().and_then(|s| s.domain(&domain_code)) {
-                Some(d) => d,
-                None => return Task::none(),
+            let Some(domain) = state.study.as_ref().and_then(|s| s.domain(&domain_code)) else {
+                return Task::none();
             };
 
             let df = match &state.view {
@@ -434,10 +432,10 @@ fn handle_validation_message(state: &mut AppState, msg: ValidationMessage) -> Ta
 
 #[allow(clippy::needless_pass_by_value)]
 fn handle_preview_message(state: &mut AppState, msg: PreviewMessage) -> Task<Message> {
-    let domain_code = match &state.view {
-        ViewState::DomainEditor(editor) => editor.domain.clone(),
-        _ => return Task::none(),
+    let ViewState::DomainEditor(editor) = &state.view else {
+        return Task::none();
     };
+    let domain_code = editor.domain.clone();
 
     match msg {
         PreviewMessage::GoToPage(page) => {
@@ -473,9 +471,8 @@ fn handle_preview_message(state: &mut AppState, msg: PreviewMessage) -> Task<Mes
         }
 
         PreviewMessage::RebuildPreview => {
-            let domain = match state.study.as_ref().and_then(|s| s.domain(&domain_code)) {
-                Some(d) => d,
-                None => return Task::none(),
+            let Some(domain) = state.study.as_ref().and_then(|s| s.domain(&domain_code)) else {
+                return Task::none();
             };
 
             // Mark as rebuilding
@@ -506,10 +503,10 @@ fn handle_preview_message(state: &mut AppState, msg: PreviewMessage) -> Task<Mes
 // =============================================================================
 
 fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> {
-    let domain_code = match &state.view {
-        ViewState::DomainEditor(editor) => editor.domain.clone(),
-        _ => return Task::none(),
+    let ViewState::DomainEditor(editor) = &state.view else {
+        return Task::none();
     };
+    let domain_code = editor.domain.clone();
 
     match msg {
         SuppMessage::ColumnSelected(col_name) => {
