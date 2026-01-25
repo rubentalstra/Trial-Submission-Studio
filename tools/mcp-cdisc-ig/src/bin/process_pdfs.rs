@@ -21,9 +21,17 @@ use std::sync::LazyLock;
 /// A chunk of text from the IG document
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct TextChunk {
+    /// Unique index for this chunk
+    index: usize,
+    /// Section heading this chunk belongs to
     heading: String,
+    /// The text content
     content: String,
+    /// Domain code if applicable
     domain: Option<String>,
+    /// Parent chunk index (for continuation chunks split from a larger section)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    parent_index: Option<usize>,
 }
 
 /// Content from a single Implementation Guide
@@ -60,24 +68,38 @@ static DOMAIN_IN_HEADING: LazyLock<Regex> = LazyLock::new(|| {
 static WHITESPACE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").unwrap());
 
 // =============================================================================
-// Known Domains & Variables
+// Known Domains by IG (only officially supported domains per standard)
 // =============================================================================
 
-/// All known CDISC domain codes (from tss-standards CSVs)
-const DOMAINS: &[&str] = &[
-    // SDTM Interventions
-    "AG", "CM", "EC", "EX", "ML", "PR", "SU", // SDTM Events
-    "AE", "BE", "CE", "DS", "DV", "HO", "MH", // SDTM Findings
-    "BS", "CP", "CV", "DA", "DD", "EG", "FT", "GF", "IE", "IS", "LB", "MB", "MI", "MK", "MS", "NV",
-    "OE", "PC", "PE", "PP", "QS", "RE", "RP", "RS", "SC", "SS", "TR", "TU", "UR", "VS",
-    // SDTM Findings About
-    "FA", "SR", // SDTM Special-Purpose
-    "CO", "DM", "SE", "SM", "SV", // SDTM Trial Design
-    "TA", "TD", "TE", "TI", "TM", "TS", "TV", // SDTM Study Reference
-    "OI", // SDTM Relationship
-    "RELREC", "RELSPEC", "RELSUB", "SUPPQUAL", // SEND-specific (not in SDTM)
-    "BW", "BG", "CL", "FW", "MA", "OM", "PM", "TF", "TX", "POOLDEF", // ADaM structures
-    "ADSL", "BDS", "TTE", // Common ADaM dataset names (conventional)
+/// SDTM-IG v3.4 domains (human clinical trials)
+const SDTM_DOMAINS: &[&str] = &[
+    // Interventions
+    "AG", "CM", "EC", "EX", "ML", "PR", "SU", // Events
+    "AE", "CE", "DS", "DV", "HO", "MH", // Findings
+    "BE", "BS", "CP", "CV", "DA", "DD", "EG", "FT", "GF", "IE", "IS", "LB", "MB", "MI", "MK", "MS",
+    "NV", "OE", "PC", "PE", "PP", "QS", "RE", "RP", "RS", "SC", "SS", "TR", "TU", "UR", "VS",
+    // Findings About
+    "FA", "SR", // Special-Purpose
+    "CO", "DM", "SE", "SM", "SV", // Trial Design
+    "TA", "TD", "TE", "TI", "TM", "TS", "TV", // Study Reference
+    "OI", // Relationship
+    "RELREC", "RELSPEC", "RELSUB", "SUPPQUAL",
+];
+
+/// SEND-IG v3.1.1 domains (nonclinical/animal studies)
+const SEND_DOMAINS: &[&str] = &[
+    // SEND-specific domains
+    "BG", "BW", "CL", "FW", "LB", "MA", "MI", "OM", "PC", "PM", "PP", "SC", "TF", "TX",
+    // Shared with SDTM (applicable to nonclinical)
+    "CO", "DM", "DS", "EG", "EX", "SE", "SV", "TA", "TD", "TE", "TI", "TS", "TV",
+    // Special structures
+    "POOLDEF", "RELREC", "SUPPQUAL",
+];
+
+/// ADaM-IG v1.3 structures and common dataset names
+const ADAM_DOMAINS: &[&str] = &[
+    // ADaM data structures (not domains, but structure types)
+    "ADSL", "BDS", "OCCDS", // Common ADaM dataset naming patterns
     "ADAE", "ADCM", "ADEX", "ADLB", "ADPC", "ADPP", "ADTTE", "ADVS",
 ];
 
@@ -95,29 +117,33 @@ fn main() -> Result<()> {
 
     fs::create_dir_all(&data_dir)?;
 
-    let igs = [
+    // Each entry: (pdf_name, ig_name, version, output_name, domains)
+    let igs: &[(&str, &str, &str, &str, &[&str])] = &[
         // Commented out for faster dev iteration - ADaM is only 88 pages
         // (
         //     "SDTMIG_v3.4.pdf",
         //     "SDTM Implementation Guide",
         //     "3.4",
         //     "sdtm-ig-v3.4.json",
+        //     SDTM_DOMAINS,
         // ),
         // (
         //     "SENDIG_v3.1.1.pdf",
         //     "SEND Implementation Guide",
         //     "3.1.1",
         //     "send-ig-v3.1.1.json",
+        //     SEND_DOMAINS,
         // ),
         (
             "ADaMIG_v1.3.pdf",
             "ADaM Implementation Guide",
             "1.3",
             "adam-ig-v1.3.json",
+            ADAM_DOMAINS,
         ),
     ];
 
-    for (pdf_name, ig_name, version, output_name) in igs {
+    for (pdf_name, ig_name, version, output_name, domains) in igs {
         let pdf_path = pdf_dir.join(pdf_name);
         let output_path = data_dir.join(output_name);
 
@@ -128,7 +154,7 @@ fn main() -> Result<()> {
             continue;
         }
 
-        match process_ig(&pdf_path, ig_name, version) {
+        match process_ig(&pdf_path, ig_name, version, domains) {
             Ok(content) => {
                 let chunk_count = content.chunks.len();
                 let domains_found: std::collections::HashSet<_> = content
@@ -164,16 +190,16 @@ fn main() -> Result<()> {
 // Two-Pass Processing
 // =============================================================================
 
-fn process_ig(path: &Path, name: &str, version: &str) -> Result<IgContent> {
+fn process_ig(path: &Path, name: &str, version: &str, domains: &[&str]) -> Result<IgContent> {
     // Step 1: Extract all text from PDF
     let text = extract_text(path)?;
 
     // Step 2: First pass - identify sections and their domains
-    let sections = identify_sections(&text);
+    let sections = identify_sections(&text, domains);
     println!("  Pass 1: Found {} sections", sections.len());
 
     // Step 3: Second pass - chunk content within sections
-    let chunks = chunk_sections(&sections);
+    let chunks = chunk_sections(&sections, domains);
     println!("  Pass 2: Created {} chunks", chunks.len());
 
     Ok(IgContent {
@@ -203,7 +229,7 @@ fn extract_text(path: &Path) -> Result<String> {
 // =============================================================================
 
 /// First pass: Identify all major sections and their associated domains
-fn identify_sections(full_text: &str) -> Vec<Section> {
+fn identify_sections(full_text: &str, domains: &[&str]) -> Vec<Section> {
     // Find all section headings in the full text
     let mut section_starts: Vec<(usize, String, Option<String>)> = Vec::new();
 
@@ -218,7 +244,7 @@ fn identify_sections(full_text: &str) -> Vec<Section> {
                 continue;
             }
 
-            let domain = extract_domain_from_heading(&heading);
+            let domain = extract_domain_from_heading(&heading, domains);
             section_starts.push((full_match.start(), heading, domain));
         }
     }
@@ -264,21 +290,21 @@ fn identify_sections(full_text: &str) -> Vec<Section> {
 }
 
 /// Extract domain code from a heading like "Demographics Domain (DM)" or "AE - Adverse Events"
-fn extract_domain_from_heading(heading: &str) -> Option<String> {
+fn extract_domain_from_heading(heading: &str, domains: &[&str]) -> Option<String> {
     let heading_upper = heading.to_uppercase();
 
     // First, try regex pattern for explicit domain mentions
     if let Some(caps) = DOMAIN_IN_HEADING.captures(heading) {
         let code = caps.get(1).or_else(|| caps.get(2)).map(|m| m.as_str());
         if let Some(code) = code
-            && DOMAINS.contains(&code.to_uppercase().as_str())
+            && domains.contains(&code.to_uppercase().as_str())
         {
             return Some(code.to_uppercase());
         }
     }
 
     // Try to find domain code as a word boundary match
-    for domain in DOMAINS {
+    for domain in domains {
         // Match patterns like "DM Domain", "The DM", "DM -", "DM–", "(DM)"
         let patterns = [
             format!(r"\b{}\s+(?:Domain|Dataset)", domain),
@@ -304,8 +330,9 @@ fn extract_domain_from_heading(heading: &str) -> Option<String> {
 // =============================================================================
 
 /// Second pass: Chunk the content within each section
-fn chunk_sections(sections: &[Section]) -> Vec<TextChunk> {
+fn chunk_sections(sections: &[Section], domains: &[&str]) -> Vec<TextChunk> {
     let mut chunks = Vec::new();
+    let mut next_index: usize = 0;
 
     for section in sections {
         // Skip very short sections
@@ -323,6 +350,8 @@ fn chunk_sections(sections: &[Section]) -> Vec<TextChunk> {
             &section.heading,
             &section.content,
             section.domain.as_deref(),
+            domains,
+            &mut next_index,
         );
 
         chunks.extend(section_chunks);
@@ -332,12 +361,22 @@ fn chunk_sections(sections: &[Section]) -> Vec<TextChunk> {
 }
 
 /// Split a section's content into appropriately sized chunks
-fn split_into_chunks(heading: &str, content: &str, section_domain: Option<&str>) -> Vec<TextChunk> {
+fn split_into_chunks(
+    heading: &str,
+    content: &str,
+    section_domain: Option<&str>,
+    domains: &[&str],
+    next_index: &mut usize,
+) -> Vec<TextChunk> {
     let mut chunks = Vec::new();
+    let mut section_parent: Option<usize> = None; // Track first chunk of this section
 
     // If content is small enough, return as single chunk
     if content.len() <= 3000 {
-        if let Some(chunk) = create_chunk(heading, content, section_domain) {
+        if let Some(chunk) =
+            create_chunk(heading, content, section_domain, domains, *next_index, None)
+        {
+            *next_index += 1;
             chunks.push(chunk);
         }
         return chunks;
@@ -345,23 +384,26 @@ fn split_into_chunks(heading: &str, content: &str, section_domain: Option<&str>)
 
     // Split into smaller chunks at sentence boundaries
     let mut current_chunk = String::new();
-    let mut chunk_index = 0;
 
     for sentence in split_sentences(content) {
         // If adding this sentence would make chunk too large, finalize current chunk
         if !current_chunk.is_empty() && current_chunk.len() + sentence.len() > 2500 {
-            let chunk_heading = if chunk_index > 0 {
-                format!("{} (cont.)", heading)
-            } else {
-                heading.to_string()
-            };
-
-            if let Some(chunk) = create_chunk(&chunk_heading, &current_chunk, section_domain) {
+            if let Some(chunk) = create_chunk(
+                heading,
+                &current_chunk,
+                section_domain,
+                domains,
+                *next_index,
+                section_parent,
+            ) {
+                // First chunk of section becomes the parent for subsequent chunks
+                if section_parent.is_none() {
+                    section_parent = Some(*next_index);
+                }
+                *next_index += 1;
                 chunks.push(chunk);
             }
-
             current_chunk.clear();
-            chunk_index += 1;
         }
 
         if !current_chunk.is_empty() {
@@ -372,13 +414,18 @@ fn split_into_chunks(heading: &str, content: &str, section_domain: Option<&str>)
 
     // Don't forget the last chunk
     if !current_chunk.is_empty() {
-        let chunk_heading = if chunk_index > 0 {
-            format!("{} (cont.)", heading)
-        } else {
-            heading.to_string()
-        };
-
-        if let Some(chunk) = create_chunk(&chunk_heading, &current_chunk, section_domain) {
+        if let Some(chunk) = create_chunk(
+            heading,
+            &current_chunk,
+            section_domain,
+            domains,
+            *next_index,
+            section_parent,
+        ) {
+            if section_parent.is_none() {
+                // This is the only chunk, no parent needed
+            }
+            *next_index += 1;
             chunks.push(chunk);
         }
     }
@@ -387,7 +434,14 @@ fn split_into_chunks(heading: &str, content: &str, section_domain: Option<&str>)
 }
 
 /// Create a TextChunk with domain detection
-fn create_chunk(heading: &str, content: &str, section_domain: Option<&str>) -> Option<TextChunk> {
+fn create_chunk(
+    heading: &str,
+    content: &str,
+    section_domain: Option<&str>,
+    domains: &[&str],
+    index: usize,
+    parent_index: Option<usize>,
+) -> Option<TextChunk> {
     let content = clean_content(content);
 
     if content.len() < 50 {
@@ -397,20 +451,22 @@ fn create_chunk(heading: &str, content: &str, section_domain: Option<&str>) -> O
     // Use section domain if available, otherwise try to detect from content
     let domain = section_domain
         .map(String::from)
-        .or_else(|| detect_domain_from_content(&content));
+        .or_else(|| detect_domain_from_content(&content, domains));
 
     Some(TextChunk {
+        index,
         heading: heading.to_string(),
         content,
         domain,
+        parent_index,
     })
 }
 
 /// Detect domain from content when not available from section heading
-fn detect_domain_from_content(content: &str) -> Option<String> {
+fn detect_domain_from_content(content: &str, domains: &[&str]) -> Option<String> {
     let content_upper = content.to_uppercase();
 
-    for domain in DOMAINS {
+    for domain in domains {
         let patterns = [
             format!("{} DOMAIN", domain),
             format!("{} DATASET", domain),

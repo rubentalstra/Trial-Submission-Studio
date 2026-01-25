@@ -24,20 +24,27 @@ pub struct IgContent {
 /// an explanation, a table with its context, etc.)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TextChunk {
+    /// Unique index for this chunk within the IG
+    pub index: usize,
     /// Section/chapter heading this chunk belongs to
     pub heading: String,
     /// The actual text content - this is the prose, rules, guidance
     pub content: String,
     /// Optional: domain code if this chunk relates to a specific domain
     pub domain: Option<String>,
+    /// Parent chunk index (for continuation chunks split from a larger section)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_index: Option<usize>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct SearchResult {
     pub ig: String,
+    pub index: usize,
     pub heading: String,
     pub content: String,
     pub domain: Option<String>,
+    pub parent_index: Option<usize>,
     pub score: f32,
 }
 
@@ -112,9 +119,11 @@ impl IgIndex {
 
                     results.push(SearchResult {
                         ig: ig_name.to_string(),
+                        index: chunk.index,
                         heading: chunk.heading.clone(),
                         content: truncate_around_match(&chunk.content, query, 600),
                         domain: chunk.domain.clone(),
+                        parent_index: chunk.parent_index,
                         score,
                     });
                 }
