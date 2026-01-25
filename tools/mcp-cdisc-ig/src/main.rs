@@ -18,7 +18,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-mod index;
+use mcp_cdisc_ig::index;
 
 // Parameter structs for tools
 

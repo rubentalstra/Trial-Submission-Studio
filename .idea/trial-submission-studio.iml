@@ -21,6 +21,7 @@
       <sourceFolder url="file://$MODULE_DIR$/crates/tss-persistence/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tools/generate-social-images/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tools/mcp-cdisc-ig/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/tools/mcp-cdisc-ig/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/dataset-xml" />
       <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/sas" />
       <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/xpt" />

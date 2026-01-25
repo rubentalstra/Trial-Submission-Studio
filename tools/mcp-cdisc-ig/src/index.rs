@@ -294,8 +294,8 @@ fn truncate_around_match(content: &str, query: &str, max_len: usize) -> String {
     if let Some(pos) = lower_content.find(&lower_keyword) {
         // Center the window around the match
         let half_len = max_len / 2;
-        let start = pos.saturating_sub(half_len);
-        let end = (start + max_len).min(content.len());
+        let start = floor_char_boundary(content, pos.saturating_sub(half_len));
+        let end = ceil_char_boundary(content, (start + max_len).min(content.len()));
 
         let mut result = String::new();
         if start > 0 {
@@ -308,6 +308,31 @@ fn truncate_around_match(content: &str, query: &str, max_len: usize) -> String {
         result
     } else {
         // Fallback: just truncate from the start
-        format!("{}...", &content[..max_len])
+        let end = ceil_char_boundary(content, max_len.min(content.len()));
+        format!("{}...", &content[..end])
     }
+}
+
+/// Find the largest valid char boundary <= index
+fn floor_char_boundary(s: &str, index: usize) -> usize {
+    if index >= s.len() {
+        return s.len();
+    }
+    let mut i = index;
+    while i > 0 && !s.is_char_boundary(i) {
+        i -= 1;
+    }
+    i
+}
+
+/// Find the smallest valid char boundary >= index
+fn ceil_char_boundary(s: &str, index: usize) -> usize {
+    if index >= s.len() {
+        return s.len();
+    }
+    let mut i = index;
+    while i < s.len() && !s.is_char_boundary(i) {
+        i += 1;
+    }
+    i
 }
