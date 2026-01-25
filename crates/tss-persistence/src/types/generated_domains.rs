@@ -1,6 +1,10 @@
-//! Relationship and special-purpose domain entry snapshots for persistence.
+//! Generated domain entry snapshots for persistence.
 //!
 //! These types mirror the GUI state entry types but with rkyv serialization.
+//!
+//! Domain categories per SDTM-IG v3.4:
+//! - **Special-Purpose**: CO (Comments)
+//! - **Relationship**: RELREC, RELSPEC, RELSUB
 
 use rkyv::{Archive, Deserialize, Serialize};
 

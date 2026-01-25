@@ -26,7 +26,7 @@
 
 mod dialog;
 mod domain_state;
-mod relationship;
+mod generated_domains;
 mod settings;
 mod study;
 mod view_state;
@@ -39,7 +39,7 @@ pub use domain_state::{
     DomainSource, DomainState, GeneratedDomainState, SourceDomainState, SuppAction,
     SuppColumnConfig, SuppOrigin,
 };
-pub use relationship::{
+pub use generated_domains::{
     CommentEntry, GeneratedDomainEntry, GeneratedDomainType, RelrecEntry, RelrecRelType,
     RelspecEntry, RelsubEntry,
 };

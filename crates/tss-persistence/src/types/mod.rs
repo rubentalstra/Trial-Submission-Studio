@@ -4,21 +4,21 @@
 //! They mirror the GUI state types but are optimized for storage.
 
 mod domain;
+mod generated_domains;
 mod placeholders;
 mod project;
-mod relationship;
 mod source;
 mod supp;
 
 pub use domain::{
     DomainSnapshot, GeneratedDomainSnapshot, MappingEntry, MappingSnapshot, SourceDomainSnapshot,
 };
-pub use placeholders::ProjectPlaceholders;
-pub use project::{ProjectFile, StudyMetadata, WorkflowTypeSnapshot};
-pub use relationship::{
+pub use generated_domains::{
     CommentEntrySnapshot, GeneratedDomainEntrySnapshot, GeneratedDomainTypeSnapshot,
     RelrecEntrySnapshot, RelrecRelTypeSnapshot, RelspecEntrySnapshot, RelsubEntrySnapshot,
 };
+pub use placeholders::ProjectPlaceholders;
+pub use project::{ProjectFile, StudyMetadata, WorkflowTypeSnapshot};
 pub use source::SourceAssignment;
 pub use supp::{SuppActionSnapshot, SuppColumnSnapshot, SuppOriginSnapshot};
 

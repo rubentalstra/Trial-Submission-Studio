@@ -16,7 +16,7 @@ use tss_standards::SdtmDomain;
 use tss_submit::MappingState;
 use tss_submit::{NormalizationPipeline, Severity, ValidationReport, infer_normalization_rules};
 
-use super::relationship::{GeneratedDomainEntry, GeneratedDomainType};
+use super::generated_domains::{GeneratedDomainEntry, GeneratedDomainType};
 
 // =============================================================================
 // SUPP CONFIGURATION

@@ -64,6 +64,12 @@ pub enum ViewState {
 
     /// Export screen.
     Export(ExportViewState),
+
+    /// Generated domain builder (CO, RELREC, RELSPEC, RELSUB).
+    GeneratedDomainBuilder {
+        /// Builder state.
+        builder: crate::message::GeneratedDomainBuilderState,
+    },
 }
 
 /// State for the domain editor view.
@@ -147,6 +153,20 @@ impl ViewState {
     /// Create export view state.
     pub fn export() -> Self {
         Self::Export(ExportViewState::default())
+    }
+
+    /// Create generated domain builder view state.
+    pub fn generated_domain_builder() -> Self {
+        Self::GeneratedDomainBuilder {
+            builder: crate::message::GeneratedDomainBuilderState::default(),
+        }
+    }
+
+    /// Create generated domain builder view state for a specific domain type.
+    pub fn generated_domain_builder_for(domain_type: crate::state::GeneratedDomainType) -> Self {
+        Self::GeneratedDomainBuilder {
+            builder: crate::message::GeneratedDomainBuilderState::for_domain(domain_type),
+        }
     }
 
     /// Get workflow mode.

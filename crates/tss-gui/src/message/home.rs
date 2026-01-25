@@ -5,6 +5,8 @@
 
 use std::path::PathBuf;
 
+use crate::state::GeneratedDomainType;
+
 /// Messages for the Home view.
 #[derive(Debug, Clone)]
 pub enum HomeMessage {
@@ -26,8 +28,11 @@ pub enum HomeMessage {
     // =========================================================================
     // Navigation
     // =========================================================================
-    /// User clicked on a domain to open it
+    /// User clicked on a source-mapped domain to open it
     DomainClicked(String),
+
+    /// User clicked on a generated domain (CO, RELREC, RELSPEC, RELSUB)
+    GeneratedDomainClicked(GeneratedDomainType),
 
     /// User clicked "Go to Export" button
     GoToExportClicked,

@@ -5,6 +5,8 @@
 
 pub mod domain;
 pub mod enums;
+pub mod reciprocal;
 
 pub use domain::{SdtmDomain, SdtmVariable};
 pub use enums::{SdtmDatasetClass, VariableRole};
+pub use reciprocal::{get_parent_srel_for_child, get_reciprocal_srel, is_symmetric_srel};
