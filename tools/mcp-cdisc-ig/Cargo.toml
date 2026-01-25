@@ -28,6 +28,10 @@ aho-corasick = "1"
 pdf-extract = "0.10"
 regex = "1"
 
+# TUI (for process-pdfs binary)
+ratatui = "0.30"
+crossterm = "0.29.0"
+
 # Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
