@@ -6,6 +6,7 @@ pub struct IgIndex {
     sdtm: IgContent,
     send: IgContent,
     adam: IgContent,
+    define: IgContent,
 }
 
 /// Content from a single Implementation Guide
@@ -32,6 +33,9 @@ pub struct TextChunk {
     pub content: String,
     /// Optional: domain code if this chunk relates to a specific domain
     pub domain: Option<String>,
+    /// Starting page number in the source PDF (1-indexed)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page: Option<u32>,
     /// Parent chunk index (for continuation chunks split from a larger section)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_index: Option<usize>,
@@ -44,6 +48,9 @@ pub struct SearchResult {
     pub heading: String,
     pub content: String,
     pub domain: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_index: Option<usize>,
     pub score: f32,
 }
@@ -62,18 +69,27 @@ impl IgIndex {
         let sdtm: IgContent = serde_json::from_str(include_str!("../data/sdtm-ig-v3.4.json"))?;
         let send: IgContent = serde_json::from_str(include_str!("../data/send-ig-v3.1.1.json"))?;
         let adam: IgContent = serde_json::from_str(include_str!("../data/adam-ig-v1.3.json"))?;
+        let define: IgContent = serde_json::from_str(include_str!("../data/define-xml-v2.1.json"))?;
 
-        Ok(Self { sdtm, send, adam })
+        Ok(Self {
+            sdtm,
+            send,
+            adam,
+            define,
+        })
     }
 
     pub fn section_count(&self) -> usize {
-        self.sdtm.chunks.len() + self.send.chunks.len() + self.adam.chunks.len()
+        self.sdtm.chunks.len()
+            + self.send.chunks.len()
+            + self.adam.chunks.len()
+            + self.define.chunks.len()
     }
 
     pub fn domain_count(&self) -> usize {
         // Count unique domains mentioned across all chunks
         let mut domains = std::collections::HashSet::new();
-        for ig in [&self.sdtm, &self.send, &self.adam] {
+        for ig in [&self.sdtm, &self.send, &self.adam, &self.define] {
             for chunk in &ig.chunks {
                 if let Some(d) = &chunk.domain {
                     domains.insert(d.clone());
@@ -109,10 +125,12 @@ impl IgIndex {
             "sdtm" => vec![("SDTM-IG v3.4", &self.sdtm)],
             "send" => vec![("SEND-IG v3.1.1", &self.send)],
             "adam" => vec![("ADaM-IG v1.3", &self.adam)],
+            "define" => vec![("Define-XML v2.1", &self.define)],
             _ => vec![
                 ("SDTM-IG v3.4", &self.sdtm),
                 ("SEND-IG v3.1.1", &self.send),
                 ("ADaM-IG v1.3", &self.adam),
+                ("Define-XML v2.1", &self.define),
             ],
         };
 
@@ -131,6 +149,7 @@ impl IgIndex {
                         heading: chunk.heading.clone(),
                         content: truncate_around_match(&chunk.content, query, 600),
                         domain: chunk.domain.clone(),
+                        page: chunk.page,
                         parent_index: chunk.parent_index,
                         score,
                     });
@@ -150,6 +169,7 @@ impl IgIndex {
             "sdtm" => &self.sdtm,
             "send" => &self.send,
             "adam" => &self.adam,
+            "define" => &self.define,
             _ => return None,
         };
 
@@ -178,6 +198,7 @@ impl IgIndex {
             "sdtm" => &self.sdtm,
             "send" => &self.send,
             "adam" => &self.adam,
+            "define" => &self.define,
             _ => return None,
         };
 
@@ -194,6 +215,7 @@ impl IgIndex {
             "sdtm" => &self.sdtm,
             "send" => &self.send,
             "adam" => &self.adam,
+            "define" => &self.define,
             _ => return None,
         };
 
@@ -227,6 +249,7 @@ impl IgIndex {
             "sdtm" => &self.sdtm,
             "send" => &self.send,
             "adam" => &self.adam,
+            "define" => &self.define,
             _ => return None,
         };
 

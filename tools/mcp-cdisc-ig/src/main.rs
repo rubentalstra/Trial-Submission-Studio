@@ -1,9 +1,10 @@
 //! CDISC Implementation Guide MCP Server
 //!
-//! Provides tools to search and query CDISC Implementation Guides:
+//! Provides tools to search and query CDISC standards documentation:
 //! - SDTM-IG v3.4 (461 pages)
 //! - SEND-IG v3.1.1 (244 pages)
 //! - ADaM-IG v1.3 (88 pages)
+//! - Define-XML v2.1 (metadata specification)
 
 use rmcp::{
     ErrorData as McpError, ServerHandler, ServiceExt,
@@ -25,7 +26,7 @@ mod index;
 struct SearchIgParams {
     /// Search query (e.g., 'USUBJID derivation', 'DM domain requirements')
     query: String,
-    /// Which IG to search: 'sdtm', 'send', 'adam', or 'all' (default: 'all')
+    /// Which IG to search: 'sdtm', 'send', 'adam', 'define', or 'all' (default: 'all')
     ig: Option<String>,
     /// Maximum results to return (default: 10, max: 50)
     limit: Option<usize>,
@@ -35,13 +36,13 @@ struct SearchIgParams {
 struct GetDomainSpecParams {
     /// Domain code (e.g., 'DM', 'AE', 'LB', 'EX', 'VS', 'CM')
     domain: String,
-    /// Implementation Guide: 'sdtm', 'send', or 'adam'
+    /// Implementation Guide: 'sdtm', 'send', 'adam', or 'define'
     ig: String,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 struct GetChunkParams {
-    /// Implementation Guide: 'sdtm', 'send', or 'adam'
+    /// Implementation Guide: 'sdtm', 'send', 'adam', or 'define'
     ig: String,
     /// Chunk index to retrieve
     index: usize,
@@ -49,7 +50,7 @@ struct GetChunkParams {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 struct GetRelatedChunksParams {
-    /// Implementation Guide: 'sdtm', 'send', or 'adam'
+    /// Implementation Guide: 'sdtm', 'send', 'adam', or 'define'
     ig: String,
     /// Chunk index (can be parent or child - will return full section)
     index: usize,
@@ -57,7 +58,7 @@ struct GetRelatedChunksParams {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 struct ListSectionsParams {
-    /// Implementation Guide: 'sdtm', 'send', or 'adam'
+    /// Implementation Guide: 'sdtm', 'send', 'adam', or 'define'
     ig: String,
 }
 
@@ -115,7 +116,7 @@ impl CdiscIgServer {
     ) -> Result<CallToolResult, McpError> {
         let GetDomainSpecParams { domain, ig } = params.0;
         let ig_lower = ig.to_lowercase();
-        if !["sdtm", "send", "adam"].contains(&ig_lower.as_str()) {
+        if !["sdtm", "send", "adam", "define"].contains(&ig_lower.as_str()) {
             return Ok(CallToolResult::error(vec![Content::text(format!(
                 "Invalid IG '{}'. Must be one of: sdtm, send, adam",
                 ig
@@ -148,7 +149,7 @@ impl CdiscIgServer {
     ) -> Result<CallToolResult, McpError> {
         let GetChunkParams { ig, index } = params.0;
         let ig_lower = ig.to_lowercase();
-        if !["sdtm", "send", "adam"].contains(&ig_lower.as_str()) {
+        if !["sdtm", "send", "adam", "define"].contains(&ig_lower.as_str()) {
             return Ok(CallToolResult::error(vec![Content::text(format!(
                 "Invalid IG '{}'. Must be one of: sdtm, send, adam",
                 ig
@@ -181,7 +182,7 @@ impl CdiscIgServer {
     ) -> Result<CallToolResult, McpError> {
         let GetRelatedChunksParams { ig, index } = params.0;
         let ig_lower = ig.to_lowercase();
-        if !["sdtm", "send", "adam"].contains(&ig_lower.as_str()) {
+        if !["sdtm", "send", "adam", "define"].contains(&ig_lower.as_str()) {
             return Ok(CallToolResult::error(vec![Content::text(format!(
                 "Invalid IG '{}'. Must be one of: sdtm, send, adam",
                 ig
@@ -214,7 +215,7 @@ impl CdiscIgServer {
     ) -> Result<CallToolResult, McpError> {
         let ListSectionsParams { ig } = params.0;
         let ig_lower = ig.to_lowercase();
-        if !["sdtm", "send", "adam"].contains(&ig_lower.as_str()) {
+        if !["sdtm", "send", "adam", "define"].contains(&ig_lower.as_str()) {
             return Ok(CallToolResult::error(vec![Content::text(format!(
                 "Invalid IG '{}'. Must be one of: sdtm, send, adam",
                 ig
@@ -256,9 +257,9 @@ impl ServerHandler for CdiscIgServer {
                 website_url: None,
             },
             instructions: Some(
-                "CDISC Implementation Guide documentation server. \
+                "CDISC standards documentation server. \
                  Provides searchable access to SDTM-IG v3.4, SEND-IG v3.1.1, \
-                 and ADaM-IG v1.3 specifications."
+                 ADaM-IG v1.3, and Define-XML v2.1 specifications."
                     .to_string(),
             ),
         }

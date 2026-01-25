@@ -159,6 +159,9 @@ struct TextChunk {
     content: String,
     /// Domain code if applicable
     domain: Option<String>,
+    /// Starting page number in the PDF (1-indexed)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    page: Option<u32>,
     /// Parent chunk index (for continuation chunks split from a larger section)
     #[serde(skip_serializing_if = "Option::is_none")]
     parent_index: Option<usize>,
@@ -178,6 +181,32 @@ struct Section {
     heading: String,
     domain: Option<String>,
     content: String,
+    /// Starting page number (1-indexed)
+    start_page: Option<u32>,
+}
+
+/// Text with page number tracking
+#[derive(Debug, Clone)]
+struct PagedText {
+    /// Full concatenated text
+    text: String,
+    /// Position in text where each page starts: (page_num, start_position)
+    page_boundaries: Vec<(u32, usize)>,
+}
+
+impl PagedText {
+    /// Find which page a position in the text falls on
+    fn page_at_position(&self, pos: usize) -> Option<u32> {
+        let mut current_page = None;
+        for &(page_num, start_pos) in &self.page_boundaries {
+            if start_pos <= pos {
+                current_page = Some(page_num);
+            } else {
+                break;
+            }
+        }
+        current_page
+    }
 }
 
 // =============================================================================
@@ -339,6 +368,9 @@ const ADAM_DOMAINS: &[&str] = &[
     "ADSL", "BDS", "OCCDS", // Common ADaM dataset naming patterns
     "ADAE", "ADCM", "ADEX", "ADLB", "ADPC", "ADPP", "ADTTE", "ADVS",
 ];
+
+/// Define-XML v2.1 - metadata specification (no domains, but key element types)
+const DEFINE_XML_ELEMENTS: &[&str] = &[];
 
 // =============================================================================
 // TUI Rendering
@@ -571,6 +603,13 @@ fn main() -> Result<()> {
             "adam-ig-v1.3.json",
             ADAM_DOMAINS,
         ),
+        (
+            "Define-XML_v2.1.pdf",
+            "Define-XML",
+            "2.1",
+            "define-xml-v2.1.json",
+            DEFINE_XML_ELEMENTS,
+        ),
         // (
         //     "SENDIG_v3.1.1.pdf",
         //     "SEND-IG",
@@ -616,7 +655,7 @@ fn main() -> Result<()> {
         app.igs[i].status = IgStatus::Processing(Phase::Extracting);
         terminal.draw(|f| ui(f, &app))?;
 
-        let text = match extract_with_progress(&mut terminal, &mut app, &pdf_path) {
+        let paged_text = match extract_with_progress(&mut terminal, &mut app, &pdf_path) {
             Ok(Some(t)) => t,
             Ok(None) => {
                 user_quit = true;
@@ -636,7 +675,7 @@ fn main() -> Result<()> {
 
         let domains_vec: Vec<&'static str> = domains.to_vec();
         let sections = match run_in_background(&mut terminal, &mut app, move || {
-            identify_sections(&text, &domains_vec)
+            identify_sections(&paged_text, &domains_vec)
         })? {
             Some(s) => s,
             None => {
@@ -717,7 +756,7 @@ fn extract_with_progress(
     terminal: &mut DefaultTerminal,
     app: &mut App,
     path: &Path,
-) -> Result<Option<String>> {
+) -> Result<Option<PagedText>> {
     use std::sync::mpsc;
 
     // Load document in background thread so we can check for quit
@@ -752,13 +791,15 @@ fn extract_with_progress(
 
     // Get page count
     let pages = doc.get_pages();
-    let page_numbers: Vec<u32> = pages.keys().copied().collect();
+    let mut page_numbers: Vec<u32> = pages.keys().copied().collect();
+    page_numbers.sort(); // Ensure pages are in order
     app.total_pages = page_numbers.len();
     app.current_page = 0;
 
     terminal.draw(|f| ui(f, app))?;
 
     let mut all_text = String::new();
+    let mut page_boundaries: Vec<(u32, usize)> = Vec::new();
 
     // Extract text page by page
     for (idx, &page_num) in page_numbers.iter().enumerate() {
@@ -770,6 +811,9 @@ fn extract_with_progress(
         app.current_page = idx + 1;
         app.advance_spinner();
         terminal.draw(|f| ui(f, app))?;
+
+        // Record where this page starts in the text
+        page_boundaries.push((page_num, all_text.len()));
 
         // Extract text from this page
         match doc.extract_text(&[page_num]) {
@@ -791,7 +835,10 @@ fn extract_with_progress(
         anyhow::bail!("No text extracted from PDF - may be image-only or encrypted");
     }
 
-    Ok(Some(all_text))
+    Ok(Some(PagedText {
+        text: all_text,
+        page_boundaries,
+    }))
 }
 
 /// Run a blocking operation in background thread while keeping UI responsive
@@ -858,7 +905,9 @@ fn wait_for_exit() -> Result<()> {
 // =============================================================================
 
 /// First pass: Identify all major sections and their associated domains
-fn identify_sections(full_text: &str, domains: &[&str]) -> Vec<Section> {
+fn identify_sections(paged_text: &PagedText, domains: &[&str]) -> Vec<Section> {
+    let full_text = &paged_text.text;
+
     // Find all section headings in the full text
     let mut section_starts: Vec<(usize, String, Option<String>)> = Vec::new();
 
@@ -899,6 +948,7 @@ fn identify_sections(full_text: &str, domains: &[&str]) -> Vec<Section> {
                 heading: "Document Content".to_string(),
                 domain: None,
                 content,
+                start_page: paged_text.page_at_position(0),
             }];
         }
         return Vec::new();
@@ -921,10 +971,14 @@ fn identify_sections(full_text: &str, domains: &[&str]) -> Vec<Section> {
             continue;
         }
 
+        // Determine which page this section starts on
+        let start_page = paged_text.page_at_position(*start_pos);
+
         sections.push(Section {
             heading: heading.clone(),
             domain: domain.clone(),
             content,
+            start_page,
         });
     }
 
@@ -992,6 +1046,7 @@ fn chunk_sections(sections: &[Section], domains: &[&str]) -> Vec<TextChunk> {
             &section.heading,
             &section.content,
             section.domain.as_deref(),
+            section.start_page,
             domains,
             &mut next_index,
         );
@@ -1007,6 +1062,7 @@ fn split_into_chunks(
     heading: &str,
     content: &str,
     section_domain: Option<&str>,
+    section_page: Option<u32>,
     domains: &[&str],
     next_index: &mut usize,
 ) -> Vec<TextChunk> {
@@ -1015,9 +1071,15 @@ fn split_into_chunks(
 
     // If content is small enough, return as single chunk
     if content.len() <= 3000 {
-        if let Some(chunk) =
-            create_chunk(heading, content, section_domain, domains, *next_index, None)
-        {
+        if let Some(chunk) = create_chunk(
+            heading,
+            content,
+            section_domain,
+            section_page,
+            domains,
+            *next_index,
+            None,
+        ) {
             *next_index += 1;
             chunks.push(chunk);
         }
@@ -1034,6 +1096,7 @@ fn split_into_chunks(
                 heading,
                 &current_chunk,
                 section_domain,
+                section_page,
                 domains,
                 *next_index,
                 section_parent,
@@ -1060,6 +1123,7 @@ fn split_into_chunks(
             heading,
             &current_chunk,
             section_domain,
+            section_page,
             domains,
             *next_index,
             section_parent,
@@ -1077,6 +1141,7 @@ fn create_chunk(
     heading: &str,
     content: &str,
     section_domain: Option<&str>,
+    page: Option<u32>,
     domains: &[&str],
     index: usize,
     parent_index: Option<usize>,
@@ -1097,6 +1162,7 @@ fn create_chunk(
         heading: heading.to_string(),
         content,
         domain,
+        page,
         parent_index,
     })
 }
