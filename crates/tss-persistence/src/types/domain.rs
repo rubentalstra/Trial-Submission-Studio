@@ -4,9 +4,88 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use rkyv::{Archive, Deserialize, Serialize};
 
-use super::SuppColumnSnapshot;
+use super::{GeneratedDomainEntrySnapshot, GeneratedDomainTypeSnapshot, SuppColumnSnapshot};
+
+// =============================================================================
+// DOMAIN SNAPSHOT ENUM
+// =============================================================================
 
 /// Snapshot of a domain's state for persistence.
+///
+/// This is an enum to handle both source (CSV-mapped) and generated domains.
+#[derive(Debug, Clone, Archive, Serialize, Deserialize)]
+#[rkyv(compare(PartialEq))]
+pub enum DomainSnapshot {
+    /// Source domain (mapped from CSV file).
+    Source(SourceDomainSnapshot),
+    /// Generated domain (CO, RELREC, RELSPEC, RELSUB).
+    Generated(GeneratedDomainSnapshot),
+}
+
+impl DomainSnapshot {
+    /// Create a new source domain snapshot.
+    pub fn new(domain_code: impl Into<String>) -> Self {
+        Self::Source(SourceDomainSnapshot::new(domain_code))
+    }
+
+    /// Create a source snapshot with a label.
+    pub fn with_label(domain_code: impl Into<String>, label: impl Into<String>) -> Self {
+        Self::Source(SourceDomainSnapshot::with_label(domain_code, label))
+    }
+
+    /// Create a new generated domain snapshot.
+    pub fn new_generated(domain_type: GeneratedDomainTypeSnapshot) -> Self {
+        Self::Generated(GeneratedDomainSnapshot::new(domain_type))
+    }
+
+    /// Get the domain code.
+    pub fn domain_code(&self) -> &str {
+        match self {
+            Self::Source(s) => &s.domain_code,
+            Self::Generated(g) => g.domain_type.code(),
+        }
+    }
+
+    /// Check if this is a source domain.
+    pub fn is_source(&self) -> bool {
+        matches!(self, Self::Source(_))
+    }
+
+    /// Check if this is a generated domain.
+    pub fn is_generated(&self) -> bool {
+        matches!(self, Self::Generated(_))
+    }
+
+    /// Get as source snapshot.
+    pub fn as_source(&self) -> Option<&SourceDomainSnapshot> {
+        match self {
+            Self::Source(s) => Some(s),
+            Self::Generated(_) => None,
+        }
+    }
+
+    /// Get as source snapshot mutably.
+    pub fn as_source_mut(&mut self) -> Option<&mut SourceDomainSnapshot> {
+        match self {
+            Self::Source(s) => Some(s),
+            Self::Generated(_) => None,
+        }
+    }
+
+    /// Get as generated snapshot.
+    pub fn as_generated(&self) -> Option<&GeneratedDomainSnapshot> {
+        match self {
+            Self::Source(_) => None,
+            Self::Generated(g) => Some(g),
+        }
+    }
+}
+
+// =============================================================================
+// SOURCE DOMAIN SNAPSHOT
+// =============================================================================
+
+/// Snapshot of a source domain's state (mapped from CSV).
 ///
 /// # Design Note
 ///
@@ -17,7 +96,7 @@ use super::SuppColumnSnapshot;
 /// Both are regenerated on load from the persisted mapping state.
 #[derive(Debug, Clone, Archive, Serialize, Deserialize)]
 #[rkyv(compare(PartialEq))]
-pub struct DomainSnapshot {
+pub struct SourceDomainSnapshot {
     /// Domain code (e.g., "DM", "AE").
     pub domain_code: String,
 
@@ -31,8 +110,8 @@ pub struct DomainSnapshot {
     pub supp_config: BTreeMap<String, SuppColumnSnapshot>,
 }
 
-impl DomainSnapshot {
-    /// Create a new domain snapshot.
+impl SourceDomainSnapshot {
+    /// Create a new source domain snapshot.
     pub fn new(domain_code: impl Into<String>) -> Self {
         Self {
             domain_code: domain_code.into(),
@@ -49,6 +128,57 @@ impl DomainSnapshot {
             label: Some(label.into()),
             mapping: MappingSnapshot::default(),
             supp_config: BTreeMap::new(),
+        }
+    }
+}
+
+// =============================================================================
+// GENERATED DOMAIN SNAPSHOT
+// =============================================================================
+
+/// Snapshot of a generated domain's state (CO, RELREC, RELSPEC, RELSUB).
+///
+/// Generated domains store their entries directly. The DataFrame is regenerated
+/// from entries on load using the generation service.
+#[derive(Debug, Clone, Archive, Serialize, Deserialize)]
+#[rkyv(compare(PartialEq))]
+pub struct GeneratedDomainSnapshot {
+    /// Type of generated domain.
+    pub domain_type: GeneratedDomainTypeSnapshot,
+
+    /// Entries used to generate the domain data.
+    pub entries: Vec<GeneratedDomainEntrySnapshot>,
+}
+
+impl GeneratedDomainSnapshot {
+    /// Create a new generated domain snapshot.
+    pub fn new(domain_type: GeneratedDomainTypeSnapshot) -> Self {
+        Self {
+            domain_type,
+            entries: Vec::new(),
+        }
+    }
+
+    /// Create with entries.
+    pub fn with_entries(
+        domain_type: GeneratedDomainTypeSnapshot,
+        entries: Vec<GeneratedDomainEntrySnapshot>,
+    ) -> Self {
+        Self {
+            domain_type,
+            entries,
+        }
+    }
+}
+
+impl GeneratedDomainTypeSnapshot {
+    /// Get the CDISC domain code.
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::Comments => "CO",
+            Self::RelatedRecords => "RELREC",
+            Self::RelatedSpecimens => "RELSPEC",
+            Self::RelatedSubjects => "RELSUB",
         }
     }
 }

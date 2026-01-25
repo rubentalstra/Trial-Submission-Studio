@@ -18,7 +18,8 @@ use tss_submit::{NormalizationContext, execute_normalization};
 use tss_submit::{Severity, ValidationReport};
 
 use crate::state::{
-    DomainState, ExportFormat, ExportResult, SdtmIgVersion, SuppColumnConfig, XptVersion,
+    DomainState, ExportFormat, ExportResult, SdtmIgVersion, SourceDomainState, SuppColumnConfig,
+    XptVersion,
 };
 
 // =============================================================================
@@ -419,26 +420,51 @@ fn build_supp_domain_definition(
 
 /// Build export data from a GUI domain.
 ///
-/// Performs data transformation using the normalization pipeline and
-/// builds SUPP DataFrame if the domain has included SUPP columns.
+/// For source domains: performs data transformation using the normalization pipeline
+/// and builds SUPP DataFrame if the domain has included SUPP columns.
+///
+/// For generated domains: uses the pre-built data directly (no normalization/SUPP).
 pub fn build_domain_export_data(
     code: &str,
     gui_domain: &DomainState,
     study_id: &str,
     terminology: Option<&TerminologyRegistry>,
 ) -> Result<DomainExportData, ExportError> {
+    match gui_domain {
+        DomainState::Source(source) => {
+            build_source_domain_export_data(code, source, study_id, terminology)
+        }
+        DomainState::Generated(generated) => {
+            // Generated domains have pre-built data ready for export
+            Ok(DomainExportData {
+                code: code.to_string(),
+                definition: generated.definition.clone(),
+                data: (*generated.data).clone(),
+                supp_data: None, // Generated domains don't have SUPP
+            })
+        }
+    }
+}
+
+/// Build export data from a source domain (mapped from CSV).
+fn build_source_domain_export_data(
+    code: &str,
+    source: &SourceDomainState,
+    study_id: &str,
+    terminology: Option<&TerminologyRegistry>,
+) -> Result<DomainExportData, ExportError> {
     // Get CDISC domain definition from mapping state
-    let cdisc_domain = gui_domain.mapping.domain().clone();
+    let cdisc_domain = source.mapping.domain().clone();
 
     // Build NormalizationContext from mapping state
-    let mappings: BTreeMap<String, String> = gui_domain
+    let mappings: BTreeMap<String, String> = source
         .mapping
         .all_accepted()
         .iter()
-        .map(|(target, (source, _))| (target.clone(), source.clone()))
+        .map(|(target, (src, _)): (&String, &(String, f32))| (target.clone(), src.clone()))
         .collect();
 
-    let omitted = gui_domain.mapping.all_omitted().clone();
+    let omitted = source.mapping.all_omitted().clone();
 
     let mut context = NormalizationContext::new(study_id, code)
         .with_mappings(mappings)
@@ -450,11 +476,11 @@ pub fn build_domain_export_data(
 
     // Execute normalization pipeline to transform source data
     let transformed_data =
-        execute_normalization(&gui_domain.source.data, &gui_domain.normalization, &context)
+        execute_normalization(&source.source.data, &source.normalization, &context)
             .map_err(|e| ExportError::for_domain(code, format!("Normalization failed: {}", e)))?;
 
     // Build SUPP DataFrame if there are included SUPP columns
-    let supp_data = build_supp_dataframe(code, gui_domain, study_id, &transformed_data)?;
+    let supp_data = build_supp_dataframe_from_source(code, source, study_id, &transformed_data)?;
 
     Ok(DomainExportData {
         code: code.to_string(),
@@ -464,15 +490,15 @@ pub fn build_domain_export_data(
     })
 }
 
-/// Build SUPP DataFrame from domain's supp_config.
-fn build_supp_dataframe(
+/// Build SUPP DataFrame from source domain's supp_config.
+fn build_supp_dataframe_from_source(
     domain_code: &str,
-    gui_domain: &DomainState,
+    source: &SourceDomainState,
     study_id: &str,
     transformed_data: &DataFrame,
 ) -> Result<Option<DataFrame>, ExportError> {
     // Get included SUPP columns
-    let included: Vec<_> = gui_domain
+    let included: Vec<(&String, &SuppColumnConfig)> = source
         .supp_config
         .iter()
         .filter(|(_, config)| config.should_include())
@@ -482,7 +508,7 @@ fn build_supp_dataframe(
         return Ok(None);
     }
 
-    let source_df = &gui_domain.source.data;
+    let source_df = &source.source.data;
     let row_count = source_df.height();
 
     // SUPP columns: STUDYID, RDOMAIN, USUBJID, IDVAR, IDVARVAL, QNAM, QLABEL, QVAL, QORIG, QEVAL
@@ -509,7 +535,7 @@ fn build_supp_dataframe(
     };
 
     // Build rows for each SUPP column
-    for (source_col_name, config) in &included {
+    for (source_col_name, config) in included {
         let source_col = match source_df.column(source_col_name) {
             Ok(col) => col,
             Err(_) => continue,
@@ -648,18 +674,29 @@ fn count_validation_errors(report: &ValidationReport) -> usize {
 // =============================================================================
 
 /// Check if a domain has any included SUPP columns.
+///
+/// Generated domains never have SUPP columns.
 pub fn domain_has_supp(gui_domain: &DomainState) -> bool {
-    gui_domain
-        .supp_config
-        .values()
-        .any(SuppColumnConfig::should_include)
+    gui_domain.as_source().is_some_and(|source| {
+        source
+            .supp_config
+            .values()
+            .any(SuppColumnConfig::should_include)
+    })
 }
 
 /// Get count of included SUPP columns for a domain.
+///
+/// Returns 0 for generated domains.
 pub fn domain_supp_count(gui_domain: &DomainState) -> usize {
     gui_domain
-        .supp_config
-        .values()
-        .filter(|config| config.should_include())
-        .count()
+        .as_source()
+        .map(|source| {
+            source
+                .supp_config
+                .values()
+                .filter(|config: &&SuppColumnConfig| config.should_include())
+                .count()
+        })
+        .unwrap_or(0)
 }

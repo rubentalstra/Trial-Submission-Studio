@@ -16,7 +16,7 @@ use crate::component::layout::SplitView;
 use crate::component::panels::DetailHeader;
 use crate::message::domain_editor::NormalizationMessage;
 use crate::message::{DomainEditorMessage, Message};
-use crate::state::{AppState, DomainState, NormalizationUiState, ViewState};
+use crate::state::{AppState, NormalizationUiState, SourceDomainState, ViewState};
 use crate::theme::{
     BORDER_RADIUS_SM, ClinicalColors, MASTER_WIDTH, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
 };
@@ -51,19 +51,35 @@ pub fn view_normalization_tab<'a>(
         }
     };
 
+    // Normalization only applies to source domains
+    let source = match domain.as_source() {
+        Some(s) => s,
+        None => {
+            return EmptyState::new(
+                container(lucide::info().size(48)).style(|theme: &Theme| container::Style {
+                    text_color: Some(theme.clinical().text_muted),
+                    ..Default::default()
+                }),
+                "Generated domains do not require normalization",
+            )
+            .centered()
+            .view();
+        }
+    };
+
     let normalization_ui = match &state.view {
         ViewState::DomainEditor(editor) => &editor.normalization_ui,
         _ => return text("Invalid view state").into(),
     };
 
-    let normalization = &domain.normalization;
-    let sdtm_domain = domain.mapping.domain();
+    let normalization = &source.normalization;
+    let sdtm_domain = source.mapping.domain();
 
     let master_header = view_rules_header(normalization.rules.len(), &normalization.rules);
-    let master_content = view_rules_list(domain, &normalization.rules, normalization_ui);
+    let master_content = view_rules_list(source, &normalization.rules, normalization_ui);
     let detail = if let Some(selected_idx) = normalization_ui.selected_rule {
         if let Some(rule) = normalization.rules.get(selected_idx) {
-            view_rule_detail(domain, rule, sdtm_domain, state.terminology.as_ref())
+            view_rule_detail(source, rule, sdtm_domain, state.terminology.as_ref())
         } else {
             view_no_selection()
         }
@@ -163,7 +179,7 @@ fn view_rules_header<'a>(
 }
 
 fn view_rules_list<'a>(
-    domain: &'a DomainState,
+    domain: &'a SourceDomainState,
     rules: &'a [tss_submit::NormalizationRule],
     ui_state: &'a NormalizationUiState,
 ) -> Element<'a, Message> {
@@ -253,7 +269,7 @@ fn get_status_dot_color(var_status: VariableStatus) -> Color {
 // =============================================================================
 
 fn view_rule_detail<'a>(
-    domain: &'a DomainState,
+    domain: &'a SourceDomainState,
     rule: &'a tss_submit::NormalizationRule,
     sdtm_domain: &'a tss_standards::SdtmDomain,
     terminology: Option<&'a TerminologyRegistry>,
@@ -496,7 +512,7 @@ fn view_transformation_only<'a>(rule: &'a tss_submit::NormalizationRule) -> Elem
 // =============================================================================
 
 fn view_before_after_preview<'a>(
-    domain: &'a DomainState,
+    domain: &'a SourceDomainState,
     rule: &'a tss_submit::NormalizationRule,
     terminology: Option<&'a TerminologyRegistry>,
 ) -> Element<'a, Message> {
@@ -535,7 +551,7 @@ fn view_before_after_preview<'a>(
 }
 
 fn build_preview_content<'a>(
-    domain: &'a DomainState,
+    domain: &'a SourceDomainState,
     rule: &'a tss_submit::NormalizationRule,
     terminology: Option<&'a TerminologyRegistry>,
 ) -> Element<'a, Message> {

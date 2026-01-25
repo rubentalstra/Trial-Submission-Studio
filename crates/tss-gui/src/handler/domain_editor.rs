@@ -64,9 +64,14 @@ fn trigger_preview_rebuild(state: &AppState, domain_code: &str) -> Task<Message>
         return Task::none();
     };
 
+    // Only source domains have mapping/normalization for preview
+    let Some(src) = domain.as_source() else {
+        return Task::none();
+    };
+
     let input = PreviewInput {
-        source_df: domain.source.data.clone(),
-        mapping: domain.mapping.clone(),
+        source_df: src.source.data.clone(),
+        mapping: src.mapping.clone(),
         ct_registry: state.terminology.clone(),
     };
 
@@ -118,11 +123,12 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 .study
                 .as_mut()
                 .and_then(|s| s.domain_mut(&domain_code))
+                .and_then(|d| d.as_source_mut())
             {
                 if let Err(e) = domain.mapping.accept_suggestion(&variable) {
                     tracing::error!(variable = %variable, error = %e, "Failed to accept suggestion");
                 }
-                domain.invalidate_validation();
+                domain.validation_cache = None;
                 state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor(editor) = &mut state.view {
@@ -140,9 +146,10 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 .study
                 .as_mut()
                 .and_then(|s| s.domain_mut(&domain_code))
+                .and_then(|d| d.as_source_mut())
             {
                 domain.mapping.clear_assignment(&variable);
-                domain.invalidate_validation();
+                domain.validation_cache = None;
                 state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor(editor) = &mut state.view {
@@ -160,11 +167,12 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 .study
                 .as_mut()
                 .and_then(|s| s.domain_mut(&domain_code))
+                .and_then(|d| d.as_source_mut())
             {
                 if let Err(e) = domain.mapping.accept_manual(&variable, &column) {
                     tracing::error!(variable = %variable, column = %column, error = %e, "Failed to accept manual mapping");
                 }
-                domain.invalidate_validation();
+                domain.validation_cache = None;
                 state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor(editor) = &mut state.view {
@@ -204,9 +212,10 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 .study
                 .as_mut()
                 .and_then(|s| s.domain_mut(&domain_code))
+                .and_then(|d| d.as_source_mut())
             {
                 let _ = domain.mapping.mark_not_collected(&variable, &reason);
-                domain.invalidate_validation();
+                domain.validation_cache = None;
                 state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor(editor) = &mut state.view {
@@ -245,9 +254,10 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 .study
                 .as_mut()
                 .and_then(|s| s.domain_mut(&domain_code))
+                .and_then(|d| d.as_source_mut())
             {
                 domain.mapping.clear_assignment(&variable);
-                domain.invalidate_validation();
+                domain.validation_cache = None;
                 state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor(editor) = &mut state.view {
@@ -265,9 +275,10 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 .study
                 .as_mut()
                 .and_then(|s| s.domain_mut(&domain_code))
+                .and_then(|d| d.as_source_mut())
             {
                 let _ = domain.mapping.mark_omit(&variable);
-                domain.invalidate_validation();
+                domain.validation_cache = None;
                 state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor(editor) = &mut state.view {
@@ -285,9 +296,10 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 .study
                 .as_mut()
                 .and_then(|s| s.domain_mut(&domain_code))
+                .and_then(|d| d.as_source_mut())
             {
                 domain.mapping.clear_assignment(&variable);
-                domain.invalidate_validation();
+                domain.validation_cache = None;
                 state.dirty_tracker.mark_dirty();
             }
             if let ViewState::DomainEditor(editor) = &mut state.view {
@@ -348,20 +360,25 @@ fn handle_validation_message(state: &mut AppState, msg: ValidationMessage) -> Ta
                 return Task::none();
             };
 
+            // Only source domains support refresh validation
+            let Some(src) = domain.as_source() else {
+                return Task::none();
+            };
+
             let df = match &state.view {
                 ViewState::DomainEditor(editor) => {
                     // Use preview cache if available, otherwise clone from Arc<DataFrame>
                     editor
                         .preview_cache
                         .clone()
-                        .unwrap_or_else(|| (*domain.source.data).clone())
+                        .unwrap_or_else(|| (*src.source.data).clone())
                 }
-                _ => (*domain.source.data).clone(),
+                _ => (*src.source.data).clone(),
             };
 
-            let sdtm_domain = domain.mapping.domain().clone();
+            let sdtm_domain = src.mapping.domain().clone();
             let not_collected: std::collections::BTreeSet<String> =
-                domain.mapping.all_not_collected().keys().cloned().collect();
+                src.mapping.all_not_collected().keys().cloned().collect();
 
             let input = ValidationInput {
                 domain: sdtm_domain,
@@ -410,8 +427,10 @@ fn handle_validation_message(state: &mut AppState, msg: ValidationMessage) -> Ta
         ValidationMessage::GoToIssueSource { variable } => {
             if let ViewState::DomainEditor(editor) = &mut state.view {
                 editor.tab = EditorTab::Mapping;
-                if let Some(domain) = state.study.as_ref().and_then(|s| s.domain(&domain_code)) {
-                    let sdtm_domain = domain.mapping.domain();
+                if let Some(domain) = state.study.as_ref().and_then(|s| s.domain(&domain_code))
+                    && let Some(src) = domain.as_source()
+                {
+                    let sdtm_domain = src.mapping.domain();
                     if let Some(idx) = sdtm_domain
                         .variables
                         .iter()
@@ -471,7 +490,13 @@ fn handle_preview_message(state: &mut AppState, msg: PreviewMessage) -> Task<Mes
         }
 
         PreviewMessage::RebuildPreview => {
-            let Some(domain) = state.study.as_ref().and_then(|s| s.domain(&domain_code)) else {
+            // Preview rebuild only applies to source domains
+            let Some(source) = state
+                .study
+                .as_ref()
+                .and_then(|s| s.domain(&domain_code))
+                .and_then(|d| d.as_source())
+            else {
                 return Task::none();
             };
 
@@ -481,8 +506,8 @@ fn handle_preview_message(state: &mut AppState, msg: PreviewMessage) -> Task<Mes
             }
 
             let input = PreviewInput {
-                source_df: domain.source.data.clone(),
-                mapping: domain.mapping.clone(),
+                source_df: source.source.data.clone(),
+                mapping: source.mapping.clone(),
                 ct_registry: state.terminology.clone(),
             };
 
@@ -515,13 +540,14 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                 editor.supp_ui.selected_column = Some(col_name.clone());
                 editor.supp_ui.edit_draft = None;
             }
-            // Initialize config if not exists
-            if let Some(domain) = state
+            // Initialize config if not exists (only for source domains)
+            if let Some(source) = state
                 .study
                 .as_mut()
                 .and_then(|s| s.domain_mut(&domain_code))
+                .and_then(|d| d.as_source_mut())
             {
-                domain
+                source
                     .supp_config
                     .entry(col_name.clone())
                     .or_insert_with(|| SuppColumnConfig::from_column(&col_name));
@@ -596,11 +622,12 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
             };
 
             if let Some(col_name) = col
-                && let Some(domain) = state
+                && let Some(source) = state
                     .study
                     .as_mut()
                     .and_then(|s| s.domain_mut(&domain_code))
-                && let Some(config) = domain.supp_config.get_mut(&col_name)
+                    .and_then(|d| d.as_source_mut())
+                && let Some(config) = source.supp_config.get_mut(&col_name)
             {
                 if config.qnam.trim().is_empty() || config.qlabel.trim().is_empty() {
                     return Task::none();
@@ -621,11 +648,12 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
             };
 
             if let Some(col_name) = col
-                && let Some(domain) = state
+                && let Some(source) = state
                     .study
                     .as_mut()
                     .and_then(|s| s.domain_mut(&domain_code))
-                && let Some(config) = domain.supp_config.get_mut(&col_name)
+                    .and_then(|d| d.as_source_mut())
+                && let Some(config) = source.supp_config.get_mut(&col_name)
             {
                 config.action = SuppAction::Skip;
                 state.dirty_tracker.mark_dirty();
@@ -643,11 +671,12 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
             };
 
             if let Some(col_name) = col
-                && let Some(domain) = state
+                && let Some(source) = state
                     .study
                     .as_mut()
                     .and_then(|s| s.domain_mut(&domain_code))
-                && let Some(config) = domain.supp_config.get_mut(&col_name)
+                    .and_then(|d| d.as_source_mut())
+                && let Some(config) = source.supp_config.get_mut(&col_name)
             {
                 config.action = SuppAction::Pending;
                 state.dirty_tracker.mark_dirty();
@@ -665,8 +694,12 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
             };
 
             if let Some(col_name) = &col
-                && let Some(domain) = state.study.as_ref().and_then(|s| s.domain(&domain_code))
-                && let Some(config) = domain.supp_config.get(col_name)
+                && let Some(source) = state
+                    .study
+                    .as_ref()
+                    .and_then(|s| s.domain(&domain_code))
+                    .and_then(|d| d.as_source())
+                && let Some(config) = source.supp_config.get(col_name)
             {
                 let draft = SuppEditDraft::from_config(config);
                 if let ViewState::DomainEditor(editor) = &mut state.view {
@@ -690,11 +723,12 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                     return Task::none();
                 }
 
-                if let Some(domain) = state
+                if let Some(source) = state
                     .study
                     .as_mut()
                     .and_then(|s| s.domain_mut(&domain_code))
-                    && let Some(config) = domain.supp_config.get_mut(&col_name)
+                    .and_then(|d| d.as_source_mut())
+                    && let Some(config) = source.supp_config.get_mut(&col_name)
                 {
                     config.qnam = draft.qnam;
                     config.qlabel = draft.qlabel;
@@ -746,8 +780,12 @@ where
             let mut dummy = SuppColumnConfig::from_column("");
             update(&mut dummy, Some(draft));
         }
-    } else if let Some(domain) = state.study.as_mut().and_then(|s| s.domain_mut(domain_code))
-        && let Some(config) = domain.supp_config.get_mut(&col_name)
+    } else if let Some(source) = state
+        .study
+        .as_mut()
+        .and_then(|s| s.domain_mut(domain_code))
+        .and_then(|d| d.as_source_mut())
+        && let Some(config) = source.supp_config.get_mut(&col_name)
     {
         update(config, None);
     }

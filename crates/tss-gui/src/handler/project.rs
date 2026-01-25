@@ -13,9 +13,10 @@ use iced::Task;
 use crate::message::Message;
 use crate::state::AppState;
 use tss_persistence::{
-    DomainSnapshot, MappingEntry, MappingSnapshot, ProjectFile, SourceAssignment, StudyMetadata,
-    SuppActionSnapshot, SuppColumnSnapshot, SuppOriginSnapshot, WorkflowTypeSnapshot,
-    compute_file_hash, load_project_async, save_project_async,
+    DomainSnapshot, MappingEntry, MappingSnapshot, ProjectFile, SourceAssignment,
+    SourceDomainSnapshot, StudyMetadata, SuppActionSnapshot, SuppColumnSnapshot,
+    SuppOriginSnapshot, WorkflowTypeSnapshot, compute_file_hash, load_project_async,
+    save_project_async,
 };
 
 // =============================================================================
@@ -452,28 +453,33 @@ fn create_project_file_from_state(study: &crate::state::Study, state: &AppState)
     // Add source assignments and domain snapshots
     for code in study.domain_codes() {
         if let Some(domain_state) = study.domain(code) {
+            // Only source domains have file-based persistence
+            // Generated domains will be handled separately in the future
+            let Some(source) = domain_state.as_source() else {
+                continue;
+            };
+
             // Get file size for source assignment
-            let file_size = std::fs::metadata(&domain_state.source.file_path)
+            let file_size = std::fs::metadata(&source.source.file_path)
                 .map(|m| m.len())
                 .unwrap_or(0);
 
             // Add source assignment with content hash for change detection
-            let source_path = domain_state.source.file_path.to_string_lossy().to_string();
-            let content_hash =
-                compute_file_hash(&domain_state.source.file_path).unwrap_or_else(|e| {
-                    tracing::warn!("Failed to compute hash for {}: {}", source_path, e);
-                    String::new()
-                });
+            let source_path = source.source.file_path.to_string_lossy().to_string();
+            let content_hash = compute_file_hash(&source.source.file_path).unwrap_or_else(|e| {
+                tracing::warn!("Failed to compute hash for {}: {}", source_path, e);
+                String::new()
+            });
             let assignment = SourceAssignment::new(&source_path, code, content_hash, file_size);
             project.source_assignments.push(assignment);
 
-            // Create domain snapshot
-            let mut snapshot = DomainSnapshot::new(code);
-            snapshot.label = domain_state.source.label.clone();
+            // Create source domain snapshot
+            let mut source_snapshot = SourceDomainSnapshot::new(code);
+            source_snapshot.label = source.source.label.clone();
 
             // Create mapping snapshot
             // Note: We discard confidence scores - they're only meaningful during active mapping
-            let mapping = &domain_state.mapping;
+            let mapping = &source.mapping;
             let mapping_snapshot = MappingSnapshot {
                 study_id: mapping.study_id().to_string(),
                 accepted: mapping
@@ -485,10 +491,10 @@ fn create_project_file_from_state(study: &crate::state::Study, state: &AppState)
                 omitted: mapping.all_omitted().clone(),
                 auto_generated: mapping.all_auto_generated().clone(),
             };
-            snapshot.mapping = mapping_snapshot;
+            source_snapshot.mapping = mapping_snapshot;
 
             // Add SUPP config
-            for (col, config) in &domain_state.supp_config {
+            for (col, config) in &source.supp_config {
                 let supp_snapshot = SuppColumnSnapshot {
                     column: col.clone(),
                     qnam: config.qnam.clone(),
@@ -505,10 +511,15 @@ fn create_project_file_from_state(study: &crate::state::Study, state: &AppState)
                         crate::state::SuppAction::Skip => SuppActionSnapshot::Skip,
                     },
                 };
-                snapshot.supp_config.insert(col.clone(), supp_snapshot);
+                source_snapshot
+                    .supp_config
+                    .insert(col.clone(), supp_snapshot);
             }
 
-            project.domains.insert(code.to_string(), snapshot);
+            // Wrap in DomainSnapshot::Source and insert
+            project
+                .domains
+                .insert(code.to_string(), DomainSnapshot::Source(source_snapshot));
         }
     }
 
@@ -691,12 +702,24 @@ pub fn restore_project_mappings(state: &mut AppState, project: &tss_persistence:
 
     // Iterate through saved domain snapshots
     for (domain_code, snapshot) in &project.domains {
+        // Only restore source domain snapshots
+        let Some(source_snapshot) = snapshot.as_source() else {
+            // Skip generated domain snapshots for now (they'll be regenerated)
+            tracing::debug!("Skipping generated domain {} in restore", domain_code);
+            continue;
+        };
+
         if let Some(domain_state) = study.domain_mut(domain_code) {
+            // Only restore mapping for source domains
+            let Some(source) = domain_state.as_source_mut() else {
+                continue;
+            };
+
             // Restore mapping decisions
-            let mapping = &mut domain_state.mapping;
+            let mapping = &mut source.mapping;
 
             // Apply accepted mappings
-            for (var, entry) in &snapshot.mapping.accepted {
+            for (var, entry) in &source_snapshot.mapping.accepted {
                 // Use accept_manual to apply saved mappings
                 if let Err(e) = mapping.accept_manual(var, &entry.source_column) {
                     tracing::warn!(
@@ -709,26 +732,26 @@ pub fn restore_project_mappings(state: &mut AppState, project: &tss_persistence:
             }
 
             // Apply not collected
-            for (var, reason) in &snapshot.mapping.not_collected {
+            for (var, reason) in &source_snapshot.mapping.not_collected {
                 if let Err(e) = mapping.mark_not_collected(var, reason) {
                     tracing::warn!("Failed to mark {} as not collected: {}", var, e);
                 }
             }
 
             // Apply omitted
-            for var in &snapshot.mapping.omitted {
+            for var in &source_snapshot.mapping.omitted {
                 if let Err(e) = mapping.mark_omit(var) {
                     tracing::warn!("Failed to mark {} as omitted: {}", var, e);
                 }
             }
 
             // Apply auto-generated
-            for var in &snapshot.mapping.auto_generated {
+            for var in &source_snapshot.mapping.auto_generated {
                 mapping.mark_auto_generated(var);
             }
 
             // Restore SUPP configurations
-            for (col, supp_snapshot) in &snapshot.supp_config {
+            for (col, supp_snapshot) in &source_snapshot.supp_config {
                 let config = crate::state::SuppColumnConfig {
                     column: col.clone(),
                     qnam: supp_snapshot.qnam.clone(),
@@ -745,17 +768,17 @@ pub fn restore_project_mappings(state: &mut AppState, project: &tss_persistence:
                         SuppActionSnapshot::Skip => crate::state::SuppAction::Skip,
                     },
                 };
-                domain_state.supp_config.insert(col.clone(), config);
+                source.supp_config.insert(col.clone(), config);
             }
 
             tracing::debug!(
                 "Restored mappings for domain {}: {} accepted, {} not_collected, {} omitted, {} auto_generated, {} supp",
                 domain_code,
-                snapshot.mapping.accepted.len(),
-                snapshot.mapping.not_collected.len(),
-                snapshot.mapping.omitted.len(),
-                snapshot.mapping.auto_generated.len(),
-                snapshot.supp_config.len()
+                source_snapshot.mapping.accepted.len(),
+                source_snapshot.mapping.not_collected.len(),
+                source_snapshot.mapping.omitted.len(),
+                source_snapshot.mapping.auto_generated.len(),
+                source_snapshot.supp_config.len()
             );
         } else {
             tracing::warn!("Domain {} in project file not found in study", domain_code);

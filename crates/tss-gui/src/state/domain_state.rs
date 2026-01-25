@@ -1,17 +1,22 @@
-//! Domain state - source data and mapping.
+//! Domain state - source-mapped and generated domains.
 //!
-//! A domain represents a single SDTM dataset (e.g., DM, AE, LB).
+//! A domain represents a single SDTM dataset (e.g., DM, AE, LB, CO, RELREC).
 //! This module contains:
+//! - [`DomainState`] - Enum with Source and Generated variants
+//! - [`SourceDomainState`] - Domain mapped from CSV source data
+//! - [`GeneratedDomainState`] - Domain generated via UI (CO, RELREC, RELSPEC, RELSUB)
 //! - [`DomainSource`] - Immutable source data (CSV file + DataFrame)
-//! - [`DomainState`] - Domain with source data and mapping state
 //! - [`SuppColumnConfig`] - SUPP qualifier configuration for unmapped columns
 
 use polars::prelude::{DataFrame, PlSmallStr};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use tss_standards::SdtmDomain;
 use tss_submit::MappingState;
 use tss_submit::{NormalizationPipeline, Severity, ValidationReport, infer_normalization_rules};
+
+use super::relationship::{GeneratedDomainEntry, GeneratedDomainType};
 
 // =============================================================================
 // SUPP CONFIGURATION
@@ -178,39 +183,270 @@ impl DomainSource {
 }
 
 // =============================================================================
-// DOMAIN (Source + Mapping)
+// DOMAIN STATE - ENUM WITH SOURCE AND GENERATED VARIANTS
 // =============================================================================
 
-/// A single SDTM domain with source data and mapping state.
+/// A single SDTM domain - either source-mapped or generated.
+///
+/// # Variants
+///
+/// - **Source**: Mapped from CSV source data with mapping/normalization pipeline
+/// - **Generated**: Created via UI for CO, RELREC, RELSPEC, RELSUB domains
 ///
 /// # Design Notes
 ///
-/// - **Normalization pipeline is computed once** - The pipeline is derived from
-///   the SDTM domain metadata when the domain is created. It defines what
-///   transformations will be applied to each variable during export.
-///
-/// - **Validation cache persists across navigation** - Stored here so it survives
-///   view changes. Use `validation_summary()` for quick stats.
-///
-/// - **Mapping state is from `tss_map`** - The core mapping logic lives in the
-///   `tss_map` crate. This struct just holds the state.
+/// This is an enum (sum type) to make illegal states unrepresentable:
+/// - Source domains have mapping/normalization; generated don't
+/// - Generated domains have entry lists; source domains don't
+/// - No dead fields, no Option-based "is this a generated domain?" checks
 ///
 /// # Example
 ///
 /// ```ignore
-/// let domain = DomainState::new(source, mapping);
-///
-/// // Check mapping status
-/// let summary = domain.mapping.summary();
-/// println!("Mapped: {}/{}", summary.mapped, summary.total_variables);
-///
-/// // Check validation (if run)
-/// if let Some((warnings, errors)) = domain.validation_summary() {
-///     println!("Issues: {} warnings, {} errors", warnings, errors);
+/// match &domain {
+///     DomainState::Source(src) => {
+///         // Access mapping, normalization, supp_config
+///         let summary = src.mapping.summary();
+///     }
+///     DomainState::Generated(gen) => {
+///         // Access generated data and entries
+///         let data = &gen.data;
+///     }
 /// }
 /// ```
 #[derive(Clone)]
-pub struct DomainState {
+pub enum DomainState {
+    /// Domain mapped from CSV source data.
+    Source(SourceDomainState),
+    /// Domain generated via UI (CO, RELREC, RELSPEC, RELSUB).
+    Generated(GeneratedDomainState),
+}
+
+impl DomainState {
+    /// Create a new source-mapped domain.
+    ///
+    /// Automatically infers the normalization pipeline from the SDTM domain
+    /// metadata. This pipeline defines what transformations will be applied
+    /// to each variable during export.
+    pub fn new_source(source: DomainSource, mapping: MappingState) -> Self {
+        Self::Source(SourceDomainState::new(source, mapping))
+    }
+
+    /// Create a new generated domain.
+    pub fn new_generated(
+        domain_type: GeneratedDomainType,
+        data: DataFrame,
+        entries: Vec<GeneratedDomainEntry>,
+        definition: SdtmDomain,
+    ) -> Self {
+        Self::Generated(GeneratedDomainState::new(
+            domain_type,
+            data,
+            entries,
+            definition,
+        ))
+    }
+
+    /// Check if this is a source-mapped domain.
+    #[inline]
+    pub fn is_source(&self) -> bool {
+        matches!(self, Self::Source(_))
+    }
+
+    /// Check if this is a generated domain.
+    #[inline]
+    pub fn is_generated(&self) -> bool {
+        matches!(self, Self::Generated(_))
+    }
+
+    /// Get as source domain (if applicable).
+    pub fn as_source(&self) -> Option<&SourceDomainState> {
+        match self {
+            Self::Source(s) => Some(s),
+            Self::Generated(_) => None,
+        }
+    }
+
+    /// Get as mutable source domain (if applicable).
+    pub fn as_source_mut(&mut self) -> Option<&mut SourceDomainState> {
+        match self {
+            Self::Source(s) => Some(s),
+            Self::Generated(_) => None,
+        }
+    }
+
+    /// Get as generated domain (if applicable).
+    pub fn as_generated(&self) -> Option<&GeneratedDomainState> {
+        match self {
+            Self::Source(_) => None,
+            Self::Generated(g) => Some(g),
+        }
+    }
+
+    /// Get as mutable generated domain (if applicable).
+    pub fn as_generated_mut(&mut self) -> Option<&mut GeneratedDomainState> {
+        match self {
+            Self::Source(_) => None,
+            Self::Generated(g) => Some(g),
+        }
+    }
+
+    // =========================================================================
+    // Common methods that work for both variants
+    // =========================================================================
+
+    /// Get validation summary as (warnings, errors) count.
+    ///
+    /// Returns `None` if validation hasn't been run yet.
+    /// Returns `Some((warnings, errors))` from cached validation report.
+    pub fn validation_summary(&self) -> Option<(usize, usize)> {
+        let cache = match self {
+            Self::Source(s) => s.validation_cache.as_ref(),
+            Self::Generated(g) => g.validation_cache.as_ref(),
+        };
+
+        cache.map(|report| {
+            let warnings = report
+                .issues
+                .iter()
+                .filter(|i| matches!(i.severity(), Severity::Warning))
+                .count();
+            let errors = report
+                .issues
+                .iter()
+                .filter(|i| matches!(i.severity(), Severity::Error | Severity::Reject))
+                .count();
+            (warnings, errors)
+        })
+    }
+
+    /// Get the cached validation report.
+    pub fn validation_cache(&self) -> Option<&ValidationReport> {
+        match self {
+            Self::Source(s) => s.validation_cache.as_ref(),
+            Self::Generated(g) => g.validation_cache.as_ref(),
+        }
+    }
+
+    /// Set the validation cache.
+    pub fn set_validation_cache(&mut self, report: ValidationReport) {
+        match self {
+            Self::Source(s) => s.validation_cache = Some(report),
+            Self::Generated(g) => g.validation_cache = Some(report),
+        }
+    }
+
+    /// Clear validation cache (call when data changes).
+    pub fn invalidate_validation(&mut self) {
+        match self {
+            Self::Source(s) => s.validation_cache = None,
+            Self::Generated(g) => g.validation_cache = None,
+        }
+    }
+
+    /// Get display name: label or fallback to code.
+    pub fn display_name(&self, code: &str) -> String {
+        match self {
+            Self::Source(s) => s.display_name(code),
+            Self::Generated(g) => g.display_name(code),
+        }
+    }
+
+    /// Get row count from data.
+    #[inline]
+    pub fn row_count(&self) -> usize {
+        match self {
+            Self::Source(s) => s.row_count(),
+            Self::Generated(g) => g.row_count(),
+        }
+    }
+
+    /// Get the domain label (if set).
+    pub fn label(&self) -> Option<&str> {
+        match self {
+            Self::Source(s) => s.source.label.as_deref(),
+            Self::Generated(g) => Some(g.domain_type.label()),
+        }
+    }
+
+    /// Get the DataFrame for this domain.
+    ///
+    /// For source domains, this is the source data.
+    /// For generated domains, this is the generated output.
+    pub fn data(&self) -> &Arc<DataFrame> {
+        match self {
+            Self::Source(s) => &s.source.data,
+            Self::Generated(g) => &g.data,
+        }
+    }
+
+    /// Get the CDISC domain definition (if available).
+    ///
+    /// For source domains, this comes from the mapping state.
+    /// For generated domains, this is stored directly.
+    pub fn definition(&self) -> Option<&SdtmDomain> {
+        match self {
+            Self::Source(s) => Some(s.mapping.domain()),
+            Self::Generated(g) => Some(&g.definition),
+        }
+    }
+
+    // =========================================================================
+    // Source-only methods (provided for backwards compatibility, delegate to as_source)
+    // =========================================================================
+
+    /// Get mapping summary (source domains only).
+    ///
+    /// Returns a default summary for generated domains.
+    pub fn summary(&self) -> tss_submit::MappingSummary {
+        match self {
+            Self::Source(s) => s.mapping.summary(),
+            Self::Generated(_) => tss_submit::MappingSummary {
+                total_variables: 0,
+                mapped: 0,
+                unmapped_required: 0,
+                unmapped_expected: 0,
+                unmapped_permissible: 0,
+                auto_generated: 0,
+                not_collected: 0,
+                omitted: 0,
+            },
+        }
+    }
+}
+
+impl std::fmt::Debug for DomainState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Source(s) => f
+                .debug_struct("DomainState::Source")
+                .field("file", &s.source.file_path)
+                .field("rows", &s.source.row_count())
+                .field("mapping_summary", &s.mapping.summary())
+                .finish_non_exhaustive(),
+            Self::Generated(g) => f
+                .debug_struct("DomainState::Generated")
+                .field("type", &g.domain_type)
+                .field("rows", &g.row_count())
+                .field("entries", &g.entries.len())
+                .finish_non_exhaustive(),
+        }
+    }
+}
+
+// =============================================================================
+// SOURCE DOMAIN STATE
+// =============================================================================
+
+/// State for domains mapped from source CSV files.
+///
+/// This contains all the data needed for the mapping/normalization workflow:
+/// - Source data from CSV
+/// - Mapping state (which source columns map to which CDISC variables)
+/// - Normalization pipeline (transformations to apply during export)
+/// - SUPP configuration for unmapped columns
+#[derive(Clone)]
+pub struct SourceDomainState {
     /// Immutable source data (CSV).
     pub source: DomainSource,
 
@@ -231,8 +467,8 @@ pub struct DomainState {
     pub validation_cache: Option<ValidationReport>,
 }
 
-impl DomainState {
-    /// Create a new domain.
+impl SourceDomainState {
+    /// Create a new source domain.
     ///
     /// Automatically infers the normalization pipeline from the SDTM domain
     /// metadata. This pipeline defines what transformations will be applied
@@ -250,31 +486,6 @@ impl DomainState {
         }
     }
 
-    /// Get validation summary as (warnings, errors) count.
-    ///
-    /// Returns `None` if validation hasn't been run yet.
-    /// Returns `Some((warnings, errors))` from cached validation report.
-    pub fn validation_summary(&self) -> Option<(usize, usize)> {
-        self.validation_cache.as_ref().map(|report| {
-            let warnings = report
-                .issues
-                .iter()
-                .filter(|i| matches!(i.severity(), Severity::Warning))
-                .count();
-            let errors = report
-                .issues
-                .iter()
-                .filter(|i| matches!(i.severity(), Severity::Error | Severity::Reject))
-                .count();
-            (warnings, errors)
-        })
-    }
-
-    /// Clear validation cache (call when mapping/normalization changes).
-    pub fn invalidate_validation(&mut self) {
-        self.validation_cache = None;
-    }
-
     /// Get display name: "Demographics" or fallback to code "DM".
     pub fn display_name(&self, code: &str) -> String {
         match &self.source.label {
@@ -287,12 +498,6 @@ impl DomainState {
     #[inline]
     pub fn row_count(&self) -> usize {
         self.source.row_count()
-    }
-
-    /// Get mapping summary.
-    #[inline]
-    pub fn summary(&self) -> tss_submit::MappingSummary {
-        self.mapping.summary()
     }
 
     /// Get unmapped source columns (for SUPP configuration).
@@ -314,12 +519,103 @@ impl DomainState {
     }
 }
 
-impl std::fmt::Debug for DomainState {
+impl std::fmt::Debug for SourceDomainState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DomainState")
+        f.debug_struct("SourceDomainState")
             .field("source", &self.source.file_path)
             .field("rows", &self.source.row_count())
             .field("mapping_summary", &self.mapping.summary())
             .finish_non_exhaustive()
+    }
+}
+
+// =============================================================================
+// GENERATED DOMAIN STATE
+// =============================================================================
+
+/// State for generated domains (CO, RELREC, RELSPEC, RELSUB).
+///
+/// Generated domains are created via UI rather than mapped from source CSV:
+/// - User enters relationship/comment data via builder UI
+/// - Application generates the DataFrame with proper CDISC structure
+/// - No mapping or normalization needed - data is already in final form
+#[derive(Clone)]
+pub struct GeneratedDomainState {
+    /// Type of generated domain.
+    pub domain_type: GeneratedDomainType,
+
+    /// CDISC domain definition.
+    pub definition: SdtmDomain,
+
+    /// Generated DataFrame ready for export.
+    /// Wrapped in Arc for cheap cloning.
+    pub data: Arc<DataFrame>,
+
+    /// Source entries that were used to generate this domain.
+    /// Kept for editing/regeneration.
+    pub entries: Vec<GeneratedDomainEntry>,
+
+    /// Cached validation report.
+    pub validation_cache: Option<ValidationReport>,
+}
+
+impl GeneratedDomainState {
+    /// Create a new generated domain.
+    pub fn new(
+        domain_type: GeneratedDomainType,
+        data: DataFrame,
+        entries: Vec<GeneratedDomainEntry>,
+        definition: SdtmDomain,
+    ) -> Self {
+        Self {
+            domain_type,
+            definition,
+            data: Arc::new(data),
+            entries,
+            validation_cache: None,
+        }
+    }
+
+    /// Get display name from domain type.
+    pub fn display_name(&self, _code: &str) -> String {
+        self.domain_type.label().to_string()
+    }
+
+    /// Get row count from generated data.
+    #[inline]
+    pub fn row_count(&self) -> usize {
+        self.data.height()
+    }
+
+    /// Get the domain code.
+    #[inline]
+    pub fn code(&self) -> &'static str {
+        self.domain_type.code()
+    }
+}
+
+impl std::fmt::Debug for GeneratedDomainState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GeneratedDomainState")
+            .field("type", &self.domain_type)
+            .field("rows", &self.row_count())
+            .field("entries", &self.entries.len())
+            .finish_non_exhaustive()
+    }
+}
+
+// =============================================================================
+// BACKWARDS COMPATIBILITY - DomainState::new
+// =============================================================================
+
+impl DomainState {
+    /// Create a new domain (backwards-compatible alias for new_source).
+    ///
+    /// This exists for backwards compatibility with existing code that calls
+    /// `DomainState::new(source, mapping)`. New code should prefer
+    /// `DomainState::new_source()` for clarity.
+    #[inline]
+    pub fn new(source: DomainSource, mapping: MappingState) -> Self {
+        Self::new_source(source, mapping)
     }
 }

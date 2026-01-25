@@ -198,37 +198,50 @@ fn view_domain_row<'a>(
     let is_selected = export_state.is_selected(code);
     let row_count = domain.row_count();
 
-    // Determine status based on mapping progress
-    let mapping = &domain.mapping;
-    let accepted_count = mapping.all_accepted().len();
-    let total_count = mapping.domain().variables.len();
-    let mapped_ratio = if total_count > 0 {
-        accepted_count as f32 / total_count as f32
-    } else {
-        0.0
-    };
+    // Determine status based on mapping progress (source domains) or ready status (generated)
+    let status_icon: Element<'a, Message> = match domain.as_source() {
+        Some(source) => {
+            let mapping = &source.mapping;
+            let accepted_count = mapping.all_accepted().len();
+            let total_count = mapping.domain().variables.len();
+            let mapped_ratio = if total_count > 0 {
+                accepted_count as f32 / total_count as f32
+            } else {
+                0.0
+            };
 
-    let status_icon: Element<'a, Message> = if mapped_ratio >= 0.9 {
-        container(lucide::circle_check().size(14))
-            .style(|theme: &Theme| container::Style {
-                text_color: Some(theme.extended_palette().success.base.color),
-                ..Default::default()
-            })
-            .into()
-    } else if mapped_ratio >= 0.5 {
-        container(lucide::circle_alert().size(14))
-            .style(|theme: &Theme| container::Style {
-                text_color: Some(theme.extended_palette().warning.base.color),
-                ..Default::default()
-            })
-            .into()
-    } else {
-        container(lucide::circle().size(14))
-            .style(|theme: &Theme| container::Style {
-                text_color: Some(theme.clinical().text_disabled),
-                ..Default::default()
-            })
-            .into()
+            if mapped_ratio >= 0.9 {
+                container(lucide::circle_check().size(14))
+                    .style(|theme: &Theme| container::Style {
+                        text_color: Some(theme.extended_palette().success.base.color),
+                        ..Default::default()
+                    })
+                    .into()
+            } else if mapped_ratio >= 0.5 {
+                container(lucide::circle_alert().size(14))
+                    .style(|theme: &Theme| container::Style {
+                        text_color: Some(theme.extended_palette().warning.base.color),
+                        ..Default::default()
+                    })
+                    .into()
+            } else {
+                container(lucide::circle().size(14))
+                    .style(|theme: &Theme| container::Style {
+                        text_color: Some(theme.clinical().text_disabled),
+                        ..Default::default()
+                    })
+                    .into()
+            }
+        }
+        None => {
+            // Generated domains are always ready (marked with success)
+            container(lucide::circle_check().size(14))
+                .style(|theme: &Theme| container::Style {
+                    text_color: Some(theme.extended_palette().success.base.color),
+                    ..Default::default()
+                })
+                .into()
+        }
     };
 
     let code_string = code.to_string();

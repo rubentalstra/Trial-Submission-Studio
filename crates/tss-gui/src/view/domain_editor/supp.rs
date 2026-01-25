@@ -29,8 +29,8 @@ use crate::component::panels::{DetailHeader, FilterToggle};
 use crate::message::domain_editor::SuppMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{
-    AppState, DomainState, SuppAction, SuppColumnConfig, SuppEditDraft, SuppFilterMode, SuppOrigin,
-    SuppUiState, ViewState,
+    AppState, SourceDomainState, SuppAction, SuppColumnConfig, SuppEditDraft, SuppFilterMode,
+    SuppOrigin, SuppUiState, ViewState,
 };
 use crate::theme::{
     BORDER_RADIUS_SM, ClinicalColors, MASTER_WIDTH, MAX_CHARS_SHORT_LABEL, MAX_CHARS_VARIABLE_NAME,
@@ -59,6 +59,25 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
         }
     };
 
+    // SUPP configuration only applies to source domains
+    let source = match domain.as_source() {
+        Some(s) => s,
+        None => {
+            return container(
+                text("Generated domains do not have SUPP columns")
+                    .size(14)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_muted),
+                    }),
+            )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Shrink)
+            .center_y(Length::Shrink)
+            .into();
+        }
+    };
+
     // Get UI state
     let supp_ui = match &state.view {
         ViewState::DomainEditor(editor) => &editor.supp_ui,
@@ -66,7 +85,7 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
     };
 
     // Get unmapped columns
-    let unmapped_columns = domain.unmapped_columns();
+    let unmapped_columns = source.unmapped_columns();
 
     // If no unmapped columns, show success state
     if unmapped_columns.is_empty() {
@@ -76,7 +95,7 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
     // Filter columns based on search and filter mode
     let filtered: Vec<String> = unmapped_columns
         .iter()
-        .filter(|col| {
+        .filter(|col: &&String| {
             // Search filter
             if !supp_ui.search_filter.is_empty()
                 && !col
@@ -87,7 +106,7 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
             }
 
             // Action filter
-            let supp_config = domain.supp_config.get(*col);
+            let supp_config = source.supp_config.get(*col);
             match supp_ui.filter_mode {
                 SuppFilterMode::All => true,
                 SuppFilterMode::Pending => {
@@ -108,10 +127,10 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
     let master_header = build_master_header_pinned(supp_ui, filtered.len());
 
     // Build master content (scrollable column list)
-    let master_content = build_master_content(&filtered, domain, supp_ui);
+    let master_content = build_master_content(&filtered, source, supp_ui);
 
     // Build detail panel
-    let detail = build_detail_panel(domain, supp_ui, domain_code);
+    let detail = build_detail_panel(source, supp_ui, domain_code);
 
     // Use split view layout with pinned header
     SplitView::new(master_content, detail)
@@ -174,7 +193,7 @@ fn build_master_header_pinned<'a>(
 /// Left panel content: scrollable list of columns.
 fn build_master_content<'a>(
     filtered: &[String],
-    domain: &'a DomainState,
+    domain: &'a SourceDomainState,
     ui: &'a SuppUiState,
 ) -> Element<'a, Message> {
     if filtered.is_empty() {
@@ -318,27 +337,27 @@ fn build_column_item(
 // =============================================================================
 
 fn build_detail_panel(
-    domain: &DomainState,
+    source: &SourceDomainState,
     ui: &SuppUiState,
     domain_code: &str,
 ) -> Element<'static, Message> {
     match &ui.selected_column {
         Some(col) => {
-            let config = domain
+            let config = source
                 .supp_config
                 .get(col)
                 .cloned()
                 .unwrap_or_else(|| SuppColumnConfig::from_column(col));
 
             match (&config.action, ui.edit_draft.as_ref()) {
-                (SuppAction::Pending, _) => build_pending_view(domain, col, &config, domain_code),
+                (SuppAction::Pending, _) => build_pending_view(source, col, &config, domain_code),
                 (SuppAction::Include, Some(draft)) => {
-                    build_edit_view(domain, col, draft, domain_code)
+                    build_edit_view(source, col, draft, domain_code)
                 }
                 (SuppAction::Include, None) => {
-                    build_included_view(domain, col, &config, domain_code)
+                    build_included_view(source, col, &config, domain_code)
                 }
-                (SuppAction::Skip, _) => build_skipped_view(domain, col, domain_code),
+                (SuppAction::Skip, _) => build_skipped_view(source, col, domain_code),
             }
         }
         None => build_no_selection_state(),
@@ -363,16 +382,16 @@ fn build_no_selection_state() -> Element<'static, Message> {
 // =============================================================================
 
 fn build_pending_view(
-    domain: &DomainState,
+    source: &SourceDomainState,
     col_name: &str,
     config: &SuppColumnConfig,
     domain_code: &str,
 ) -> Element<'static, Message> {
     let header = build_detail_header(col_name, domain_code);
-    let sample_data = build_sample_data(domain, col_name);
+    let sample_data = build_sample_data(source, col_name);
 
     // Check QNAM conflict (only against included columns)
-    let qnam_error = check_qnam_conflict(domain, col_name, &config.qnam);
+    let qnam_error = check_qnam_conflict(source, col_name, &config.qnam);
 
     // Editable fields
     let fields = build_editable_fields(config, qnam_error);
@@ -486,13 +505,13 @@ fn build_pending_actions(domain_code: &str) -> Element<'static, Message> {
 // =============================================================================
 
 fn build_included_view(
-    domain: &DomainState,
+    source: &SourceDomainState,
     col_name: &str,
     config: &SuppColumnConfig,
     domain_code: &str,
 ) -> Element<'static, Message> {
     let header = build_detail_header(col_name, domain_code);
-    let sample_data = build_sample_data(domain, col_name);
+    let sample_data = build_sample_data(source, col_name);
 
     // Read-only summary
     let summary = build_readonly_summary(config);
@@ -655,13 +674,13 @@ fn build_included_actions() -> Element<'static, Message> {
 // =============================================================================
 
 fn build_edit_view(
-    domain: &DomainState,
+    source: &SourceDomainState,
     col_name: &str,
     draft: &SuppEditDraft,
     domain_code: &str,
 ) -> Element<'static, Message> {
     let header = build_detail_header(col_name, domain_code);
-    let sample_data = build_sample_data(domain, col_name);
+    let sample_data = build_sample_data(source, col_name);
 
     // Create a temporary config from draft for display
     let temp_config = SuppColumnConfig {
@@ -678,7 +697,7 @@ fn build_edit_view(
     };
 
     // Check QNAM conflict
-    let qnam_error = check_qnam_conflict(domain, col_name, &draft.qnam);
+    let qnam_error = check_qnam_conflict(source, col_name, &draft.qnam);
 
     // Editable fields
     let fields = build_editable_fields(&temp_config, qnam_error);
@@ -808,12 +827,12 @@ fn build_edit_actions() -> Element<'static, Message> {
 // =============================================================================
 
 fn build_skipped_view(
-    domain: &DomainState,
+    source: &SourceDomainState,
     col_name: &str,
     domain_code: &str,
 ) -> Element<'static, Message> {
     let header = build_detail_header(col_name, domain_code);
-    let sample_data = build_sample_data(domain, col_name);
+    let sample_data = build_sample_data(source, col_name);
 
     // Skip message
     let skip_message = container(
@@ -931,8 +950,8 @@ fn build_detail_header(col_name: &str, domain_code: &str) -> Element<'static, Me
         .view()
 }
 
-fn build_sample_data(domain: &DomainState, col_name: &str) -> Element<'static, Message> {
-    let samples = get_sample_values(domain, col_name, 5);
+fn build_sample_data(source: &SourceDomainState, col_name: &str) -> Element<'static, Message> {
+    let samples = get_sample_values(source, col_name, 5);
 
     let sample_chips: Vec<Element<'static, Message>> = samples
         .into_iter()
@@ -1069,11 +1088,11 @@ fn build_origin_picker(current: SuppOrigin) -> Element<'static, Message> {
 // HELPER FUNCTIONS
 // =============================================================================
 
-fn get_sample_values(domain: &DomainState, col_name: &str, max: usize) -> Vec<String> {
+fn get_sample_values(source: &SourceDomainState, col_name: &str, max: usize) -> Vec<String> {
     let mut samples = Vec::new();
     let mut seen = std::collections::HashSet::new();
 
-    if let Ok(col) = domain.source.data.column(col_name) {
+    if let Ok(col) = source.source.data.column(col_name) {
         for i in 0..col.len().min(100) {
             if let Ok(val) = col.get(i) {
                 let s = format_value(&val);
@@ -1099,13 +1118,17 @@ fn format_value(value: &AnyValue) -> String {
     }
 }
 
-fn check_qnam_conflict(domain: &DomainState, current_col: &str, qnam: &str) -> Option<String> {
+fn check_qnam_conflict(
+    source: &SourceDomainState,
+    current_col: &str,
+    qnam: &str,
+) -> Option<String> {
     if qnam.is_empty() {
         return None;
     }
 
     // Only check against columns already included in SUPP
-    for (col, config) in &domain.supp_config {
+    for (col, config) in &source.supp_config {
         if col != current_col
             && config.action == SuppAction::Include
             && config.qnam.eq_ignore_ascii_case(qnam)

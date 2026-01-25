@@ -183,15 +183,13 @@ fn start_export(state: &mut AppState) -> Task<Message> {
 
     for code in &selected_domains {
         if let Some(gui_domain) = study.domain(code) {
-            // Collect not_collected variables for validation
-            let not_collected: std::collections::BTreeSet<String> = gui_domain
-                .mapping
-                .all_not_collected()
-                .keys()
-                .cloned()
-                .collect();
-            if !not_collected.is_empty() {
-                not_collected_map.insert(code.clone(), not_collected);
+            // Collect not_collected variables for validation (source domains only)
+            if let Some(source) = gui_domain.as_source() {
+                let not_collected: std::collections::BTreeSet<String> =
+                    source.mapping.all_not_collected().keys().cloned().collect();
+                if !not_collected.is_empty() {
+                    not_collected_map.insert(code.clone(), not_collected);
+                }
             }
 
             match crate::service::export::build_domain_export_data(

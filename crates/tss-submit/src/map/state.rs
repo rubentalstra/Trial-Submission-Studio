@@ -35,16 +35,18 @@ pub struct MappingSummary {
     pub total_variables: usize,
     /// Number of variables with accepted mappings.
     pub mapped: usize,
-    /// Number of variables with suggestions (not yet accepted).
-    pub suggested: usize,
+    /// Number of variables still unmapped but required.
+    pub unmapped_required: usize,
+    /// Number of variables still unmapped but expected.
+    pub unmapped_expected: usize,
+    /// Number of variables still unmapped but permissible.
+    pub unmapped_permissible: usize,
+    /// Number of variables that are auto-generated.
+    pub auto_generated: usize,
     /// Number of variables marked as not collected.
     pub not_collected: usize,
     /// Number of variables marked to omit.
     pub omitted: usize,
-    /// Number of required variables.
-    pub required_total: usize,
-    /// Number of required variables that are mapped.
-    pub required_mapped: usize,
 }
 
 /// A single column-to-variable mapping.
@@ -418,32 +420,28 @@ impl MappingState {
 
     /// Get summary statistics.
     pub fn summary(&self) -> MappingSummary {
-        let required_vars: Vec<_> = self
-            .domain
-            .variables
-            .iter()
-            .filter(|v| v.core == Some(CoreDesignation::Required))
-            .collect();
+        // Helper to check if a variable is handled (mapped, auto-gen, not-collected, or omitted)
+        let is_handled = |name: &str| {
+            self.accepted.contains_key(name)
+                || self.auto_generated.contains(name)
+                || self.not_collected.contains_key(name)
+                || self.omitted.contains(name)
+        };
 
-        // Count required variables that are mapped OR auto-generated
-        let required_mapped = required_vars
-            .iter()
-            .filter(|v| {
-                self.accepted.contains_key(&v.name) || self.auto_generated.contains(&v.name)
-            })
-            .count();
+        // Count unmapped variables by core designation
+        let mut unmapped_required = 0;
+        let mut unmapped_expected = 0;
+        let mut unmapped_permissible = 0;
 
-        // Count suggestions that haven't been accepted or otherwise assigned
-        let pending_suggestions = self
-            .suggestions
-            .keys()
-            .filter(|var| {
-                !self.accepted.contains_key(*var)
-                    && !self.auto_generated.contains(*var)
-                    && !self.not_collected.contains_key(*var)
-                    && !self.omitted.contains(*var)
-            })
-            .count();
+        for var in &self.domain.variables {
+            if !is_handled(&var.name) {
+                match var.core {
+                    Some(CoreDesignation::Required) => unmapped_required += 1,
+                    Some(CoreDesignation::Expected) => unmapped_expected += 1,
+                    Some(CoreDesignation::Permissible) | None => unmapped_permissible += 1,
+                }
+            }
+        }
 
         // Total mapped includes both user-accepted and auto-generated
         let total_mapped = self.accepted.len() + self.auto_generated.len();
@@ -451,11 +449,12 @@ impl MappingState {
         MappingSummary {
             total_variables: self.domain.variables.len(),
             mapped: total_mapped,
-            suggested: pending_suggestions,
+            unmapped_required,
+            unmapped_expected,
+            unmapped_permissible,
+            auto_generated: self.auto_generated.len(),
             not_collected: self.not_collected.len(),
             omitted: self.omitted.len(),
-            required_total: required_vars.len(),
-            required_mapped,
         }
     }
 
@@ -676,8 +675,8 @@ mod tests {
         let summary = state.summary();
         assert_eq!(summary.total_variables, 3);
         assert_eq!(summary.mapped, 1);
-        assert_eq!(summary.required_total, 2);
-        assert_eq!(summary.required_mapped, 1);
+        // 2 required variables (USUBJID, AETERM), 1 mapped → 1 unmapped required
+        assert_eq!(summary.unmapped_required, 1);
     }
 
     #[test]
@@ -847,7 +846,10 @@ mod tests {
         assert_eq!(summary.mapped, 1);
         assert_eq!(summary.not_collected, 1);
         assert_eq!(summary.omitted, 1);
-        assert_eq!(summary.suggested, 0); // No pending suggestions
+        // All variables are handled (mapped, not_collected, or omitted)
+        assert_eq!(summary.unmapped_required, 0);
+        assert_eq!(summary.unmapped_expected, 0);
+        assert_eq!(summary.unmapped_permissible, 0);
     }
 
     #[test]

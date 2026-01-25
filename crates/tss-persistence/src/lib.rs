@@ -69,7 +69,10 @@ pub use io::{
     verify_file_hash,
 };
 pub use types::{
-    CURRENT_SCHEMA_VERSION, DomainSnapshot, MAGIC_BYTES, MappingEntry, MappingSnapshot,
-    ProjectFile, ProjectPlaceholders, SourceAssignment, StudyMetadata, SuppActionSnapshot,
-    SuppColumnSnapshot, SuppOriginSnapshot, WorkflowTypeSnapshot,
+    CURRENT_SCHEMA_VERSION, CommentEntrySnapshot, DomainSnapshot, GeneratedDomainEntrySnapshot,
+    GeneratedDomainSnapshot, GeneratedDomainTypeSnapshot, MAGIC_BYTES, MappingEntry,
+    MappingSnapshot, ProjectFile, ProjectPlaceholders, RelrecEntrySnapshot, RelrecRelTypeSnapshot,
+    RelspecEntrySnapshot, RelsubEntrySnapshot, SourceAssignment, SourceDomainSnapshot,
+    StudyMetadata, SuppActionSnapshot, SuppColumnSnapshot, SuppOriginSnapshot,
+    WorkflowTypeSnapshot,
 };

@@ -47,8 +47,9 @@ pub fn view_validation_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Ele
     };
 
     // Get validation cache from domain (persists across navigation)
-    let Some(report) = &domain.validation_cache else {
-        return view_no_validation_run();
+    let report: &ValidationReport = match domain.validation_cache() {
+        Some(r) => r,
+        None => return view_no_validation_run(),
     };
 
     // If validation passed (no issues), show success state
