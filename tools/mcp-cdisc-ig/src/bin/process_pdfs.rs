@@ -13,6 +13,7 @@ use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
+use lopdf::Document;
 use ratatui::{
     DefaultTerminal, Frame,
     layout::{Constraint, Layout, Rect},
@@ -27,8 +28,6 @@ use std::fs;
 use std::io::stdout;
 use std::path::Path;
 use std::sync::LazyLock;
-use std::sync::mpsc;
-use std::thread;
 use std::time::{Duration, Instant};
 
 // =============================================================================
@@ -45,6 +44,9 @@ struct App {
     total_domains: HashSet<String>,
     spinner_frame: usize,
     is_complete: bool,
+    // Page-level progress for extraction
+    current_page: usize,
+    total_pages: usize,
 }
 
 impl App {
@@ -71,6 +73,8 @@ impl App {
             total_domains: HashSet::new(),
             spinner_frame: 0,
             is_complete: false,
+            current_page: 0,
+            total_pages: 0,
         }
     }
 
@@ -410,11 +414,20 @@ fn render_ig_list(frame: &mut Frame, area: Rect, app: &App) {
                 ),
                 IgStatus::Processing(phase) => {
                     if i == app.current_ig {
-                        format!(
-                            "{} ({:.0}s)",
-                            phase.description(),
-                            app.phase_elapsed().as_secs_f32()
-                        )
+                        if matches!(phase, Phase::Extracting) && app.total_pages > 0 {
+                            format!(
+                                "Extracting page {}/{} ({:.0}s)",
+                                app.current_page,
+                                app.total_pages,
+                                app.phase_elapsed().as_secs_f32()
+                            )
+                        } else {
+                            format!(
+                                "{} ({:.0}s)",
+                                phase.description(),
+                                app.phase_elapsed().as_secs_f32()
+                            )
+                        }
                     } else {
                         phase.description().to_string()
                     }
@@ -536,7 +549,6 @@ fn main() -> Result<()> {
     fs::create_dir_all(&data_dir)?;
 
     // Each entry: (pdf_name, ig_name, version, output_name, domains)
-    // NOTE: SEND first to test if order matters (SEND was timing out when second)
     let igs: &[(&str, &str, &str, &str, &[&str])] = &[
         (
             "SENDIG_v3.1.1.pdf",
@@ -595,7 +607,7 @@ fn main() -> Result<()> {
         app.igs[i].status = IgStatus::Processing(Phase::Extracting);
         terminal.draw(|f| ui(f, &app))?;
 
-        let text = match extract_with_animation(&mut terminal, &mut app, &pdf_path) {
+        let text = match extract_with_progress(&mut terminal, &mut app, &pdf_path) {
             Ok(Some(t)) => t,
             Ok(None) => {
                 user_quit = true;
@@ -664,7 +676,7 @@ fn main() -> Result<()> {
         // Explicit cleanup and brief pause between PDFs to allow memory/resource cleanup
         drop(content);
         drop(json);
-        thread::sleep(Duration::from_millis(100));
+        std::thread::sleep(Duration::from_millis(100));
     }
 
     // Show final state and wait for exit (unless user already quit)
@@ -681,55 +693,57 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// Extract text with spinner animation, returns None if user quit
-fn extract_with_animation(
+/// Extract text using lopdf with page-by-page progress, returns None if user quit
+fn extract_with_progress(
     terminal: &mut DefaultTerminal,
     app: &mut App,
     path: &Path,
 ) -> Result<Option<String>> {
-    let (tx, rx) = mpsc::channel();
-    let path = path.to_owned();
+    // Load the PDF document
+    let doc = Document::load(path).with_context(|| format!("Failed to load PDF: {:?}", path))?;
 
-    // Spawn extraction in background thread
-    thread::spawn(move || {
-        let result = pdf_extract::extract_text(&path);
-        tx.send(result).ok();
-    });
+    // Get page count
+    let pages = doc.get_pages();
+    let page_numbers: Vec<u32> = pages.keys().copied().collect();
+    app.total_pages = page_numbers.len();
+    app.current_page = 0;
 
-    // Animate while waiting (with 15 minute timeout)
-    let extraction_start = Instant::now();
-    let timeout = Duration::from_secs(900); // 15 minutes
+    terminal.draw(|f| ui(f, app))?;
 
-    loop {
+    let mut all_text = String::new();
+
+    // Extract text page by page
+    for (idx, &page_num) in page_numbers.iter().enumerate() {
         // Check for quit
         if check_for_quit()? {
             return Ok(None);
         }
 
-        // Check for timeout
-        if extraction_start.elapsed() > timeout {
-            anyhow::bail!(
-                "PDF extraction timed out after {} seconds",
-                timeout.as_secs()
-            );
-        }
+        app.current_page = idx + 1;
+        app.advance_spinner();
+        terminal.draw(|f| ui(f, app))?;
 
-        match rx.try_recv() {
-            Ok(result) => {
-                return Ok(Some(result.context("PDF extraction failed")?));
+        // Extract text from this page
+        match doc.extract_text(&[page_num]) {
+            Ok(text) => {
+                all_text.push_str(&text);
+                all_text.push('\n');
             }
-            Err(mpsc::TryRecvError::Disconnected) => {
-                // Thread panicked or dropped sender without sending
-                anyhow::bail!("PDF extraction thread failed unexpectedly");
-            }
-            Err(mpsc::TryRecvError::Empty) => {
-                // Still processing, continue animation
-                app.advance_spinner();
-                terminal.draw(|f| ui(f, app))?;
-                thread::sleep(Duration::from_millis(80));
+            Err(e) => {
+                // Log but continue - some pages may not have extractable text
+                eprintln!(
+                    "Warning: Could not extract text from page {}: {}",
+                    page_num, e
+                );
             }
         }
     }
+
+    if all_text.is_empty() {
+        anyhow::bail!("No text extracted from PDF - may be image-only or encrypted");
+    }
+
+    Ok(Some(all_text))
 }
 
 /// Brief animation for fast phases, returns true if user wants to quit
@@ -740,7 +754,7 @@ fn animate_briefly(terminal: &mut DefaultTerminal, app: &mut App) -> Result<bool
         }
         app.advance_spinner();
         terminal.draw(|f| ui(f, app))?;
-        thread::sleep(Duration::from_millis(80));
+        std::thread::sleep(Duration::from_millis(80));
     }
     Ok(false)
 }

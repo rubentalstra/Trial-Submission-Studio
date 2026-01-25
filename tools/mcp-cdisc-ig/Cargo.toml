@@ -25,7 +25,7 @@ anyhow = "1"
 aho-corasick = "1"
 
 # PDF extraction (for process-pdfs binary)
-pdf-extract = "0.10"
+lopdf = "0.39.0"
 regex = "1"
 
 # TUI (for process-pdfs binary)
