@@ -9,6 +9,7 @@ alwaysApply: true
 Before writing, editing, or modifying ANY code - even a single line - you MUST complete this process.
 
 This applies to:
+
 - Bug fixes (yes, even "obvious" ones)
 - New features
 - Refactors
@@ -24,28 +25,35 @@ There are ZERO exceptions. Not for "quick fixes". Not for "obvious" changes. NOT
 ## THE 5-STEP DELIBERATION PROCESS
 
 ### Step 1: State the Problem Clearly
+
 - What is the actual problem (not symptoms)?
 - What is the root cause?
 - What are we trying to achieve?
 
 ### Step 2: Identify AT LEAST 2-3 Different Approaches
+
 Always consider:
+
 - **Architectural solution**: Is there a better design?
 - **Local fix**: Can we patch the current code?
 - **Alternative implementation**: Is there another way entirely?
 - **Do nothing**: Does this even need fixing?
 
 ### Step 3: Analyze EACH Approach
+
 For every approach, explicitly state:
+
 - **Pros**: What's good about this?
 - **Cons**: What technical debt does this create?
 - **Files affected**: What would change?
 - **Complexity**: How big is this change?
 
 ### Step 4: Make a Recommendation
+
 State which approach you recommend and give clear reasons WHY.
 
 ### Step 5: WAIT FOR EXPLICIT APPROVAL
+
 Do not proceed until the user explicitly approves an approach.
 Ask: "Which approach would you like me to implement?"
 
@@ -69,6 +77,7 @@ These behaviors are NEVER acceptable:
 ### Failure Pattern #1: Standards Bundling (Actual Incident)
 
 **What happened (WRONG):**
+
 ```
 Claude: "I found the issue. The standards folder needs to be shipped
         alongside the Windows executable."
@@ -77,12 +86,13 @@ Claude: [Adds 30 lines to copy standards folder into ZIP]
 ```
 
 **What should have happened (RIGHT):**
+
 ```
 Claude: "I found the issue - standards aren't available at runtime.
 
         I see 3 approaches:
 
-        A) Modify packaging scripts to bundle standards/
+        A) Modify packaging scripts to bundle crates/tss-standards/data/
            - Pros: Quick, no code changes
            - Cons: Runtime dependency, platform-specific paths, deployment complexity
 
@@ -107,12 +117,14 @@ This is exactly the failure mode we're preventing.
 ### Failure Pattern #2: Quick Fix Mentality
 
 **BAD:**
+
 ```
 User: "The app crashes on startup"
 Claude: "Let me add error handling..." [starts editing]
 ```
 
 **GOOD:**
+
 ```
 User: "The app crashes on startup"
 Claude: "I need to investigate the cause. Once I understand it, I'll present

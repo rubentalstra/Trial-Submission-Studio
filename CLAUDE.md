@@ -112,7 +112,7 @@ It's a cross-platform desktop application written in Rust using the Iced GUI fra
 | File                                | Purpose                              |
 |-------------------------------------|--------------------------------------|
 | `crates/tss-gui/src/main.rs`        | Application entry point              |
-| `crates/tss-gui/src/app.rs`         | Main App struct, update() and view() |
+| `crates/tss-gui/src/app/mod.rs`     | Main App struct, update() and view() |
 | `crates/tss-gui/src/state/mod.rs`   | AppState definition                  |
 | `crates/tss-gui/src/message/mod.rs` | Message enum definitions             |
 | `crates/tss-submit/src/lib.rs`      | Submission pipeline entry            |
@@ -196,7 +196,7 @@ Key patterns:
 
 ### Standards System (tss-standards)
 
-CDISC standards are embedded as CSV files in `standards/` for offline operation:
+CDISC standards are embedded as CSV files in `crates/tss-standards/data/` for offline operation:
 
 - SDTM-IG v3.4, ADaM-IG v1.3, SEND-IG v3.1.1
 - Controlled Terminology (2024-2025 versions)
@@ -307,7 +307,6 @@ The quick fix creates technical debt. The user should choose.
 
 ```
 crates/          # Rust workspace crates
-standards/       # Embedded CDISC standards (SDTM, ADaM, SEND, CT)
 mockdata/        # Test datasets
 docs/            # mdBook documentation
 scripts/         # Build and utility scripts

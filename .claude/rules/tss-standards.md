@@ -1,7 +1,7 @@
 ---
 paths:
   - "crates/tss-standards/**/*.rs"
-  - "standards/**/*"
+  - "crates/tss-standards/data/**/*"
 ---
 
 # Standards & Validation Rules (tss-standards)
@@ -44,7 +44,7 @@ This includes:
 
 ## Embedded Standards
 
-Standards are embedded CSV files in `standards/` for offline operation.
+Standards are embedded CSV files in `crates/tss-standards/data/` for offline operation.
 Do NOT modify these files without explicit approval.
 
 ---

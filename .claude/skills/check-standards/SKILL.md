@@ -32,7 +32,7 @@ Query the `cdisc-ig` MCP server for Implementation Guide content:
 For variable metadata and CT codelists:
 - `crates/tss-standards/src/registry.rs` - Variable definitions
 - `crates/tss-standards/src/ct/mod.rs` - Controlled Terminology
-- `standards/` - Embedded CSV standards files
+- `crates/tss-standards/data/` - Embedded CSV standards files
 
 ## Available Standards
 - **SDTM-IG v3.4**: 824 chunks, 180+ sections
