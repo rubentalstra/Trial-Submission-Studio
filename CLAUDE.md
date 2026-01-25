@@ -51,16 +51,50 @@ IMPORTANT: Before making these changes, STOP and ask for approval:
 
 Use these plugins proactively:
 
-| Plugin                | When to Use                                               |
-|-----------------------|-----------------------------------------------------------|
-| `/feature-dev`        | New features - starts with requirements gathering         |
-| `context7`            | Look up current docs for Iced, Polars, or any dependency  |
-| `serena`              | Navigate codebase symbolically (find references, symbols) |
-| `rust-analyzer-lsp`   | Get diagnostics and type information                      |
-| `/code-simplifier`    | After implementation, simplify code                       |
-| `/claude-md-improver` | Periodically audit CLAUDE.md                              |
+| Plugin                | When to Use                                                      |
+|-----------------------|------------------------------------------------------------------|
+| `/feature-dev`        | New features - starts with requirements gathering                |
+| `context7`            | Look up current docs for Iced, Polars, or any dependency         |
+| `serena`              | Navigate codebase symbolically (find references, symbols)        |
+| `rust-analyzer-lsp`   | Get diagnostics and type information                             |
+| `/code-simplifier`    | After implementation, simplify code                              |
+| `/claude-md-improver` | Periodically audit CLAUDE.md                                     |
+| `cdisc-ig` MCP        | Query CDISC Implementation Guides (SDTM, ADaM, SEND, Define-XML) |
 
 For feature development, ALWAYS start with `/feature-dev` to gather requirements first.
+
+---
+
+## CDISC Standards Lookup
+
+**IMPORTANT**: When working with CDISC standards, ALWAYS use the `cdisc-ig` MCP server first.
+
+### Available MCP Tools
+
+| Tool                 | Purpose                                                     |
+|----------------------|-------------------------------------------------------------|
+| `search_ig`          | Search across all IGs for topics, derivations, requirements |
+| `list_sections`      | Browse IG table of contents                                 |
+| `get_domain_spec`    | Get complete domain specification (DM, AE, LB, etc.)        |
+| `get_chunk_by_index` | Retrieve specific content by index                          |
+| `get_related_chunks` | Get full section context for continuation chunks            |
+
+### When to Use
+
+- Looking up variable definitions → `get_domain_spec`
+- Understanding derivation rules → `search_ig`
+- Checking Define-XML elements → `search_ig` with ig=define
+- Finding compliance requirements → `search_ig`
+
+### Example Queries
+
+```
+search_ig: "USUBJID derivation requirements" (ig: sdtm)
+get_domain_spec: domain=DM, ig=sdtm
+search_ig: "ItemGroupDef" (ig: define)
+```
+
+Do NOT guess at CDISC requirements. Query the MCP server for authoritative guidance.
 
 ---
 
@@ -78,7 +112,7 @@ It's a cross-platform desktop application written in Rust using the Iced GUI fra
 | File                                | Purpose                              |
 |-------------------------------------|--------------------------------------|
 | `crates/tss-gui/src/main.rs`        | Application entry point              |
-| `crates/tss-gui/src/app.rs`         | Main App struct, update() and view() |
+| `crates/tss-gui/src/app/mod.rs`     | Main App struct, update() and view() |
 | `crates/tss-gui/src/state/mod.rs`   | AppState definition                  |
 | `crates/tss-gui/src/message/mod.rs` | Message enum definitions             |
 | `crates/tss-submit/src/lib.rs`      | Submission pipeline entry            |
@@ -162,7 +196,7 @@ Key patterns:
 
 ### Standards System (tss-standards)
 
-CDISC standards are embedded as CSV files in `standards/` for offline operation:
+CDISC standards are embedded as CSV files in `crates/tss-standards/data/` for offline operation:
 
 - SDTM-IG v3.4, ADaM-IG v1.3, SEND-IG v3.1.1
 - Controlled Terminology (2024-2025 versions)
@@ -273,7 +307,6 @@ The quick fix creates technical debt. The user should choose.
 
 ```
 crates/          # Rust workspace crates
-standards/       # Embedded CDISC standards (SDTM, ADaM, SEND, CT)
 mockdata/        # Test datasets
 docs/            # mdBook documentation
 scripts/         # Build and utility scripts
