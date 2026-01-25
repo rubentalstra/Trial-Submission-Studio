@@ -8,7 +8,6 @@
 //!   cargo run --bin process_pdfs
 
 use anyhow::{Context, Result};
-use lopdf::{Document, content::Content};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -23,7 +22,6 @@ use std::sync::LazyLock;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct TextChunk {
     heading: String,
-    page: u32,
     content: String,
     domain: Option<String>,
 }
@@ -40,15 +38,8 @@ struct IgContent {
 #[derive(Debug, Clone)]
 struct Section {
     heading: String,
-    start_page: u32,
     domain: Option<String>,
     content: String,
-}
-
-/// Text extracted from a single page
-struct PageText {
-    page: u32,
-    text: String,
 }
 
 // =============================================================================
@@ -105,18 +96,19 @@ fn main() -> Result<()> {
     fs::create_dir_all(&data_dir)?;
 
     let igs = [
-        (
-            "SDTMIG_v3.4.pdf",
-            "SDTM Implementation Guide",
-            "3.4",
-            "sdtm-ig-v3.4.json",
-        ),
-        (
-            "SENDIG_v3.1.1.pdf",
-            "SEND Implementation Guide",
-            "3.1.1",
-            "send-ig-v3.1.1.json",
-        ),
+        // Commented out for faster dev iteration - ADaM is only 88 pages
+        // (
+        //     "SDTMIG_v3.4.pdf",
+        //     "SDTM Implementation Guide",
+        //     "3.4",
+        //     "sdtm-ig-v3.4.json",
+        // ),
+        // (
+        //     "SENDIG_v3.1.1.pdf",
+        //     "SEND Implementation Guide",
+        //     "3.1.1",
+        //     "send-ig-v3.1.1.json",
+        // ),
         (
             "ADaMIG_v1.3.pdf",
             "ADaM Implementation Guide",
@@ -173,11 +165,11 @@ fn main() -> Result<()> {
 // =============================================================================
 
 fn process_ig(path: &Path, name: &str, version: &str) -> Result<IgContent> {
-    // Step 1: Extract all pages
-    let pages = extract_pages(path)?;
+    // Step 1: Extract all text from PDF
+    let text = extract_text(path)?;
 
     // Step 2: First pass - identify sections and their domains
-    let sections = identify_sections(&pages);
+    let sections = identify_sections(&text);
     println!("  Pass 1: Found {} sections", sections.len());
 
     // Step 3: Second pass - chunk content within sections
@@ -191,107 +183,19 @@ fn process_ig(path: &Path, name: &str, version: &str) -> Result<IgContent> {
     })
 }
 
-/// Extract text from all pages of the PDF
-fn extract_pages(path: &Path) -> Result<Vec<PageText>> {
-    let doc = Document::load(path).with_context(|| format!("Failed to load: {:?}", path))?;
+/// Extract text from the PDF using pdf-extract
+/// which properly handles font encodings and ToUnicode maps
+fn extract_text(path: &Path) -> Result<String> {
+    let text = pdf_extract::extract_text(path)
+        .with_context(|| format!("Failed to extract text from {:?}", path))?;
 
-    if doc.is_encrypted() {
-        anyhow::bail!("PDF is encrypted and cannot be processed");
-    }
+    println!("  Extracted {} total characters", text.len());
 
-    let pages = doc.get_pages();
-    println!("  Found {} pages", pages.len());
-
-    let mut result = Vec::with_capacity(pages.len());
-
-    for (page_num, &page_id) in pages.iter() {
-        let text = extract_text_from_page(&doc, page_id).unwrap_or_default();
-        result.push(PageText {
-            page: *page_num,
-            text,
-        });
-
-        if *page_num % 100 == 0 {
-            println!("  ... extracted page {}", page_num);
-        }
-    }
-
-    let total: usize = result.iter().map(|p| p.text.len()).sum();
-    println!("  Extracted {} total characters", total);
-
-    if total == 0 {
+    if text.is_empty() {
         anyhow::bail!("No text extracted - PDF may be image-only");
     }
 
-    Ok(result)
-}
-
-/// Extract text from a single PDF page
-fn extract_text_from_page(doc: &Document, page_id: lopdf::ObjectId) -> Result<String> {
-    let mut text = String::new();
-
-    let content_bytes = doc.get_page_content(page_id)?;
-    let content = Content::decode(&content_bytes)?;
-
-    for operation in &content.operations {
-        match operation.operator.as_str() {
-            "Tj" | "TJ" | "'" | "\"" => {
-                for operand in &operation.operands {
-                    if let Some(s) = extract_string_from_object(operand) {
-                        text.push_str(&s);
-                        text.push(' ');
-                    }
-                }
-            }
-            "Td" | "TD" | "T*" => {
-                if !text.ends_with('\n') && !text.ends_with(' ') {
-                    text.push('\n');
-                }
-            }
-            _ => {}
-        }
-    }
-
     Ok(text)
-}
-
-/// Extract string content from a PDF object
-fn extract_string_from_object(obj: &lopdf::Object) -> Option<String> {
-    match obj {
-        lopdf::Object::String(bytes, _) => {
-            // UTF-16BE (BOM marker)
-            if bytes.len() >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF {
-                let utf16: Vec<u16> = bytes[2..]
-                    .chunks(2)
-                    .filter_map(|chunk| {
-                        if chunk.len() == 2 {
-                            Some(u16::from_be_bytes([chunk[0], chunk[1]]))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-                String::from_utf16(&utf16).ok()
-            } else {
-                // Latin-1 / PDFDocEncoding
-                Some(bytes.iter().map(|&b| b as char).collect())
-            }
-        }
-        lopdf::Object::Array(arr) => {
-            let mut result = String::new();
-            for item in arr {
-                if let Some(s) = extract_string_from_object(item) {
-                    result.push_str(&s);
-                }
-            }
-            if result.is_empty() {
-                None
-            } else {
-                Some(result)
-            }
-        }
-        _ => None,
-    }
 }
 
 // =============================================================================
@@ -299,21 +203,11 @@ fn extract_string_from_object(obj: &lopdf::Object) -> Option<String> {
 // =============================================================================
 
 /// First pass: Identify all major sections and their associated domains
-fn identify_sections(pages: &[PageText]) -> Vec<Section> {
-    // Combine all pages into one text with page markers
-    let mut full_text = String::new();
-    let mut page_boundaries: Vec<(usize, u32)> = Vec::new();
-
-    for page in pages {
-        page_boundaries.push((full_text.len(), page.page));
-        full_text.push_str(&page.text);
-        full_text.push('\n');
-    }
-
+fn identify_sections(full_text: &str) -> Vec<Section> {
     // Find all section headings in the full text
     let mut section_starts: Vec<(usize, String, Option<String>)> = Vec::new();
 
-    for caps in SECTION_HEADING.captures_iter(&full_text) {
+    for caps in SECTION_HEADING.captures_iter(full_text) {
         if let (Some(full_match), Some(number), Some(title)) =
             (caps.get(0), caps.get(1), caps.get(2))
         {
@@ -331,11 +225,10 @@ fn identify_sections(pages: &[PageText]) -> Vec<Section> {
 
     // If no sections found, create one big section
     if section_starts.is_empty() {
-        let content = normalize_whitespace(&full_text);
+        let content = normalize_whitespace(full_text);
         if !content.is_empty() {
             return vec![Section {
                 heading: "Document Content".to_string(),
-                start_page: 1,
                 domain: None,
                 content,
             }];
@@ -360,17 +253,8 @@ fn identify_sections(pages: &[PageText]) -> Vec<Section> {
             continue;
         }
 
-        // Find which page this section starts on
-        let start_page = page_boundaries
-            .iter()
-            .rev()
-            .find(|(pos, _)| *pos <= *start_pos)
-            .map(|(_, page)| *page)
-            .unwrap_or(1);
-
         sections.push(Section {
             heading: heading.clone(),
-            start_page,
             domain: domain.clone(),
             content,
         });
@@ -437,7 +321,6 @@ fn chunk_sections(sections: &[Section]) -> Vec<TextChunk> {
         // Split section content into chunks of reasonable size
         let section_chunks = split_into_chunks(
             &section.heading,
-            section.start_page,
             &section.content,
             section.domain.as_deref(),
         );
@@ -449,17 +332,12 @@ fn chunk_sections(sections: &[Section]) -> Vec<TextChunk> {
 }
 
 /// Split a section's content into appropriately sized chunks
-fn split_into_chunks(
-    heading: &str,
-    start_page: u32,
-    content: &str,
-    section_domain: Option<&str>,
-) -> Vec<TextChunk> {
+fn split_into_chunks(heading: &str, content: &str, section_domain: Option<&str>) -> Vec<TextChunk> {
     let mut chunks = Vec::new();
 
     // If content is small enough, return as single chunk
     if content.len() <= 3000 {
-        if let Some(chunk) = create_chunk(heading, start_page, content, section_domain) {
+        if let Some(chunk) = create_chunk(heading, content, section_domain) {
             chunks.push(chunk);
         }
         return chunks;
@@ -478,9 +356,7 @@ fn split_into_chunks(
                 heading.to_string()
             };
 
-            if let Some(chunk) =
-                create_chunk(&chunk_heading, start_page, &current_chunk, section_domain)
-            {
+            if let Some(chunk) = create_chunk(&chunk_heading, &current_chunk, section_domain) {
                 chunks.push(chunk);
             }
 
@@ -502,9 +378,7 @@ fn split_into_chunks(
             heading.to_string()
         };
 
-        if let Some(chunk) =
-            create_chunk(&chunk_heading, start_page, &current_chunk, section_domain)
-        {
+        if let Some(chunk) = create_chunk(&chunk_heading, &current_chunk, section_domain) {
             chunks.push(chunk);
         }
     }
@@ -513,12 +387,7 @@ fn split_into_chunks(
 }
 
 /// Create a TextChunk with domain detection
-fn create_chunk(
-    heading: &str,
-    page: u32,
-    content: &str,
-    section_domain: Option<&str>,
-) -> Option<TextChunk> {
+fn create_chunk(heading: &str, content: &str, section_domain: Option<&str>) -> Option<TextChunk> {
     let content = clean_content(content);
 
     if content.len() < 50 {
@@ -532,7 +401,6 @@ fn create_chunk(
 
     Some(TextChunk {
         heading: heading.to_string(),
-        page,
         content,
         domain,
     })

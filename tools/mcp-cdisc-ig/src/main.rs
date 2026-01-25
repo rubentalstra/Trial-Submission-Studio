@@ -57,7 +57,7 @@ impl CdiscIgServer {
 
     /// Search across CDISC Implementation Guides (SDTM, SEND, ADaM)
     #[tool(
-        description = "Search CDISC Implementation Guides for specific topics. Returns relevant sections from SDTM-IG v3.4, SEND-IG v3.1.1, or ADaM-IG v1.3 with page numbers and context."
+        description = "Search CDISC Implementation Guides for specific topics. Returns relevant sections from SDTM-IG v3.4, SEND-IG v3.1.1, or ADaM-IG v1.3 with headings and context."
     )]
     async fn search_ig(
         &self,

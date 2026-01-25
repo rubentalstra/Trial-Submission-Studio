@@ -13,7 +13,7 @@ pub struct IgIndex {
 pub struct IgContent {
     pub name: String,
     pub version: String,
-    /// Text chunks extracted from the PDF, preserving context and page references
+    /// Text chunks extracted from the PDF, preserving section context
     pub chunks: Vec<TextChunk>,
 }
 
@@ -26,8 +26,6 @@ pub struct IgContent {
 pub struct TextChunk {
     /// Section/chapter heading this chunk belongs to
     pub heading: String,
-    /// Page number(s) in the original PDF
-    pub page: u32,
     /// The actual text content - this is the prose, rules, guidance
     pub content: String,
     /// Optional: domain code if this chunk relates to a specific domain
@@ -38,7 +36,6 @@ pub struct TextChunk {
 pub struct SearchResult {
     pub ig: String,
     pub heading: String,
-    pub page: u32,
     pub content: String,
     pub domain: Option<String>,
     pub score: f32,
@@ -116,7 +113,6 @@ impl IgIndex {
                     results.push(SearchResult {
                         ig: ig_name.to_string(),
                         heading: chunk.heading.clone(),
-                        page: chunk.page,
                         content: truncate_around_match(&chunk.content, query, 600),
                         domain: chunk.domain.clone(),
                         score,
