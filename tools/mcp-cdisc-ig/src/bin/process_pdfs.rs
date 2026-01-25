@@ -56,9 +56,9 @@ struct PageText {
 // =============================================================================
 
 /// Pattern for numbered section headings: "6.1.2 Section Title"
-static SECTION_HEADING: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?m)^\s*(\d+(?:\.\d+)*)\s+([A-Z][A-Za-z][^\n]{2,80}?)(?:\s*\.{2,}|\s*$)").unwrap()
-});
+/// Looks for section numbers followed by title text
+static SECTION_HEADING: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?m)^\s*(\d+(?:\.\d+)+)\s+([A-Z][A-Za-z].{5,80})").unwrap());
 
 /// Pattern for domain mentions in headings: "Demographics Domain (DM)" or "DM - Demographics"
 static DOMAIN_IN_HEADING: LazyLock<Regex> = LazyLock::new(|| {
@@ -300,83 +300,83 @@ fn extract_string_from_object(obj: &lopdf::Object) -> Option<String> {
 
 /// First pass: Identify all major sections and their associated domains
 fn identify_sections(pages: &[PageText]) -> Vec<Section> {
-    let mut sections = Vec::new();
-    let mut current_heading = "Introduction".to_string();
-    let mut current_domain: Option<String> = None;
-    let mut current_start_page: u32 = 1;
-    let mut current_content = String::new();
+    // Combine all pages into one text with page markers
+    let mut full_text = String::new();
+    let mut page_boundaries: Vec<(usize, u32)> = Vec::new();
 
     for page in pages {
-        let paragraphs = split_paragraphs(&page.text);
+        page_boundaries.push((full_text.len(), page.page));
+        full_text.push_str(&page.text);
+        full_text.push('\n');
+    }
 
-        for para in paragraphs {
-            if para.len() < 10 || is_noise(para) {
+    // Find all section headings in the full text
+    let mut section_starts: Vec<(usize, String, Option<String>)> = Vec::new();
+
+    for caps in SECTION_HEADING.captures_iter(&full_text) {
+        if let (Some(full_match), Some(number), Some(title)) =
+            (caps.get(0), caps.get(1), caps.get(2))
+        {
+            let heading = format!("{} {}", number.as_str(), title.as_str().trim());
+
+            // Skip if it looks like a TOC entry (ends with page number pattern)
+            if heading.ends_with(char::is_numeric) && heading.contains("...") {
                 continue;
             }
 
-            // Check if this paragraph is a section heading
-            if let Some((heading, domain)) = detect_section_heading(para) {
-                // Save the previous section if it has content
-                if !current_content.is_empty() {
-                    sections.push(Section {
-                        heading: current_heading.clone(),
-                        start_page: current_start_page,
-                        domain: current_domain.clone(),
-                        content: current_content.clone(),
-                    });
-                }
-
-                // Start new section
-                current_heading = heading;
-                current_domain = domain;
-                current_start_page = page.page;
-                current_content.clear();
-            } else {
-                // Accumulate content
-                if !current_content.is_empty() {
-                    current_content.push(' ');
-                }
-                current_content.push_str(&normalize_whitespace(para));
-            }
+            let domain = extract_domain_from_heading(&heading);
+            section_starts.push((full_match.start(), heading, domain));
         }
     }
 
-    // Don't forget the last section
-    if !current_content.is_empty() {
+    // If no sections found, create one big section
+    if section_starts.is_empty() {
+        let content = normalize_whitespace(&full_text);
+        if !content.is_empty() {
+            return vec![Section {
+                heading: "Document Content".to_string(),
+                start_page: 1,
+                domain: None,
+                content,
+            }];
+        }
+        return Vec::new();
+    }
+
+    // Build sections from the boundaries
+    let mut sections = Vec::new();
+
+    for (i, (start_pos, heading, domain)) in section_starts.iter().enumerate() {
+        let end_pos = section_starts
+            .get(i + 1)
+            .map(|(pos, _, _)| *pos)
+            .unwrap_or(full_text.len());
+
+        let content = &full_text[*start_pos..end_pos];
+        let content = normalize_whitespace(content);
+
+        // Skip very short or noise sections
+        if content.len() < 100 || is_toc(&content) {
+            continue;
+        }
+
+        // Find which page this section starts on
+        let start_page = page_boundaries
+            .iter()
+            .rev()
+            .find(|(pos, _)| *pos <= *start_pos)
+            .map(|(_, page)| *page)
+            .unwrap_or(1);
+
         sections.push(Section {
-            heading: current_heading,
-            start_page: current_start_page,
-            domain: current_domain,
-            content: current_content,
+            heading: heading.clone(),
+            start_page,
+            domain: domain.clone(),
+            content,
         });
     }
 
     sections
-}
-
-/// Detect if a paragraph is a section heading and extract domain if present
-fn detect_section_heading(text: &str) -> Option<(String, Option<String>)> {
-    let text = text.trim();
-
-    // Check for numbered heading: "6.1.2 Demographics Domain (DM)"
-    if let Some(caps) = SECTION_HEADING.captures(text) {
-        let number = &caps[1];
-        let title = caps[2].trim();
-        let heading = format!("{} {}", number, title);
-
-        // Try to extract domain from the heading
-        let domain = extract_domain_from_heading(&heading);
-
-        return Some((heading, domain));
-    }
-
-    // Check for all-caps heading that might indicate a section
-    if is_all_caps_heading(text) {
-        let domain = extract_domain_from_heading(text);
-        return Some((text.to_string(), domain));
-    }
-
-    None
 }
 
 /// Extract domain code from a heading like "Demographics Domain (DM)" or "AE - Adverse Events"
@@ -491,7 +491,7 @@ fn split_into_chunks(
         if !current_chunk.is_empty() {
             current_chunk.push(' ');
         }
-        current_chunk.push_str(sentence);
+        current_chunk.push_str(&sentence);
     }
 
     // Don't forget the last chunk
@@ -563,42 +563,42 @@ fn detect_domain_from_content(content: &str) -> Option<String> {
 // Helper Functions
 // =============================================================================
 
-fn split_paragraphs(text: &str) -> Vec<&str> {
-    text.split("\n\n")
-        .flat_map(|p| p.split("\n \n"))
-        .map(|p| p.trim())
-        .filter(|p| !p.is_empty())
-        .collect()
-}
-
-fn split_sentences(text: &str) -> Vec<&str> {
-    // Simple sentence splitting - split on period followed by space and capital
+fn split_sentences(text: &str) -> Vec<String> {
+    // Split on sentence boundaries: period/question/exclamation followed by space
     let mut sentences = Vec::new();
-    let mut start = 0;
+    let mut current = String::new();
 
     let chars: Vec<char> = text.chars().collect();
-    for i in 0..chars.len().saturating_sub(2) {
-        if chars[i] == '.'
-            && chars[i + 1] == ' '
-            && chars.get(i + 2).is_some_and(|c| c.is_uppercase())
-        {
-            let end = text
-                .char_indices()
-                .nth(i + 1)
-                .map(|(idx, _)| idx)
-                .unwrap_or(text.len());
-            sentences.push(&text[start..end]);
-            start = end + 1;
+    for (i, &ch) in chars.iter().enumerate() {
+        current.push(ch);
+
+        // Check for sentence boundary
+        let is_sentence_end = (ch == '.' || ch == '?' || ch == '!')
+            && chars.get(i + 1).is_some_and(|&c| c == ' ' || c == '\n');
+
+        if is_sentence_end && current.len() > 20 {
+            sentences.push(current.trim().to_string());
+            current = String::new();
+        }
+
+        // Force split if current gets too long (fallback for bad text)
+        if current.len() > 500 {
+            // Try to find a good break point
+            if let Some(break_pos) = current.rfind([' ', '\n']) {
+                let (left, right) = current.split_at(break_pos);
+                sentences.push(left.trim().to_string());
+                current = right.trim().to_string();
+            }
         }
     }
 
     // Add remainder
-    if start < text.len() {
-        sentences.push(&text[start..]);
+    if !current.trim().is_empty() {
+        sentences.push(current.trim().to_string());
     }
 
     if sentences.is_empty() {
-        vec![text]
+        vec![text.to_string()]
     } else {
         sentences
     }
@@ -611,37 +611,6 @@ fn normalize_whitespace(text: &str) -> String {
 fn clean_content(text: &str) -> String {
     let text = text.replace('\u{0000}', "");
     normalize_whitespace(&text)
-}
-
-fn is_all_caps_heading(text: &str) -> bool {
-    let text = text.trim();
-    if text.len() < 5 || text.len() > 80 {
-        return false;
-    }
-
-    let alpha: Vec<char> = text.chars().filter(|c| c.is_alphabetic()).collect();
-    if alpha.is_empty() {
-        return false;
-    }
-
-    let upper = alpha.iter().filter(|c| c.is_uppercase()).count();
-    (upper as f32 / alpha.len() as f32) > 0.8
-}
-
-fn is_noise(text: &str) -> bool {
-    let lower = text.to_lowercase();
-    let len = text.len();
-
-    if len < 5 {
-        return true;
-    }
-
-    lower.contains("© cdisc")
-        || lower.contains("all rights reserved")
-        || lower.starts_with("page ")
-        || lower.ends_with(" page")
-        || (lower.contains("implementation guide") && len < 100 && lower.contains("cdisc"))
-        || text.chars().filter(|c| c.is_ascii_digit()).count() > len / 2
 }
 
 fn is_toc(content: &str) -> bool {
