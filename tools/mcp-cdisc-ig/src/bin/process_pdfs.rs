@@ -1,6 +1,8 @@
 //! PDF Processing Tool for CDISC Implementation Guides
 //!
-//! Extracts text from the IG PDFs using lopdf and creates searchable JSON indexes.
+//! Two-pass extraction:
+//! 1. First pass: Identify section boundaries and their domains
+//! 2. Second pass: Chunk content within sections, inheriting domain context
 //!
 //! Usage:
 //!   cargo run --bin process_pdfs
@@ -11,6 +13,11 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+use std::sync::LazyLock;
+
+// =============================================================================
+// Data Structures
+// =============================================================================
 
 /// A chunk of text from the IG document
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,7 +26,6 @@ struct TextChunk {
     page: u32,
     content: String,
     domain: Option<String>,
-    variable: Option<String>,
 }
 
 /// Content from a single Implementation Guide
@@ -30,35 +36,74 @@ struct IgContent {
     chunks: Vec<TextChunk>,
 }
 
-/// Known SDTM/SEND/ADaM domain codes for tagging
+/// A detected section in the document
+#[derive(Debug, Clone)]
+struct Section {
+    heading: String,
+    start_page: u32,
+    domain: Option<String>,
+    content: String,
+}
+
+/// Text extracted from a single page
+struct PageText {
+    page: u32,
+    text: String,
+}
+
+// =============================================================================
+// Static Patterns (compiled once)
+// =============================================================================
+
+/// Pattern for numbered section headings: "6.1.2 Section Title"
+static SECTION_HEADING: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?m)^\s*(\d+(?:\.\d+)*)\s+([A-Z][A-Za-z][^\n]{2,80}?)(?:\s*\.{2,}|\s*$)").unwrap()
+});
+
+/// Pattern for domain mentions in headings: "Demographics Domain (DM)" or "DM - Demographics"
+static DOMAIN_IN_HEADING: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)\b([A-Z]{2,8})\s*(?:[-–—]|Domain|Dataset)\b|\(([A-Z]{2,8})\)").unwrap()
+});
+
+/// Whitespace normalization
+static WHITESPACE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").unwrap());
+
+// =============================================================================
+// Known Domains & Variables
+// =============================================================================
+
+/// All known CDISC domain codes (from tss-standards CSVs)
 const DOMAINS: &[&str] = &[
-    "DM", "AE", "CE", "DS", "DV", "MH", "CM", "EC", "EX", "SU", "PR", "DA", "DD", "EG", "IE", "LB",
-    "MB", "MI", "MO", "MS", "OM", "PC", "PE", "PP", "QS", "RE", "RP", "RS", "SC", "SE", "SM", "SS",
-    "TR", "TU", "TV", "VS", "BW", "BG", "CL", "CO", "FW", "MA", "PM", "TF", "ADSL", "ADAE", "ADLB",
-    "ADVS", "ADCM", "ADEX", "ADTTE", "RELREC", "SUPPQUAL", "TA", "TE", "TI", "TS",
+    // SDTM Interventions
+    "AG", "CM", "EC", "EX", "ML", "PR", "SU", // SDTM Events
+    "AE", "BE", "CE", "DS", "DV", "HO", "MH", // SDTM Findings
+    "BS", "CP", "CV", "DA", "DD", "EG", "FT", "GF", "IE", "IS", "LB", "MB", "MI", "MK", "MS", "NV",
+    "OE", "PC", "PE", "PP", "QS", "RE", "RP", "RS", "SC", "SS", "TR", "TU", "UR", "VS",
+    // SDTM Findings About
+    "FA", "SR", // SDTM Special-Purpose
+    "CO", "DM", "SE", "SM", "SV", // SDTM Trial Design
+    "TA", "TD", "TE", "TI", "TM", "TS", "TV", // SDTM Study Reference
+    "OI", // SDTM Relationship
+    "RELREC", "RELSPEC", "RELSUB", "SUPPQUAL", // SEND-specific (not in SDTM)
+    "BW", "BG", "CL", "FW", "MA", "OM", "PM", "TF", "TX", "POOLDEF", // ADaM structures
+    "ADSL", "BDS", "TTE", // Common ADaM dataset names (conventional)
+    "ADAE", "ADCM", "ADEX", "ADLB", "ADPC", "ADPP", "ADTTE", "ADVS",
 ];
 
-/// Common SDTM variable name patterns
-const VARIABLE_PATTERNS: &[&str] = &[
-    "USUBJID", "STUDYID", "DOMAIN", "SUBJID", "SITEID", "RFSTDTC", "RFENDTC", "RFXSTDTC",
-    "RFXENDTC", "RFICDTC", "RFPENDTC", "DTHDTC", "DTHFL", "ARMCD", "ARM", "ACTARMCD", "ACTARM",
-    "COUNTRY", "BRTHDTC", "AGE", "AGEU", "SEX", "RACE", "ETHNIC", "SPECIES", "STRAIN", "SBSTRAIN",
-    "AESEQ", "AETERM", "AEDECOD", "AEBODSYS", "AESEV", "AESER", "AEREL", "AEOUT", "AESTDTC",
-    "AEENDTC", "VISIT", "VISITNUM", "VISITDY", "EPOCH",
-];
+// =============================================================================
+// Main Entry Point
+// =============================================================================
 
 fn main() -> Result<()> {
-    println!("CDISC IG PDF Processor");
-    println!("======================\n");
+    println!("CDISC IG PDF Processor (Two-Pass Section-First)");
+    println!("================================================\n");
 
     let base_path = Path::new(env!("CARGO_MANIFEST_DIR"));
     let pdf_dir = base_path.join("pdfs");
     let data_dir = base_path.join("data");
 
-    // Ensure data directory exists
     fs::create_dir_all(&data_dir)?;
 
-    // Process each IG
     let igs = [
         (
             "SDTMIG_v3.4.pdf",
@@ -87,82 +132,57 @@ fn main() -> Result<()> {
         println!("Processing: {}", pdf_name);
 
         if !pdf_path.exists() {
-            println!("  WARNING: PDF not found at {:?}, skipping", pdf_path);
+            println!("  SKIP: PDF not found at {:?}", pdf_path);
             continue;
         }
 
-        match process_pdf(&pdf_path, ig_name, version) {
+        match process_ig(&pdf_path, ig_name, version) {
             Ok(content) => {
                 let chunk_count = content.chunks.len();
+                let domains_found: std::collections::HashSet<_> = content
+                    .chunks
+                    .iter()
+                    .filter_map(|c| c.domain.as_ref())
+                    .collect();
                 let total_chars: usize = content.chunks.iter().map(|c| c.content.len()).sum();
+
                 let json = serde_json::to_string_pretty(&content)?;
-                fs::write(&output_path, json)?;
+                fs::write(&output_path, &json)?;
+
+                println!("  -> {} chunks, {} chars", chunk_count, total_chars);
                 println!(
-                    "  Extracted {} chunks ({} chars) -> {:?}",
-                    chunk_count, total_chars, output_path
+                    "  -> {} unique domains: {:?}",
+                    domains_found.len(),
+                    domains_found
                 );
+                println!("  -> Saved to {:?}", output_path);
             }
             Err(e) => {
                 println!("  ERROR: {:#}", e);
             }
         }
+        println!();
     }
 
-    println!("\nDone!");
+    println!("Done!");
     Ok(())
 }
 
-fn process_pdf(path: &Path, name: &str, version: &str) -> Result<IgContent> {
-    println!("  Loading PDF with lopdf 0.39...");
+// =============================================================================
+// Two-Pass Processing
+// =============================================================================
 
-    // Load the PDF document
-    let doc = Document::load(path).with_context(|| format!("Failed to load PDF: {:?}", path))?;
+fn process_ig(path: &Path, name: &str, version: &str) -> Result<IgContent> {
+    // Step 1: Extract all pages
+    let pages = extract_pages(path)?;
 
-    // Check if encrypted and try to decrypt with empty password
-    if doc.is_encrypted() {
-        println!("  PDF is encrypted, attempting to decrypt...");
-        // lopdf 0.39 should auto-decrypt with empty password on load
-        // If still encrypted, the content is not accessible
-        if doc.is_encrypted() {
-            anyhow::bail!(
-                "PDF is encrypted and could not be decrypted. \
-                 Content copying may not be allowed."
-            );
-        }
-    }
+    // Step 2: First pass - identify sections and their domains
+    let sections = identify_sections(&pages);
+    println!("  Pass 1: Found {} sections", sections.len());
 
-    // Get page count
-    let pages = doc.get_pages();
-    let page_count = pages.len();
-    println!("  Found {} pages", page_count);
-
-    // Extract text from each page
-    let mut all_pages_text: Vec<String> = Vec::with_capacity(page_count);
-
-    for (page_num, &page_id) in pages.iter() {
-        let page_text = extract_text_from_page(&doc, page_id).unwrap_or_default();
-        if !page_text.is_empty() {
-            all_pages_text.push(page_text);
-        } else {
-            all_pages_text.push(String::new());
-        }
-
-        // Progress indicator every 50 pages
-        if *page_num % 50 == 0 {
-            println!("  Processed {} pages...", page_num);
-        }
-    }
-
-    let total_chars: usize = all_pages_text.iter().map(|s| s.len()).sum();
-    println!("  Extracted {} total characters", total_chars);
-
-    if total_chars == 0 {
-        anyhow::bail!("No text extracted from PDF");
-    }
-
-    // Split into chunks
-    let chunks = extract_chunks(&all_pages_text);
-    println!("  Created {} chunks", chunks.len());
+    // Step 3: Second pass - chunk content within sections
+    let chunks = chunk_sections(&sections);
+    println!("  Pass 2: Created {} chunks", chunks.len());
 
     Ok(IgContent {
         name: name.to_string(),
@@ -171,20 +191,50 @@ fn process_pdf(path: &Path, name: &str, version: &str) -> Result<IgContent> {
     })
 }
 
-/// Extract text from a single page using lopdf
+/// Extract text from all pages of the PDF
+fn extract_pages(path: &Path) -> Result<Vec<PageText>> {
+    let doc = Document::load(path).with_context(|| format!("Failed to load: {:?}", path))?;
+
+    if doc.is_encrypted() {
+        anyhow::bail!("PDF is encrypted and cannot be processed");
+    }
+
+    let pages = doc.get_pages();
+    println!("  Found {} pages", pages.len());
+
+    let mut result = Vec::with_capacity(pages.len());
+
+    for (page_num, &page_id) in pages.iter() {
+        let text = extract_text_from_page(&doc, page_id).unwrap_or_default();
+        result.push(PageText {
+            page: *page_num,
+            text,
+        });
+
+        if *page_num % 100 == 0 {
+            println!("  ... extracted page {}", page_num);
+        }
+    }
+
+    let total: usize = result.iter().map(|p| p.text.len()).sum();
+    println!("  Extracted {} total characters", total);
+
+    if total == 0 {
+        anyhow::bail!("No text extracted - PDF may be image-only");
+    }
+
+    Ok(result)
+}
+
+/// Extract text from a single PDF page
 fn extract_text_from_page(doc: &Document, page_id: lopdf::ObjectId) -> Result<String> {
     let mut text = String::new();
 
-    // Get the raw page content bytes
     let content_bytes = doc.get_page_content(page_id)?;
-
-    // Parse the content stream
     let content = Content::decode(&content_bytes)?;
 
-    // Parse content stream for text operators
     for operation in &content.operations {
         match operation.operator.as_str() {
-            // Text showing operators
             "Tj" | "TJ" | "'" | "\"" => {
                 for operand in &operation.operands {
                     if let Some(s) = extract_string_from_object(operand) {
@@ -193,7 +243,6 @@ fn extract_text_from_page(doc: &Document, page_id: lopdf::ObjectId) -> Result<St
                     }
                 }
             }
-            // Text positioning (add newline for readability)
             "Td" | "TD" | "T*" => {
                 if !text.ends_with('\n') && !text.ends_with(' ') {
                     text.push('\n');
@@ -210,7 +259,7 @@ fn extract_text_from_page(doc: &Document, page_id: lopdf::ObjectId) -> Result<St
 fn extract_string_from_object(obj: &lopdf::Object) -> Option<String> {
     match obj {
         lopdf::Object::String(bytes, _) => {
-            // Try UTF-16BE first (common in PDFs)
+            // UTF-16BE (BOM marker)
             if bytes.len() >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF {
                 let utf16: Vec<u16> = bytes[2..]
                     .chunks(2)
@@ -224,12 +273,11 @@ fn extract_string_from_object(obj: &lopdf::Object) -> Option<String> {
                     .collect();
                 String::from_utf16(&utf16).ok()
             } else {
-                // Try as Latin-1 / PDFDocEncoding
+                // Latin-1 / PDFDocEncoding
                 Some(bytes.iter().map(|&b| b as char).collect())
             }
         }
         lopdf::Object::Array(arr) => {
-            // TJ operator uses arrays mixing strings and positioning
             let mut result = String::new();
             for item in arr {
                 if let Some(s) = extract_string_from_object(item) {
@@ -246,156 +294,119 @@ fn extract_string_from_object(obj: &lopdf::Object) -> Option<String> {
     }
 }
 
-fn extract_chunks(pages: &[String]) -> Vec<TextChunk> {
-    let mut chunks = Vec::new();
+// =============================================================================
+// Pass 1: Section Identification
+// =============================================================================
 
-    // Regex for section headings
-    let heading_re =
-        Regex::new(r"(?m)^\s*(\d+(?:\.\d+)*)\s+([A-Z][A-Za-z][^\n]{2,80}?)(?:\s*\.\s*\.|\s*$)")
-            .unwrap();
-
+/// First pass: Identify all major sections and their associated domains
+fn identify_sections(pages: &[PageText]) -> Vec<Section> {
+    let mut sections = Vec::new();
     let mut current_heading = "Introduction".to_string();
+    let mut current_domain: Option<String> = None;
+    let mut current_start_page: u32 = 1;
     let mut current_content = String::new();
 
-    for (page_num, page_text) in pages.iter().enumerate() {
-        let page_num = (page_num + 1) as u32;
-
-        // Split into paragraphs
-        let paragraphs: Vec<&str> = page_text
-            .split("\n\n")
-            .flat_map(|p| p.split("\n \n"))
-            .collect();
+    for page in pages {
+        let paragraphs = split_paragraphs(&page.text);
 
         for para in paragraphs {
-            let para = para.trim();
-
-            if para.len() < 15 {
+            if para.len() < 10 || is_noise(para) {
                 continue;
             }
 
-            if looks_like_header_footer(para) {
-                continue;
-            }
-
-            // Check for numbered section heading
-            if let Some(caps) = heading_re.captures(para) {
-                if current_content.len() > 100 {
-                    let chunk = create_chunk(
-                        &current_heading,
-                        page_num.saturating_sub(1).max(1),
-                        &current_content,
-                    );
-                    if chunk.content.len() > 50 && !looks_like_toc(&chunk.content) {
-                        chunks.push(chunk);
-                    }
+            // Check if this paragraph is a section heading
+            if let Some((heading, domain)) = detect_section_heading(para) {
+                // Save the previous section if it has content
+                if !current_content.is_empty() {
+                    sections.push(Section {
+                        heading: current_heading.clone(),
+                        start_page: current_start_page,
+                        domain: current_domain.clone(),
+                        content: current_content.clone(),
+                    });
                 }
-                current_heading = format!("{} {}", &caps[1], caps[2].trim());
-                current_content.clear();
-                continue;
-            }
 
-            // Check for all-caps headings
-            if is_likely_heading(para) {
-                if current_content.len() > 100 {
-                    let chunk = create_chunk(
-                        &current_heading,
-                        page_num.saturating_sub(1).max(1),
-                        &current_content,
-                    );
-                    if chunk.content.len() > 50 && !looks_like_toc(&chunk.content) {
-                        chunks.push(chunk);
-                    }
+                // Start new section
+                current_heading = heading;
+                current_domain = domain;
+                current_start_page = page.page;
+                current_content.clear();
+            } else {
+                // Accumulate content
+                if !current_content.is_empty() {
+                    current_content.push(' ');
                 }
-                current_heading = para.to_string();
-                current_content.clear();
-                continue;
-            }
-
-            // Add to current content
-            if !current_content.is_empty() {
-                current_content.push(' ');
-            }
-            current_content.push_str(&clean_line(para));
-
-            // Chunk if content is long
-            if current_content.len() > 2500 {
-                let chunk = create_chunk(&current_heading, page_num, &current_content);
-                if chunk.content.len() > 50 && !looks_like_toc(&chunk.content) {
-                    chunks.push(chunk);
-                }
-                current_content.clear();
+                current_content.push_str(&normalize_whitespace(para));
             }
         }
     }
 
-    // Final chunk
-    if current_content.len() > 100 {
-        let chunk = create_chunk(&current_heading, pages.len() as u32, &current_content);
-        if chunk.content.len() > 50 && !looks_like_toc(&chunk.content) {
-            chunks.push(chunk);
-        }
+    // Don't forget the last section
+    if !current_content.is_empty() {
+        sections.push(Section {
+            heading: current_heading,
+            start_page: current_start_page,
+            domain: current_domain,
+            content: current_content,
+        });
     }
 
-    chunks
+    sections
 }
 
-fn is_likely_heading(text: &str) -> bool {
+/// Detect if a paragraph is a section heading and extract domain if present
+fn detect_section_heading(text: &str) -> Option<(String, Option<String>)> {
     let text = text.trim();
-    if text.len() > 5 && text.len() < 60 {
-        let upper_count = text.chars().filter(|c| c.is_uppercase()).count();
-        let alpha_count = text.chars().filter(|c| c.is_alphabetic()).count();
-        if alpha_count > 0 && upper_count as f32 / alpha_count as f32 > 0.8 {
-            return true;
-        }
+
+    // Check for numbered heading: "6.1.2 Demographics Domain (DM)"
+    if let Some(caps) = SECTION_HEADING.captures(text) {
+        let number = &caps[1];
+        let title = caps[2].trim();
+        let heading = format!("{} {}", number, title);
+
+        // Try to extract domain from the heading
+        let domain = extract_domain_from_heading(&heading);
+
+        return Some((heading, domain));
     }
-    false
-}
 
-fn clean_line(text: &str) -> String {
-    let re = Regex::new(r"\s+").unwrap();
-    re.replace_all(text.trim(), " ").to_string()
-}
-
-fn create_chunk(heading: &str, page: u32, content: &str) -> TextChunk {
-    let content = clean_content(content);
-    let domain = detect_domain(&content, heading);
-    let variable = detect_variable(&content, heading);
-
-    TextChunk {
-        heading: heading.to_string(),
-        page,
-        content,
-        domain,
-        variable,
+    // Check for all-caps heading that might indicate a section
+    if is_all_caps_heading(text) {
+        let domain = extract_domain_from_heading(text);
+        return Some((text.to_string(), domain));
     }
+
+    None
 }
 
-fn clean_content(text: &str) -> String {
-    let text = text.replace('\u{0000}', "");
-    let re = Regex::new(r"\s+").unwrap();
-    re.replace_all(text.trim(), " ").to_string()
-}
+/// Extract domain code from a heading like "Demographics Domain (DM)" or "AE - Adverse Events"
+fn extract_domain_from_heading(heading: &str) -> Option<String> {
+    let heading_upper = heading.to_uppercase();
 
-fn detect_domain(content: &str, heading: &str) -> Option<String> {
-    let text = format!("{} {}", heading, content).to_uppercase();
-
-    for domain in DOMAINS {
-        let pattern = format!(r"\b{}\b", domain);
-        if let Ok(re) = Regex::new(&pattern) {
-            if re.is_match(&heading.to_uppercase()) {
-                return Some(domain.to_string());
-            }
+    // First, try regex pattern for explicit domain mentions
+    if let Some(caps) = DOMAIN_IN_HEADING.captures(heading) {
+        let code = caps.get(1).or_else(|| caps.get(2)).map(|m| m.as_str());
+        if let Some(code) = code
+            && DOMAINS.contains(&code.to_uppercase().as_str())
+        {
+            return Some(code.to_uppercase());
         }
     }
 
+    // Try to find domain code as a word boundary match
     for domain in DOMAINS {
+        // Match patterns like "DM Domain", "The DM", "DM -", "DM–", "(DM)"
         let patterns = [
-            format!("{} DOMAIN", domain),
-            format!("{} DATASET", domain),
-            format!("THE {} ", domain),
+            format!(r"\b{}\s+(?:Domain|Dataset)", domain),
+            format!(r"\b{}\s*[-–—]", domain),
+            format!(r"\({}\)", domain),
+            format!(r"^\d+(?:\.\d+)*\s+{}\b", domain), // "6.1 DM ..."
         ];
-        for p in &patterns {
-            if text.contains(p) {
+
+        for pattern in &patterns {
+            if let Ok(re) = Regex::new(&format!("(?i){}", pattern))
+                && re.is_match(&heading_upper)
+            {
                 return Some(domain.to_string());
             }
         }
@@ -404,73 +415,269 @@ fn detect_domain(content: &str, heading: &str) -> Option<String> {
     None
 }
 
-fn detect_variable(content: &str, heading: &str) -> Option<String> {
-    let text = format!("{} {}", heading, content).to_uppercase();
+// =============================================================================
+// Pass 2: Chunking Within Sections
+// =============================================================================
 
-    for var in VARIABLE_PATTERNS {
-        if heading.to_uppercase().contains(var) {
-            return Some(var.to_string());
+/// Second pass: Chunk the content within each section
+fn chunk_sections(sections: &[Section]) -> Vec<TextChunk> {
+    let mut chunks = Vec::new();
+
+    for section in sections {
+        // Skip very short sections
+        if section.content.len() < 100 {
+            continue;
+        }
+
+        // Skip table of contents and similar
+        if is_toc(&section.content) || is_toc(&section.heading) {
+            continue;
+        }
+
+        // Split section content into chunks of reasonable size
+        let section_chunks = split_into_chunks(
+            &section.heading,
+            section.start_page,
+            &section.content,
+            section.domain.as_deref(),
+        );
+
+        chunks.extend(section_chunks);
+    }
+
+    chunks
+}
+
+/// Split a section's content into appropriately sized chunks
+fn split_into_chunks(
+    heading: &str,
+    start_page: u32,
+    content: &str,
+    section_domain: Option<&str>,
+) -> Vec<TextChunk> {
+    let mut chunks = Vec::new();
+
+    // If content is small enough, return as single chunk
+    if content.len() <= 3000 {
+        if let Some(chunk) = create_chunk(heading, start_page, content, section_domain) {
+            chunks.push(chunk);
+        }
+        return chunks;
+    }
+
+    // Split into smaller chunks at sentence boundaries
+    let mut current_chunk = String::new();
+    let mut chunk_index = 0;
+
+    for sentence in split_sentences(content) {
+        // If adding this sentence would make chunk too large, finalize current chunk
+        if !current_chunk.is_empty() && current_chunk.len() + sentence.len() > 2500 {
+            let chunk_heading = if chunk_index > 0 {
+                format!("{} (cont.)", heading)
+            } else {
+                heading.to_string()
+            };
+
+            if let Some(chunk) =
+                create_chunk(&chunk_heading, start_page, &current_chunk, section_domain)
+            {
+                chunks.push(chunk);
+            }
+
+            current_chunk.clear();
+            chunk_index += 1;
+        }
+
+        if !current_chunk.is_empty() {
+            current_chunk.push(' ');
+        }
+        current_chunk.push_str(sentence);
+    }
+
+    // Don't forget the last chunk
+    if !current_chunk.is_empty() {
+        let chunk_heading = if chunk_index > 0 {
+            format!("{} (cont.)", heading)
+        } else {
+            heading.to_string()
+        };
+
+        if let Some(chunk) =
+            create_chunk(&chunk_heading, start_page, &current_chunk, section_domain)
+        {
+            chunks.push(chunk);
         }
     }
 
-    let mut counts: Vec<(&str, usize)> = VARIABLE_PATTERNS
-        .iter()
-        .map(|v| {
-            let pattern = format!(r"\b{}\b", v);
-            let count = Regex::new(&pattern)
-                .map(|re| re.find_iter(&text).count())
-                .unwrap_or(0);
-            (*v, count)
-        })
-        .filter(|(_, c)| *c >= 3)
-        .collect();
-
-    counts.sort_by(|a, b| b.1.cmp(&a.1));
-    counts.first().map(|(v, _)| v.to_string())
+    chunks
 }
 
-fn looks_like_header_footer(text: &str) -> bool {
-    let text_lower = text.to_lowercase();
-    let text_len = text.len();
+/// Create a TextChunk with domain detection
+fn create_chunk(
+    heading: &str,
+    page: u32,
+    content: &str,
+    section_domain: Option<&str>,
+) -> Option<TextChunk> {
+    let content = clean_content(content);
 
-    if text_len < 5 || text_len > 150 {
+    if content.len() < 50 {
+        return None;
+    }
+
+    // Use section domain if available, otherwise try to detect from content
+    let domain = section_domain
+        .map(String::from)
+        .or_else(|| detect_domain_from_content(&content));
+
+    Some(TextChunk {
+        heading: heading.to_string(),
+        page,
+        content,
+        domain,
+    })
+}
+
+/// Detect domain from content when not available from section heading
+fn detect_domain_from_content(content: &str) -> Option<String> {
+    let content_upper = content.to_uppercase();
+
+    for domain in DOMAINS {
+        let patterns = [
+            format!("{} DOMAIN", domain),
+            format!("{} DATASET", domain),
+            format!("THE {} ", domain),
+        ];
+
+        for pattern in &patterns {
+            if content_upper.contains(pattern) {
+                return Some(domain.to_string());
+            }
+        }
+    }
+
+    None
+}
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+fn split_paragraphs(text: &str) -> Vec<&str> {
+    text.split("\n\n")
+        .flat_map(|p| p.split("\n \n"))
+        .map(|p| p.trim())
+        .filter(|p| !p.is_empty())
+        .collect()
+}
+
+fn split_sentences(text: &str) -> Vec<&str> {
+    // Simple sentence splitting - split on period followed by space and capital
+    let mut sentences = Vec::new();
+    let mut start = 0;
+
+    let chars: Vec<char> = text.chars().collect();
+    for i in 0..chars.len().saturating_sub(2) {
+        if chars[i] == '.'
+            && chars[i + 1] == ' '
+            && chars.get(i + 2).is_some_and(|c| c.is_uppercase())
+        {
+            let end = text
+                .char_indices()
+                .nth(i + 1)
+                .map(|(idx, _)| idx)
+                .unwrap_or(text.len());
+            sentences.push(&text[start..end]);
+            start = end + 1;
+        }
+    }
+
+    // Add remainder
+    if start < text.len() {
+        sentences.push(&text[start..]);
+    }
+
+    if sentences.is_empty() {
+        vec![text]
+    } else {
+        sentences
+    }
+}
+
+fn normalize_whitespace(text: &str) -> String {
+    WHITESPACE.replace_all(text.trim(), " ").to_string()
+}
+
+fn clean_content(text: &str) -> String {
+    let text = text.replace('\u{0000}', "");
+    normalize_whitespace(&text)
+}
+
+fn is_all_caps_heading(text: &str) -> bool {
+    let text = text.trim();
+    if text.len() < 5 || text.len() > 80 {
         return false;
     }
 
-    text_lower.contains("© cdisc")
-        || text_lower.contains("all rights reserved")
-        || (text_lower.contains("implementation guide")
-            && (text_lower.contains("cdisc") || text_lower.contains("version")))
-        || text.chars().filter(|c| c.is_ascii_digit()).count() > text_len / 2
-        || text_lower.starts_with("page ")
-        || text_lower.ends_with(" page")
-        || (text_lower.contains("cdisc") && text_len < 80)
-}
-
-fn looks_like_toc(content: &str) -> bool {
-    let dot_count = content.matches('.').count();
-    let word_count = content.split_whitespace().count();
-
-    if word_count > 0 {
-        let dot_ratio = dot_count as f32 / word_count as f32;
-        if dot_ratio > 0.5 {
-            return true;
-        }
+    let alpha: Vec<char> = text.chars().filter(|c| c.is_alphabetic()).collect();
+    if alpha.is_empty() {
+        return false;
     }
 
-    let lines: Vec<&str> = content.split('\n').collect();
-    if lines.len() > 3 {
-        let lines_with_trailing_numbers = lines
+    let upper = alpha.iter().filter(|c| c.is_uppercase()).count();
+    (upper as f32 / alpha.len() as f32) > 0.8
+}
+
+fn is_noise(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    let len = text.len();
+
+    if len < 5 {
+        return true;
+    }
+
+    lower.contains("© cdisc")
+        || lower.contains("all rights reserved")
+        || lower.starts_with("page ")
+        || lower.ends_with(" page")
+        || (lower.contains("implementation guide") && len < 100 && lower.contains("cdisc"))
+        || text.chars().filter(|c| c.is_ascii_digit()).count() > len / 2
+}
+
+fn is_toc(content: &str) -> bool {
+    let lower = content.to_lowercase();
+
+    // Explicit TOC indicators
+    if lower.contains("table of contents")
+        || lower.contains("list of tables")
+        || lower.contains("list of figures")
+    {
+        return true;
+    }
+
+    // Dot leaders pattern (common in TOC)
+    if content.contains(".....") {
+        return true;
+    }
+
+    // High ratio of dots to words
+    let dot_count = content.matches('.').count();
+    let word_count = content.split_whitespace().count();
+    if word_count > 10 && (dot_count as f32 / word_count as f32) > 0.5 {
+        return true;
+    }
+
+    // Many lines ending in numbers (page references)
+    let lines: Vec<&str> = content.lines().collect();
+    if lines.len() > 5 {
+        let lines_ending_in_number = lines
             .iter()
             .filter(|l| l.trim().chars().last().is_some_and(|c| c.is_ascii_digit()))
             .count();
-        if lines_with_trailing_numbers as f32 / lines.len() as f32 > 0.5 {
+        if (lines_ending_in_number as f32 / lines.len() as f32) > 0.5 {
             return true;
         }
     }
 
-    content.contains(".....")
-        || content.to_lowercase().contains("table of contents")
-        || content.to_lowercase().contains("list of tables")
-        || content.to_lowercase().contains("list of figures")
+    false
 }

@@ -32,8 +32,6 @@ pub struct TextChunk {
     pub content: String,
     /// Optional: domain code if this chunk relates to a specific domain
     pub domain: Option<String>,
-    /// Optional: variable name if this chunk discusses a specific variable
-    pub variable: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -43,7 +41,6 @@ pub struct SearchResult {
     pub page: u32,
     pub content: String,
     pub domain: Option<String>,
-    pub variable: Option<String>,
     pub score: f32,
 }
 
@@ -120,9 +117,8 @@ impl IgIndex {
                         ig: ig_name.to_string(),
                         heading: chunk.heading.clone(),
                         page: chunk.page,
-                        content: truncate_around_match(&chunk.content, &query, 600),
+                        content: truncate_around_match(&chunk.content, query, 600),
                         domain: chunk.domain.clone(),
-                        variable: chunk.variable.clone(),
                         score,
                     });
                 }
@@ -161,41 +157,6 @@ impl IgIndex {
         } else {
             Some(chunks)
         }
-    }
-
-    /// Get all chunks that mention a specific variable
-    pub fn get_variable(&self, variable: &str, domain: Option<&str>) -> Vec<TextChunk> {
-        let variable_upper = variable.to_uppercase();
-        let mut results = Vec::new();
-
-        for ig in [&self.sdtm, &self.send, &self.adam] {
-            for chunk in &ig.chunks {
-                // Check if this chunk is about the variable
-                let var_matches = chunk
-                    .variable
-                    .as_ref()
-                    .is_some_and(|v| v.eq_ignore_ascii_case(&variable_upper));
-
-                // Or if the variable is mentioned prominently in the content
-                let content_mentions = chunk.content.to_uppercase().contains(&variable_upper);
-
-                if var_matches || content_mentions {
-                    // Filter by domain if specified
-                    if let Some(d) = domain {
-                        if !chunk
-                            .domain
-                            .as_ref()
-                            .is_some_and(|cd| cd.eq_ignore_ascii_case(d))
-                        {
-                            continue;
-                        }
-                    }
-                    results.push(chunk.clone());
-                }
-            }
-        }
-
-        results
     }
 }
 

@@ -39,14 +39,6 @@ struct GetDomainSpecParams {
     ig: String,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
-struct GetVariableSpecParams {
-    /// Variable name (e.g., 'USUBJID', 'AETERM', 'LBTEST', 'EXDOSE')
-    variable: String,
-    /// Domain code to narrow search (optional, e.g., 'DM', 'AE')
-    domain: Option<String>,
-}
-
 /// CDISC Implementation Guide MCP Server
 #[derive(Clone)]
 pub struct CdiscIgServer {
@@ -121,40 +113,6 @@ impl CdiscIgServer {
                 domain.to_uppercase(),
                 ig.to_uppercase()
             ))])),
-        }
-    }
-
-    /// Get guidance text related to a CDISC variable
-    #[tool(
-        description = "Get all guidance text chunks that discuss a specific CDISC variable. Returns IG sections explaining the variable's derivation, usage rules, and compliance requirements."
-    )]
-    async fn get_variable_spec(
-        &self,
-        params: Parameters<GetVariableSpecParams>,
-    ) -> Result<CallToolResult, McpError> {
-        let GetVariableSpecParams { variable, domain } = params.0;
-        let index = self.index.read().await;
-
-        let specs = index.get_variable(&variable, domain.as_deref());
-        if specs.is_empty() {
-            let msg = match domain {
-                Some(d) => format!(
-                    "Variable '{}' not found in domain '{}'. \
-                     Try without specifying a domain to search all IGs.",
-                    variable.to_uppercase(),
-                    d.to_uppercase()
-                ),
-                None => format!(
-                    "Variable '{}' not found in any IG. \
-                     Check the variable name or use search_ig to find similar variables.",
-                    variable.to_uppercase()
-                ),
-            };
-            Ok(CallToolResult::success(vec![Content::text(msg)]))
-        } else {
-            let content = serde_json::to_string_pretty(&specs)
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-            Ok(CallToolResult::success(vec![Content::text(content)]))
         }
     }
 }
