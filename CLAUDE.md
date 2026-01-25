@@ -69,7 +69,7 @@ For feature development, ALWAYS start with `/feature-dev` to gather requirements
 Trial Submission Studio transforms clinical trial source data (CSV) into FDA-compliant CDISC formats (SDTM, ADaM, SEND).
 It's a cross-platform desktop application written in Rust using the Iced GUI framework.
 
-**Status**: Alpha software (v0.0.4-alpha). Not for production regulatory submissions.
+**Status**: Alpha software (v0.0.5-alpha). Not for production regulatory submissions.
 
 ---
 
