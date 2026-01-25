@@ -64,3 +64,23 @@ Before any change, consider:
 1. **Should this be embedded in the binary?** (compile-time vs. runtime loading)
 2. **Should this be in tss-standards or tss-submit?** (definition vs. usage)
 3. **Is this a CDISC standard or our interpretation?** (document clearly)
+
+---
+
+## CDISC MCP Server Usage
+
+When working with standards code, use the `cdisc-ig` MCP server:
+
+| Task | MCP Tool |
+|------|----------|
+| Check variable requirements | `get_domain_spec` |
+| Understand derivation rules | `search_ig` |
+| Verify compliance rules | `search_ig` |
+| Look up Define-XML specs | `search_ig` (ig=define) |
+
+**DO NOT** guess at CDISC requirements. Query the MCP server for authoritative Implementation Guide content.
+
+Example workflow:
+1. Before implementing validation logic → query `search_ig` for the rule
+2. Before adding domain variables → query `get_domain_spec` for the specification
+3. Before modifying export format → query `search_ig` for Define-XML requirements
