@@ -33,7 +33,7 @@ pub mod rules;
 mod util;
 
 use polars::prelude::DataFrame;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 use tss_standards::SdtmDomain;
 use tss_standards::TerminologyRegistry;
 
@@ -87,6 +87,10 @@ pub fn validate_domain_with_not_collected(
 ///
 /// Checks that:
 /// - All USUBJIDs in non-DM domains exist in the DM domain
+/// - RDOMAIN values in CO/RELREC reference valid domains
+/// - RELSUB RSUBJID exists in DM and relationships are bidirectional
+/// - RELSPEC PARENT references valid REFID within subject
+/// - RELREC references point to existing records
 ///
 /// # Arguments
 /// * `domains` - List of (domain_name, DataFrame) pairs
@@ -115,17 +119,57 @@ pub fn validate_cross_domain(domains: &[(&str, &DataFrame)]) -> Vec<(String, Vec
         );
     }
 
-    // Check each non-DM domain
-    domains
+    // Build set of valid domain codes for RDOMAIN validation
+    let valid_domains: HashSet<String> = domains
         .iter()
-        .filter(|(name, _)| *name != "DM")
-        .filter_map(|(name, df)| {
-            let issues = checks::cross_domain::check_usubjid_in_dm(name, df, &dm_subjects);
-            if issues.is_empty() {
-                None
-            } else {
-                Some((name.to_string(), issues))
-            }
-        })
-        .collect()
+        .map(|(name, _)| name.to_uppercase())
+        .collect();
+
+    let mut results = Vec::new();
+
+    // Check each domain
+    for (name, df) in domains {
+        let name_upper = name.to_uppercase();
+        let mut domain_issues = Vec::new();
+
+        // Skip DM for USUBJID check (it's the reference)
+        if name_upper != "DM" {
+            domain_issues.extend(checks::cross_domain::check_usubjid_in_dm(
+                name,
+                df,
+                &dm_subjects,
+            ));
+        }
+
+        // RDOMAIN validation for CO and RELREC
+        if name_upper == "CO" || name_upper == "RELREC" {
+            domain_issues.extend(checks::cross_domain::check_rdomain_valid(
+                name,
+                df,
+                &valid_domains,
+            ));
+        }
+
+        // RELSUB-specific validation
+        if name_upper == "RELSUB" {
+            domain_issues.extend(checks::cross_domain::check_relsub(df, &dm_subjects));
+        }
+
+        // RELSPEC-specific validation
+        if name_upper == "RELSPEC" {
+            domain_issues.extend(checks::cross_domain::check_relspec(df));
+        }
+
+        // RELREC-specific validation (record references)
+        if name_upper == "RELREC" {
+            let context = checks::cross_domain::RelrecContext::new(domains);
+            domain_issues.extend(checks::cross_domain::check_relrec(df, &context));
+        }
+
+        if !domain_issues.is_empty() {
+            results.push((name.to_string(), domain_issues));
+        }
+    }
+
+    results
 }

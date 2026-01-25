@@ -114,6 +114,35 @@ pub enum Issue {
         missing_count: u64,
         samples: Vec<String>,
     },
+
+    // Special domain cross-reference checks (#38)
+    /// RDOMAIN references a domain that doesn't exist in the submission
+    InvalidRdomain {
+        domain: String,
+        invalid_count: u64,
+        samples: Vec<String>,
+    },
+    /// RSUBJID values not found in DM domain
+    RelsubNotInDm {
+        missing_count: u64,
+        samples: Vec<String>,
+    },
+    /// RELSUB relationship is not bidirectional (missing reciprocal record)
+    RelsubNotBidirectional {
+        missing_count: u64,
+        samples: Vec<String>,
+    },
+    /// RELSPEC PARENT references non-existent REFID
+    RelspecInvalidParent {
+        invalid_count: u64,
+        samples: Vec<String>,
+    },
+    /// RELREC references a record that doesn't exist
+    RelrecInvalidReference {
+        rdomain: String,
+        invalid_count: u64,
+        samples: Vec<String>,
+    },
 }
 
 impl Issue {
@@ -132,6 +161,12 @@ impl Issue {
             // Cross-domain issues use USUBJID or the specific variable
             Issue::UsubjidNotInDm { .. } => "USUBJID",
             Issue::ParentNotFound { variable, .. } => variable,
+            // Special domain cross-reference issues
+            Issue::InvalidRdomain { .. } => "RDOMAIN",
+            Issue::RelsubNotInDm { .. } => "RSUBJID",
+            Issue::RelsubNotBidirectional { .. } => "SREL",
+            Issue::RelspecInvalidParent { .. } => "PARENT",
+            Issue::RelrecInvalidReference { .. } => "IDVARVAL",
         }
     }
 
@@ -153,6 +188,12 @@ impl Issue {
             Issue::CtViolation { total_invalid, .. } => Some(*total_invalid),
             Issue::UsubjidNotInDm { missing_count, .. } => Some(*missing_count),
             Issue::ParentNotFound { missing_count, .. } => Some(*missing_count),
+            // Special domain cross-reference issues
+            Issue::InvalidRdomain { invalid_count, .. } => Some(*invalid_count),
+            Issue::RelsubNotInDm { missing_count, .. } => Some(*missing_count),
+            Issue::RelsubNotBidirectional { missing_count, .. } => Some(*missing_count),
+            Issue::RelspecInvalidParent { invalid_count, .. } => Some(*invalid_count),
+            Issue::RelrecInvalidReference { invalid_count, .. } => Some(*invalid_count),
         }
     }
 
@@ -176,6 +217,12 @@ impl Issue {
             // Cross-domain reference checks
             Issue::UsubjidNotInDm { .. } => Category::CrossReference,
             Issue::ParentNotFound { .. } => Category::CrossReference,
+            // Special domain cross-reference checks
+            Issue::InvalidRdomain { .. } => Category::CrossReference,
+            Issue::RelsubNotInDm { .. } => Category::CrossReference,
+            Issue::RelsubNotBidirectional { .. } => Category::CrossReference,
+            Issue::RelspecInvalidParent { .. } => Category::CrossReference,
+            Issue::RelrecInvalidReference { .. } => Category::CrossReference,
         }
     }
 
@@ -190,6 +237,12 @@ impl Issue {
             // Cross-domain reference issues are errors (data integrity)
             Issue::UsubjidNotInDm { .. } => Severity::Error,
             Issue::ParentNotFound { .. } => Severity::Error,
+            // Special domain cross-reference issues
+            Issue::InvalidRdomain { .. } => Severity::Error,
+            Issue::RelsubNotInDm { .. } => Severity::Error,
+            Issue::RelsubNotBidirectional { .. } => Severity::Warning,
+            Issue::RelspecInvalidParent { .. } => Severity::Error,
+            Issue::RelrecInvalidReference { .. } => Severity::Error,
             _ => Severity::Error,
         }
     }
@@ -346,6 +399,84 @@ impl Issue {
                 format!(
                     "Variable {} has {} references not found in {}{}",
                     variable, missing_count, parent_domain, sample_str
+                )
+            }
+
+            // Special domain cross-reference issues
+            Issue::InvalidRdomain {
+                domain,
+                invalid_count,
+                samples,
+            } => {
+                let sample_str = if samples.is_empty() {
+                    String::new()
+                } else {
+                    format!(": {}", samples.join(", "))
+                };
+                format!(
+                    "{} domain has {} RDOMAIN values referencing non-existent domains{}",
+                    domain, invalid_count, sample_str
+                )
+            }
+
+            Issue::RelsubNotInDm {
+                missing_count,
+                samples,
+            } => {
+                let sample_str = if samples.is_empty() {
+                    String::new()
+                } else {
+                    format!(" (e.g., {})", samples.join(", "))
+                };
+                format!(
+                    "RELSUB has {} RSUBJID values not found in DM{}",
+                    missing_count, sample_str
+                )
+            }
+
+            Issue::RelsubNotBidirectional {
+                missing_count,
+                samples,
+            } => {
+                let sample_str = if samples.is_empty() {
+                    String::new()
+                } else {
+                    format!(" (e.g., {})", samples.join(", "))
+                };
+                format!(
+                    "RELSUB has {} relationships without reciprocal records{}",
+                    missing_count, sample_str
+                )
+            }
+
+            Issue::RelspecInvalidParent {
+                invalid_count,
+                samples,
+            } => {
+                let sample_str = if samples.is_empty() {
+                    String::new()
+                } else {
+                    format!(" (e.g., {})", samples.join(", "))
+                };
+                format!(
+                    "RELSPEC has {} PARENT values referencing non-existent REFID{}",
+                    invalid_count, sample_str
+                )
+            }
+
+            Issue::RelrecInvalidReference {
+                rdomain,
+                invalid_count,
+                samples,
+            } => {
+                let sample_str = if samples.is_empty() {
+                    String::new()
+                } else {
+                    format!(" (e.g., {})", samples.join(", "))
+                };
+                format!(
+                    "RELREC has {} references to non-existent records in {}{}",
+                    invalid_count, rdomain, sample_str
                 )
             }
         }

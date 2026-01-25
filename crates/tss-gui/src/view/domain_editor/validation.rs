@@ -582,7 +582,13 @@ fn issue_category(issue: &Issue) -> &'static str {
         Issue::InvalidDate { .. } | Issue::TextTooLong { .. } => "Format",
         Issue::DataTypeMismatch { .. } => "Type",
         Issue::DuplicateSequence { .. } => "Consistency",
-        Issue::UsubjidNotInDm { .. } | Issue::ParentNotFound { .. } => "Cross Reference",
+        Issue::UsubjidNotInDm { .. }
+        | Issue::ParentNotFound { .. }
+        | Issue::InvalidRdomain { .. }
+        | Issue::RelsubNotInDm { .. }
+        | Issue::RelsubNotBidirectional { .. }
+        | Issue::RelspecInvalidParent { .. }
+        | Issue::RelrecInvalidReference { .. } => "Cross Reference",
         Issue::CtViolation { .. } => "Terminology",
     }
 }
