@@ -323,15 +323,15 @@ const SDTM_DOMAINS: &[&str] = &[
     "RELREC", "RELSPEC", "RELSUB", "SUPPQUAL",
 ];
 
-/// SEND-IG v3.1.1 domains (nonclinical/animal studies)
-const SEND_DOMAINS: &[&str] = &[
-    // SEND-specific domains
-    "BG", "BW", "CL", "FW", "LB", "MA", "MI", "OM", "PC", "PM", "PP", "SC", "TF", "TX",
-    // Shared with SDTM (applicable to nonclinical)
-    "CO", "DM", "DS", "EG", "EX", "SE", "SV", "TA", "TD", "TE", "TI", "TS", "TV",
-    // Special structures
-    "POOLDEF", "RELREC", "SUPPQUAL",
-];
+// SEND-IG v3.1.1 domains (nonclinical/animal studies) - commented out, SEND PDF hangs
+// const SEND_DOMAINS: &[&str] = &[
+//     // SEND-specific domains
+//     "BG", "BW", "CL", "FW", "LB", "MA", "MI", "OM", "PC", "PM", "PP", "SC", "TF", "TX",
+//     // Shared with SDTM (applicable to nonclinical)
+//     "CO", "DM", "DS", "EG", "EX", "SE", "SV", "TA", "TD", "TE", "TI", "TS", "TV",
+//     // Special structures
+//     "POOLDEF", "RELREC", "SUPPQUAL",
+// ];
 
 /// ADaM-IG v1.3 structures and common dataset names
 const ADAM_DOMAINS: &[&str] = &[
@@ -414,13 +414,20 @@ fn render_ig_list(frame: &mut Frame, area: Rect, app: &App) {
                 ),
                 IgStatus::Processing(phase) => {
                     if i == app.current_ig {
-                        if matches!(phase, Phase::Extracting) && app.total_pages > 0 {
-                            format!(
-                                "Extracting page {}/{} ({:.0}s)",
-                                app.current_page,
-                                app.total_pages,
-                                app.phase_elapsed().as_secs_f32()
-                            )
+                        if matches!(phase, Phase::Extracting) {
+                            if app.total_pages > 0 {
+                                format!(
+                                    "Extracting page {}/{} ({:.0}s)",
+                                    app.current_page,
+                                    app.total_pages,
+                                    app.phase_elapsed().as_secs_f32()
+                                )
+                            } else {
+                                format!(
+                                    "Loading PDF... ({:.0}s)",
+                                    app.phase_elapsed().as_secs_f32()
+                                )
+                            }
                         } else {
                             format!(
                                 "{} ({:.0}s)",
@@ -551,13 +558,6 @@ fn main() -> Result<()> {
     // Each entry: (pdf_name, ig_name, version, output_name, domains)
     let igs: &[(&str, &str, &str, &str, &[&str])] = &[
         (
-            "SENDIG_v3.1.1.pdf",
-            "SEND-IG",
-            "3.1.1",
-            "send-ig-v3.1.1.json",
-            SEND_DOMAINS,
-        ),
-        (
             "SDTMIG_v3.4.pdf",
             "SDTM-IG",
             "3.4",
@@ -571,6 +571,13 @@ fn main() -> Result<()> {
             "adam-ig-v1.3.json",
             ADAM_DOMAINS,
         ),
+        // (
+        //     "SENDIG_v3.1.1.pdf",
+        //     "SEND-IG",
+        //     "3.1.1",
+        //     "send-ig-v3.1.1.json",
+        //     SEND_DOMAINS,
+        // ),
     ];
 
     // Initialize terminal
@@ -604,6 +611,8 @@ fn main() -> Result<()> {
 
         // Phase 1: Extract text
         app.reset_phase_timer();
+        app.current_page = 0;
+        app.total_pages = 0;
         app.igs[i].status = IgStatus::Processing(Phase::Extracting);
         terminal.draw(|f| ui(f, &app))?;
 
@@ -625,22 +634,32 @@ fn main() -> Result<()> {
         app.igs[i].status = IgStatus::Processing(Phase::IdentifyingSections);
         terminal.draw(|f| ui(f, &app))?;
 
-        let sections = identify_sections(&text, domains);
-        if animate_briefly(&mut terminal, &mut app)? {
-            user_quit = true;
-            break 'processing;
-        }
+        let domains_vec: Vec<&'static str> = domains.to_vec();
+        let sections = match run_in_background(&mut terminal, &mut app, move || {
+            identify_sections(&text, &domains_vec)
+        })? {
+            Some(s) => s,
+            None => {
+                user_quit = true;
+                break 'processing;
+            }
+        };
 
         // Phase 3: Create chunks
         app.reset_phase_timer();
         app.igs[i].status = IgStatus::Processing(Phase::CreatingChunks);
         terminal.draw(|f| ui(f, &app))?;
 
-        let chunks = chunk_sections(&sections, domains);
-        if animate_briefly(&mut terminal, &mut app)? {
-            user_quit = true;
-            break 'processing;
-        }
+        let domains_vec: Vec<&'static str> = domains.to_vec();
+        let chunks = match run_in_background(&mut terminal, &mut app, move || {
+            chunk_sections(&sections, &domains_vec)
+        })? {
+            Some(c) => c,
+            None => {
+                user_quit = true;
+                break 'processing;
+            }
+        };
 
         // Phase 4: Save
         app.reset_phase_timer();
@@ -699,8 +718,37 @@ fn extract_with_progress(
     app: &mut App,
     path: &Path,
 ) -> Result<Option<String>> {
-    // Load the PDF document
-    let doc = Document::load(path).with_context(|| format!("Failed to load PDF: {:?}", path))?;
+    use std::sync::mpsc;
+
+    // Load document in background thread so we can check for quit
+    let (tx, rx) = mpsc::channel();
+    let path_owned = path.to_owned();
+
+    std::thread::spawn(move || {
+        let result = Document::load(&path_owned);
+        tx.send(result).ok();
+    });
+
+    // Wait for document to load with quit checking
+    let doc = loop {
+        if check_for_quit()? {
+            return Ok(None);
+        }
+
+        match rx.try_recv() {
+            Ok(result) => {
+                break result.with_context(|| format!("Failed to load PDF: {:?}", path))?;
+            }
+            Err(mpsc::TryRecvError::Disconnected) => {
+                anyhow::bail!("PDF loading thread crashed");
+            }
+            Err(mpsc::TryRecvError::Empty) => {
+                app.advance_spinner();
+                terminal.draw(|f| ui(f, app))?;
+                std::thread::sleep(Duration::from_millis(80));
+            }
+        }
+    };
 
     // Get page count
     let pages = doc.get_pages();
@@ -746,17 +794,39 @@ fn extract_with_progress(
     Ok(Some(all_text))
 }
 
-/// Brief animation for fast phases, returns true if user wants to quit
-fn animate_briefly(terminal: &mut DefaultTerminal, app: &mut App) -> Result<bool> {
-    for _ in 0..3 {
+/// Run a blocking operation in background thread while keeping UI responsive
+/// Returns None if user quit, Some(result) otherwise
+fn run_in_background<T: Send + 'static>(
+    terminal: &mut DefaultTerminal,
+    app: &mut App,
+    operation: impl FnOnce() -> T + Send + 'static,
+) -> Result<Option<T>> {
+    use std::sync::mpsc;
+
+    let (tx, rx) = mpsc::channel();
+
+    std::thread::spawn(move || {
+        let result = operation();
+        tx.send(result).ok();
+    });
+
+    loop {
         if check_for_quit()? {
-            return Ok(true);
+            return Ok(None);
         }
-        app.advance_spinner();
-        terminal.draw(|f| ui(f, app))?;
-        std::thread::sleep(Duration::from_millis(80));
+
+        match rx.try_recv() {
+            Ok(result) => return Ok(Some(result)),
+            Err(mpsc::TryRecvError::Disconnected) => {
+                anyhow::bail!("Background operation thread crashed");
+            }
+            Err(mpsc::TryRecvError::Empty) => {
+                app.advance_spinner();
+                terminal.draw(|f| ui(f, app))?;
+                std::thread::sleep(Duration::from_millis(80));
+            }
+        }
     }
-    Ok(false)
 }
 
 /// Check if user pressed quit key (q or Escape), non-blocking
