@@ -133,7 +133,7 @@ impl<'a, M: 'a> DetailPanel<'a, M> {
     }
 
     /// Show dividers between sections.
-    pub fn with_section_dividers(mut self) -> Self {
+    pub fn section_dividers(mut self) -> Self {
         self.show_section_dividers = true;
         self
     }

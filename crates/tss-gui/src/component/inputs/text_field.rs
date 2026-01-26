@@ -75,13 +75,12 @@ impl<M: Clone + 'static> TextField<M> {
         let max_length = self.max_length;
         let is_over = max_length.is_some_and(|max| char_count > max);
         let has_error = self.error.is_some() || is_over;
-        let error_msg = self.error.clone();
 
         // Label with optional required indicator
         let label_text = if self.required {
             format!("{} *", self.label)
         } else {
-            self.label.clone()
+            self.label
         };
 
         // Character count display
@@ -102,7 +101,7 @@ impl<M: Clone + 'static> TextField<M> {
         };
 
         // Error message
-        let error_el: Element<'static, M> = if let Some(err) = error_msg {
+        let error_el: Element<'static, M> = if let Some(err) = self.error {
             row![
                 iced_fonts::lucide::circle_alert()
                     .size(12)

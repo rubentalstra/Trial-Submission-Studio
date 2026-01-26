@@ -45,7 +45,7 @@ use tss_gui::component::{sidebar, SidebarItem};
 let items = vec![
     SidebarItem::new("DM", Message::DomainSelected("DM")),
     SidebarItem::new("AE", Message::DomainSelected("AE"))
-        .with_badge("3"),  // Error count badge
+        .badge("3"),  // Error count badge
 ];
 
 let nav = sidebar(items, Some(0), 280.0);

@@ -76,36 +76,37 @@ impl<'a, M: Clone + 'a> SelectableRow<'a, M> {
 
     /// Build the element.
     pub fn view(self) -> Element<'a, M> {
-        let is_selected = self.selected;
-        let primary_text = self.primary.clone();
+        let Self {
+            primary,
+            secondary,
+            leading,
+            trailing,
+            on_click,
+            selected,
+        } = self;
 
         // Build content
         let mut content_row = row![].spacing(SPACING_SM).align_y(Alignment::Center);
 
         // Leading element
-        if let Some(leading) = self.leading {
-            content_row = content_row.push(leading);
+        if let Some(lead) = leading {
+            content_row = content_row.push(lead);
         }
 
         // Text section
-        let text_section: Element<'a, M> = if let Some(secondary) = self.secondary {
-            let secondary_text = secondary.clone();
+        let text_section: Element<'a, M> = if let Some(sec) = secondary {
             column![
-                text(primary_text)
-                    .size(13)
-                    .style(|theme: &Theme| text::Style {
-                        color: Some(theme.extended_palette().background.base.text),
-                    }),
-                text(secondary_text)
-                    .size(11)
-                    .style(|theme: &Theme| text::Style {
-                        color: Some(theme.clinical().text_muted),
-                    }),
+                text(primary).size(13).style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().background.base.text),
+                }),
+                text(sec).size(11).style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }),
             ]
             .spacing(2.0)
             .into()
         } else {
-            text(primary_text)
+            text(primary)
                 .size(13)
                 .style(|theme: &Theme| text::Style {
                     color: Some(theme.extended_palette().background.base.text),
@@ -118,17 +119,17 @@ impl<'a, M: Clone + 'a> SelectableRow<'a, M> {
         content_row = content_row.push(Space::new().width(Length::Fill));
 
         // Trailing element
-        if let Some(trailing) = self.trailing {
-            content_row = content_row.push(trailing);
+        if let Some(trail) = trailing {
+            content_row = content_row.push(trail);
         }
 
         // Button wrapper with styling
         button(content_row.padding([SPACING_SM, SPACING_SM]))
-            .on_press(self.on_click)
+            .on_press(on_click)
             .width(Length::Fill)
             .style(move |theme: &Theme, status| {
                 let clinical = theme.clinical();
-                let bg = if is_selected {
+                let bg = if selected {
                     Some(clinical.accent_primary_light.into())
                 } else {
                     match status {
@@ -138,7 +139,7 @@ impl<'a, M: Clone + 'a> SelectableRow<'a, M> {
                         _ => None,
                     }
                 };
-                let border_color = if is_selected {
+                let border_color = if selected {
                     theme.extended_palette().primary.base.color
                 } else {
                     clinical.border_default
@@ -150,7 +151,7 @@ impl<'a, M: Clone + 'a> SelectableRow<'a, M> {
                     border: Border {
                         radius: BORDER_RADIUS_SM.into(),
                         color: border_color,
-                        width: if is_selected { 1.0 } else { 0.0 },
+                        width: if selected { 1.0 } else { 0.0 },
                     },
                     ..Default::default()
                 }

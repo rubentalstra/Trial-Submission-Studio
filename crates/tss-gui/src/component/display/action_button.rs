@@ -13,7 +13,7 @@ use crate::theme::{ClinicalColors, SPACING_SM, SPACING_XS, button_primary, butto
 // =============================================================================
 
 /// Button style variants.
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum ActionButtonStyle {
     Primary,
     Secondary,
@@ -158,20 +158,25 @@ impl<'a, M: Clone + 'a> ActionButton<'a, M> {
 
     /// Build the action button element.
     pub fn view(self) -> Element<'a, M> {
-        let label = self.label.clone();
-        let label2 = self.label;
-        let icon_color = self.icon_color;
+        let Self {
+            icon,
+            icon_color,
+            label,
+            on_press,
+            style,
+            full_width,
+        } = self;
 
-        let content: Element<'a, M> = if let Some(icon) = self.icon {
+        let content: Element<'a, M> = if let Some(ic) = icon {
             // Wrap the icon in a container for theming if needed
             let themed_icon: Element<'a, M> = match icon_color {
-                IconColor::Themed(color_fn) => container(icon)
+                IconColor::Themed(color_fn) => container(ic)
                     .style(move |theme: &Theme| container::Style {
                         text_color: Some(color_fn(theme)),
                         ..Default::default()
                     })
                     .into(),
-                IconColor::None => icon,
+                IconColor::None => ic,
             };
             row![
                 themed_icon,
@@ -181,14 +186,12 @@ impl<'a, M: Clone + 'a> ActionButton<'a, M> {
             .align_y(Alignment::Center)
             .into()
         } else {
-            text(label2).size(13).into()
+            text(label).size(13).into()
         };
 
-        let style = self.style.clone();
+        let mut btn = button(content).on_press(on_press).padding([8.0, 16.0]);
 
-        let mut btn = button(content).on_press(self.on_press).padding([8.0, 16.0]);
-
-        if self.full_width {
+        if full_width {
             btn = btn.width(Length::Fill);
         }
 

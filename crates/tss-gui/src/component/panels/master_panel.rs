@@ -118,7 +118,7 @@ impl<M: Clone + 'static> MasterPanelHeader<M> {
             let (num_part, label_part) = if let Some((n, r)) = stats_text.split_once(' ') {
                 (n.to_string(), r.to_string())
             } else {
-                (stats_text.clone(), String::new())
+                (stats_text, String::new())
             };
 
             let stats_row = row![

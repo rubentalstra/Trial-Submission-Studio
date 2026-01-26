@@ -56,22 +56,24 @@ impl<'a, M: 'a> SectionCard<'a, M> {
 
     /// Build the element.
     pub fn view(self) -> Element<'a, M> {
-        let title_text = self.title.clone();
+        let Self {
+            title,
+            icon,
+            content,
+        } = self;
 
-        let header: Element<'a, M> = if let Some(icon) = self.icon {
+        let header: Element<'a, M> = if let Some(ic) = icon {
             row![
-                icon,
+                ic,
                 Space::new().width(SPACING_SM),
-                text(title_text)
-                    .size(14)
-                    .style(|theme: &Theme| text::Style {
-                        color: Some(theme.clinical().text_secondary),
-                    }),
+                text(title).size(14).style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_secondary),
+                }),
             ]
             .align_y(Alignment::Center)
             .into()
         } else {
-            text(title_text)
+            text(title)
                 .size(14)
                 .style(|theme: &Theme| text::Style {
                     color: Some(theme.clinical().text_secondary),
@@ -79,24 +81,22 @@ impl<'a, M: 'a> SectionCard<'a, M> {
                 .into()
         };
 
-        container(
-            column![header, Space::new().height(SPACING_SM), self.content,].width(Length::Fill),
-        )
-        .padding(SPACING_MD)
-        .width(Length::Fill)
-        .style(|theme: &Theme| {
-            let clinical = theme.clinical();
-            container::Style {
-                background: Some(clinical.background_secondary.into()),
-                border: Border {
-                    radius: BORDER_RADIUS_SM.into(),
-                    color: clinical.border_default,
-                    width: 1.0,
-                },
-                ..Default::default()
-            }
-        })
-        .into()
+        container(column![header, Space::new().height(SPACING_SM), content,].width(Length::Fill))
+            .padding(SPACING_MD)
+            .width(Length::Fill)
+            .style(|theme: &Theme| {
+                let clinical = theme.clinical();
+                container::Style {
+                    background: Some(clinical.background_secondary.into()),
+                    border: Border {
+                        radius: BORDER_RADIUS_SM.into(),
+                        color: clinical.border_default,
+                        width: 1.0,
+                    },
+                    ..Default::default()
+                }
+            })
+            .into()
     }
 }
 

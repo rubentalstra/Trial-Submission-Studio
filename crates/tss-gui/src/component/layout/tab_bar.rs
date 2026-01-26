@@ -60,10 +60,9 @@ pub fn tab_bar<'a, M: Clone + 'a>(tabs: Vec<Tab<M>>, active_index: usize) -> Ele
 
     for (index, tab) in tabs.into_iter().enumerate() {
         let is_active = index == active_index;
-        let label = tab.label.clone();
 
         let tab_button = button(
-            container(text(label).size(14).style(move |theme: &Theme| {
+            container(text(tab.label).size(14).style(move |theme: &Theme| {
                 let clinical = theme.clinical();
                 let color = if is_active {
                     clinical.accent_pressed

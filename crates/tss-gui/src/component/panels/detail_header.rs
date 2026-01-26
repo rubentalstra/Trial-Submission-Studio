@@ -62,8 +62,7 @@ impl<'a, M: 'a> DetailHeader<'a, M> {
 
     /// Build the detail header element.
     pub fn view(self) -> Element<'a, M> {
-        let title_text = self.title.clone();
-        let title_element = text(title_text)
+        let title_element = text(self.title)
             .size(20)
             .style(|theme: &Theme| text::Style {
                 color: Some(theme.extended_palette().background.base.text),
