@@ -20,9 +20,7 @@ use crate::theme::ClinicalColors;
 ///
 /// Creates a pill-shaped badge with primary background for domain codes.
 pub fn domain_badge<'a, M: 'a>(code: &'a str) -> Element<'a, M> {
-    let code_owned = code.to_string();
-
-    container(text(code_owned.clone()).size(14).style(|theme: &Theme| {
+    container(text(code).size(14).style(|theme: &Theme| {
         let clinical = theme.clinical();
         text::Style {
             color: Some(clinical.text_on_accent),
@@ -47,9 +45,7 @@ pub fn domain_badge<'a, M: 'a>(code: &'a str) -> Element<'a, M> {
 ///
 /// Smaller variant for compact contexts.
 pub fn domain_badge_small<'a, M: 'a>(code: &'a str) -> Element<'a, M> {
-    let code_owned = code.to_string();
-
-    container(text(code_owned.clone()).size(12).style(|theme: &Theme| {
+    container(text(code).size(12).style(|theme: &Theme| {
         let clinical = theme.clinical();
         text::Style {
             color: Some(clinical.text_on_accent),

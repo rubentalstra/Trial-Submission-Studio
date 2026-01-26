@@ -32,7 +32,7 @@ impl<M> SidebarItem<M> {
     }
 
     /// Add a badge to the item.
-    pub fn with_badge(mut self, badge: impl Into<String>) -> Self {
+    pub fn badge(mut self, badge: impl Into<String>) -> Self {
         self.badge = Some(badge.into());
         self
     }
@@ -61,7 +61,7 @@ impl<M> SidebarItem<M> {
 /// let items = vec![
 ///     SidebarItem::new("DM", Message::DomainSelected("DM")),
 ///     SidebarItem::new("AE", Message::DomainSelected("AE"))
-///         .with_badge("3"),
+///         .badge("3"),
 ///     SidebarItem::new("CM", Message::DomainSelected("CM")),
 /// ];
 ///
@@ -76,12 +76,11 @@ pub fn sidebar<'a, M: Clone + 'a>(
 
     for (index, item) in items.into_iter().enumerate() {
         let is_active = active_index == Some(index);
-        let label = item.label.clone();
 
         // Item content with optional badge
         let item_content = if let Some(badge) = item.badge {
             iced::widget::row![
-                text(label).size(14).style(move |theme: &Theme| {
+                text(item.label).size(14).style(move |theme: &Theme| {
                     let clinical = theme.clinical();
                     text::Style {
                         color: Some(if is_active {
@@ -110,7 +109,7 @@ pub fn sidebar<'a, M: Clone + 'a>(
             ]
             .align_y(iced::Alignment::Center)
         } else {
-            iced::widget::row![text(label).size(14).style(move |theme: &Theme| {
+            iced::widget::row![text(item.label).size(14).style(move |theme: &Theme| {
                 let clinical = theme.clinical();
                 text::Style {
                     color: Some(if is_active {

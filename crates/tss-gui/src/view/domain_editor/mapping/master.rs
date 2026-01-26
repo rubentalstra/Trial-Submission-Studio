@@ -1,0 +1,212 @@
+//! Master panel components for the Mapping tab.
+//!
+//! Contains the left-side variable list with search/filter header.
+
+use iced::widget::{Space, button, column, container, row, rule, text, text_input};
+use iced::{Alignment, Element, Length, Theme};
+use iced_fonts::lucide;
+
+use crate::component::display::VariableListItem;
+use crate::component::panels::FilterToggle;
+use crate::message::domain_editor::MappingMessage;
+use crate::message::{DomainEditorMessage, Message};
+use crate::state::{MappingUiState, SourceDomainState};
+use crate::theme::{ClinicalColors, SPACING_LG, SPACING_SM, SPACING_XS, button_secondary};
+
+use tss_standards::CoreDesignation;
+use tss_submit::VariableStatus;
+
+/// Type alias for badge info: (label, color function)
+type BadgeInfo = (&'static str, fn(&Theme) -> iced::Color);
+
+// =============================================================================
+// MASTER PANEL
+// =============================================================================
+
+pub(super) fn view_variable_list_header<'a>(
+    source: &'a SourceDomainState,
+    mapping_ui: &'a MappingUiState,
+) -> Element<'a, Message> {
+    let summary = source.mapping.summary();
+
+    // Search input
+    let search_input = text_input("Search variables...", &mapping_ui.search_filter)
+        .on_input(|s| {
+            Message::DomainEditor(DomainEditorMessage::Mapping(MappingMessage::SearchChanged(
+                s,
+            )))
+        })
+        .padding([8.0, 12.0])
+        .size(13)
+        .width(Length::Fill);
+
+    // Filter toggles
+    let filter_unmapped = mapping_ui.filter_unmapped;
+    let filter_required = mapping_ui.filter_required;
+
+    let unmapped_btn = FilterToggle::new(
+        "Unmapped",
+        filter_unmapped,
+        Message::DomainEditor(DomainEditorMessage::Mapping(
+            MappingMessage::FilterUnmappedToggled(!filter_unmapped),
+        )),
+    )
+    .view();
+
+    let required_btn = FilterToggle::new(
+        "Required",
+        filter_required,
+        Message::DomainEditor(DomainEditorMessage::Mapping(
+            MappingMessage::FilterRequiredToggled(!filter_required),
+        )),
+    )
+    .view();
+
+    // Stats
+    let stats = row![
+        text(format!("{}/{}", summary.mapped, summary.total_variables))
+            .size(12)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_secondary)
+            }),
+        Space::new().width(4.0),
+        text("mapped").size(11).style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_muted)
+        }),
+    ]
+    .align_y(Alignment::Center);
+
+    column![
+        search_input,
+        Space::new().height(SPACING_XS),
+        row![unmapped_btn, required_btn].spacing(SPACING_XS),
+        Space::new().height(SPACING_SM),
+        stats,
+        Space::new().height(SPACING_SM),
+        rule::horizontal(1),
+        Space::new().height(SPACING_SM),
+    ]
+    .into()
+}
+
+pub(super) fn view_variable_list_content<'a>(
+    source: &'a SourceDomainState,
+    filtered_indices: &[usize],
+    mapping_ui: &'a MappingUiState,
+) -> Element<'a, Message> {
+    let sdtm_domain = source.mapping.domain();
+
+    if filtered_indices.is_empty() {
+        return container(
+            column![
+                text("No variables match your filters")
+                    .size(13)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_muted)
+                    }),
+                Space::new().height(SPACING_SM),
+                button(text("Clear filters").size(12))
+                    .on_press(Message::DomainEditor(DomainEditorMessage::Mapping(
+                        MappingMessage::SearchCleared
+                    )))
+                    .padding([6.0, 12.0])
+                    .style(button_secondary),
+            ]
+            .align_x(Alignment::Center),
+        )
+        .width(Length::Fill)
+        .padding(SPACING_LG)
+        .center_x(Length::Shrink)
+        .into();
+    }
+
+    let mut items = column![].spacing(SPACING_XS);
+    for &idx in filtered_indices {
+        if let Some(var) = sdtm_domain.variables.get(idx) {
+            let status = source.mapping.status(&var.name);
+            let is_selected = mapping_ui.selected_variable == Some(idx);
+            items = items.push(view_variable_item(idx, var, status, is_selected));
+        }
+    }
+    items.into()
+}
+
+fn view_variable_item<'a>(
+    index: usize,
+    var: &'a tss_standards::SdtmVariable,
+    status: VariableStatus,
+    is_selected: bool,
+) -> Element<'a, Message> {
+    // Status icon
+    let status_icon: Element<'a, Message> = match status {
+        VariableStatus::Accepted => container(lucide::circle_check().size(12))
+            .style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().success.base.color),
+                ..Default::default()
+            })
+            .into(),
+        VariableStatus::AutoGenerated => container(lucide::settings().size(12))
+            .style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_muted),
+                ..Default::default()
+            })
+            .into(),
+        VariableStatus::Suggested => container(lucide::lightbulb().size(12))
+            .style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().warning.base.color),
+                ..Default::default()
+            })
+            .into(),
+        VariableStatus::NotCollected => container(lucide::ban().size(12))
+            .style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_disabled),
+                ..Default::default()
+            })
+            .into(),
+        VariableStatus::Omitted => container(lucide::eye_off().size(12))
+            .style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_disabled),
+                ..Default::default()
+            })
+            .into(),
+        VariableStatus::Unmapped => container(lucide::circle().size(12))
+            .style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_disabled),
+                ..Default::default()
+            })
+            .into(),
+    };
+
+    // Core badge color function
+    let badge_info: Option<BadgeInfo> = match var.core {
+        Some(CoreDesignation::Required) => Some(("Req", |theme: &Theme| {
+            theme.extended_palette().danger.base.color
+        })),
+        Some(CoreDesignation::Expected) => Some(("Exp", |theme: &Theme| {
+            theme.extended_palette().warning.base.color
+        })),
+        Some(CoreDesignation::Permissible) => {
+            Some(("Perm", |theme: &Theme| theme.clinical().text_muted))
+        }
+        None => None,
+    };
+
+    let mut item = VariableListItem::new(
+        &var.name,
+        Message::DomainEditor(DomainEditorMessage::Mapping(
+            MappingMessage::VariableSelected(index),
+        )),
+    )
+    .leading_icon(status_icon)
+    .selected(is_selected);
+
+    if let Some(label) = &var.label {
+        item = item.label(label);
+    }
+
+    if let Some((txt, color_fn)) = badge_info {
+        item = item.trailing_badge_themed(txt, color_fn);
+    }
+
+    item.view()
+}

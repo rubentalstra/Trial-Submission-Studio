@@ -263,7 +263,6 @@ pub enum AssignmentMode {
     ClickToAssign,
 }
 
-#[allow(dead_code)] // Methods used by Settings dialog UI (to be implemented)
 impl AssignmentMode {
     /// Get display label.
     pub fn label(&self) -> &'static str {

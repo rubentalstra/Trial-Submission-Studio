@@ -31,7 +31,7 @@ use crate::handler::{
     MessageHandler, SourceAssignmentHandler,
 };
 use crate::message::{Message, SettingsCategory};
-use crate::state::{AppState, DialogType, Settings, ViewState};
+use crate::state::{AppState, DialogState, DialogType, Settings, ViewState};
 use crate::theme::clinical_theme;
 use crate::view::dialog::third_party::ThirdPartyState;
 use crate::view::dialog::update::UpdateState;
@@ -242,41 +242,29 @@ impl App {
             // Multi-window dialog management
             // =================================================================
             Message::DialogWindowOpened(dialog_type, id) => {
-                match dialog_type {
-                    DialogType::About => {
-                        self.state.dialog_windows.about = Some(id);
+                // Register dialog in the unified registry
+                let dialog_state = match dialog_type {
+                    DialogType::About => DialogState::About,
+                    DialogType::Settings => DialogState::Settings(SettingsCategory::default()),
+                    DialogType::ThirdParty => DialogState::ThirdParty(ThirdPartyState::new()),
+                    DialogType::Update => DialogState::Update(UpdateState::Checking),
+                    DialogType::CloseProjectConfirm => DialogState::CloseProjectConfirm,
+                    // These dialogs have their state set elsewhere
+                    DialogType::ExportProgress
+                    | DialogType::ExportComplete
+                    | DialogType::UnsavedChanges => {
+                        return Task::none();
                     }
-                    DialogType::Settings => {
-                        self.state.dialog_windows.settings =
-                            Some((id, SettingsCategory::default()));
-                    }
-                    DialogType::ThirdParty => {
-                        self.state.dialog_windows.third_party = Some((id, ThirdPartyState::new()));
-                    }
-                    DialogType::Update => {
-                        self.state.dialog_windows.update = Some((id, UpdateState::Checking));
-                    }
-                    DialogType::CloseProjectConfirm => {
-                        self.state.dialog_windows.close_project_confirm = Some(id);
-                    }
-                    DialogType::ExportProgress => {
-                        // Export progress state is set when export starts
-                    }
-                    DialogType::ExportComplete => {
-                        // Export complete state is set when export completes
-                    }
-                    DialogType::UnsavedChanges => {
-                        // Unsaved changes state is set when dialog is opened
-                    }
-                }
+                };
+                self.state.dialog_registry.register(id, dialog_state);
                 Task::none()
             }
 
             Message::DialogWindowClosed(id) => {
                 // Check if this is a dialog window
-                if self.state.dialog_windows.is_dialog_window(id) {
+                if self.state.dialog_registry.is_dialog_window(id) {
                     // Clean up state and close the dialog window
-                    self.state.dialog_windows.close(id);
+                    self.state.dialog_registry.close(id);
                     window::close(id)
                 } else if self.state.main_window_id == Some(id) {
                     // This is the main window - check for unsaved changes before exiting
@@ -297,7 +285,7 @@ impl App {
 
             Message::CloseWindow(id) => {
                 // Clean up dialog state before closing the window
-                self.state.dialog_windows.close(id);
+                self.state.dialog_registry.close(id);
                 window::close(id)
             }
 
@@ -397,15 +385,15 @@ impl App {
                 verified,
             } => {
                 // Update dialog state to ReadyToInstall
-                if let Some((id, _)) = self.state.dialog_windows.update {
-                    self.state.dialog_windows.update = Some((
+                if let Some((id, _)) = self.state.dialog_registry.update_mut() {
+                    self.state.dialog_registry.register(
                         id,
-                        UpdateState::ReadyToInstall {
+                        DialogState::Update(UpdateState::ReadyToInstall {
                             info,
                             data,
                             verified,
-                        },
-                    ));
+                        }),
+                    );
                 }
                 Task::none()
             }
@@ -499,51 +487,45 @@ impl App {
         };
 
         // Check if this is a dialog window
-        if let Some(dialog_type) = self.state.dialog_windows.dialog_type(id) {
+        if let Some(dialog_type) = self.state.dialog_registry.dialog_type(id) {
             return match dialog_type {
                 DialogType::About => view_about_dialog_content(id),
                 DialogType::Settings => {
                     let category = self
                         .state
-                        .dialog_windows
-                        .settings
-                        .as_ref()
+                        .dialog_registry
+                        .settings()
                         .map(|(_, cat)| *cat)
                         .unwrap_or_default();
                     view_settings_dialog_content(&self.state.settings, category, id)
                 }
                 DialogType::ThirdParty => {
-                    if let Some((_, ref third_party_state)) = self.state.dialog_windows.third_party
-                    {
+                    if let Some((_, third_party_state)) = self.state.dialog_registry.third_party() {
                         view_third_party_dialog_content(third_party_state)
                     } else {
                         iced::widget::text("Loading...").into()
                     }
                 }
                 DialogType::Update => {
-                    // Get reference to update state from dialog_windows
-                    if let Some((_, ref update_state)) = self.state.dialog_windows.update {
+                    if let Some((_, update_state)) = self.state.dialog_registry.update() {
                         view_update_dialog_content(update_state, id)
                     } else {
-                        // This shouldn't happen - show loading text as fallback
                         iced::widget::text("Loading...").into()
                     }
                 }
                 DialogType::CloseProjectConfirm => view_close_project_dialog_content(id),
                 DialogType::ExportProgress => {
-                    if let Some((_, ref progress_state)) = self.state.dialog_windows.export_progress
+                    if let Some((_, progress_state)) = self.state.dialog_registry.export_progress()
                     {
                         view_export_progress_dialog_content(progress_state, id)
                     } else {
-                        // This shouldn't happen - show a simple loading text
                         iced::widget::text("Loading...").into()
                     }
                 }
                 DialogType::ExportComplete => {
-                    if let Some((_, ref result)) = self.state.dialog_windows.export_complete {
+                    if let Some((_, result)) = self.state.dialog_registry.export_complete() {
                         view_export_complete_dialog_content(result, id)
                     } else {
-                        // This shouldn't happen - show a simple close button
                         iced::widget::text("Export dialog").into()
                     }
                 }
@@ -611,7 +593,7 @@ impl App {
     /// Get the window title for a specific window.
     pub fn title(&self, id: window::Id) -> String {
         // Check if this is a dialog window
-        if let Some(dialog_type) = self.state.dialog_windows.dialog_type(id) {
+        if let Some(dialog_type) = self.state.dialog_registry.dialog_type(id) {
             return match dialog_type {
                 DialogType::About => "About Trial Submission Studio".to_string(),
                 DialogType::Settings => "Settings".to_string(),

@@ -864,7 +864,7 @@ pub enum ExportPhase {
         /// Progress 0.0 to 1.0.
         progress: f32,
     },
-    /// Complete - export finished (result stored in dialog_windows).
+    /// Complete - export finished (result stored in dialog_registry).
     Complete,
 }
 

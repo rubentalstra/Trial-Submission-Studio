@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use iced::Task;
 
 use crate::message::Message;
-use crate::state::AppState;
+use crate::state::{AppState, DialogState, DialogType, PendingAction};
 use tss_persistence::{
     DomainSnapshot, MappingEntry, MappingSnapshot, ProjectFile, SourceAssignment,
     SourceDomainSnapshot, StudyMetadata, SuppActionSnapshot, SuppColumnSnapshot,
@@ -30,7 +30,7 @@ use tss_persistence::{
 pub fn handle_new_project(state: &mut AppState) -> Task<Message> {
     // Check if there are unsaved changes - show confirmation dialog
     if state.dirty_tracker.is_dirty() && state.study.is_some() {
-        return show_unsaved_changes_dialog(state, crate::state::PendingAction::NewProject);
+        return show_unsaved_changes_dialog(state, PendingAction::NewProject);
     }
 
     // No unsaved changes, proceed directly
@@ -372,11 +372,11 @@ pub fn handle_project_saved(
             // (from the unsaved changes dialog "Save" button)
             if let Some(pending_action) = state.pending_action_after_save.take() {
                 match pending_action {
-                    crate::state::PendingAction::NewProject => do_new_project(state),
-                    crate::state::PendingAction::OpenProject(project_path) => {
+                    PendingAction::NewProject => do_new_project(state),
+                    PendingAction::OpenProject(project_path) => {
                         handle_open_project_selected(state, Some(project_path))
                     }
-                    crate::state::PendingAction::QuitApp => {
+                    PendingAction::QuitApp => {
                         if let Some(main_id) = state.main_window_id {
                             iced::window::close(main_id)
                         } else {
@@ -542,19 +542,19 @@ pub fn mark_dirty(state: &mut AppState) {
 /// This is called when the user tries to close the main window
 /// with unsaved changes.
 pub fn show_unsaved_changes_dialog_for_quit(state: &mut AppState) -> Task<Message> {
-    show_unsaved_changes_dialog(state, crate::state::PendingAction::QuitApp)
+    show_unsaved_changes_dialog(state, PendingAction::QuitApp)
 }
 
 /// Show the unsaved changes confirmation dialog.
 fn show_unsaved_changes_dialog(
     state: &mut AppState,
-    pending_action: crate::state::PendingAction,
+    pending_action: PendingAction,
 ) -> Task<Message> {
     use iced::Size;
     use iced::window;
 
     // Don't open if already open
-    if state.dialog_windows.unsaved_changes.is_some() {
+    if state.dialog_registry.is_open(DialogType::UnsavedChanges) {
         return Task::none();
     }
 
@@ -568,9 +568,11 @@ fn show_unsaved_changes_dialog(
         ..Default::default()
     };
     let (id, task) = window::open(settings);
-    state.dialog_windows.unsaved_changes = Some((id, pending_action));
+    state
+        .dialog_registry
+        .register(id, DialogState::UnsavedChanges(pending_action));
 
-    task.map(move |_| Message::DialogWindowOpened(crate::state::DialogType::UnsavedChanges, id))
+    task.map(move |_| Message::DialogWindowOpened(DialogType::UnsavedChanges, id))
 }
 
 /// Handle "Save" button clicked in unsaved changes dialog.
@@ -595,11 +597,9 @@ pub fn handle_unsaved_changes_discard(state: &mut AppState) -> Task<Message> {
 
     // Perform the pending action
     match pending_action {
-        Some(crate::state::PendingAction::NewProject) => do_new_project(state),
-        Some(crate::state::PendingAction::OpenProject(path)) => {
-            handle_open_project_selected(state, Some(path))
-        }
-        Some(crate::state::PendingAction::QuitApp) => {
+        Some(PendingAction::NewProject) => do_new_project(state),
+        Some(PendingAction::OpenProject(path)) => handle_open_project_selected(state, Some(path)),
+        Some(PendingAction::QuitApp) => {
             // Close the main window to quit the application
             if let Some(main_id) = state.main_window_id {
                 iced::window::close(main_id)
@@ -619,7 +619,10 @@ pub fn handle_unsaved_changes_cancelled(state: &mut AppState) -> Task<Message> {
     // Just close the dialog, do nothing else
     // Note: The cancel button in the view uses Message::CloseWindow(window_id)
     // which handles the window closing directly. This handler is a fallback.
-    if let Some((window_id, _)) = state.dialog_windows.unsaved_changes.take() {
+    if let Some((window_id, _)) = state
+        .dialog_registry
+        .close_by_type(DialogType::UnsavedChanges)
+    {
         iced::window::close(window_id)
     } else {
         Task::none()
@@ -627,12 +630,15 @@ pub fn handle_unsaved_changes_cancelled(state: &mut AppState) -> Task<Message> {
 }
 
 /// Close the unsaved changes dialog and return the pending action.
-fn close_unsaved_changes_dialog(state: &mut AppState) -> Option<crate::state::PendingAction> {
-    state
-        .dialog_windows
-        .unsaved_changes
-        .take()
-        .map(|(_, action)| action)
+fn close_unsaved_changes_dialog(state: &mut AppState) -> Option<PendingAction> {
+    if let Some((_, DialogState::UnsavedChanges(action))) = state
+        .dialog_registry
+        .close_by_type(DialogType::UnsavedChanges)
+    {
+        Some(action)
+    } else {
+        None
+    }
 }
 
 // =============================================================================

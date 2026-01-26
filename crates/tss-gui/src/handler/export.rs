@@ -12,7 +12,9 @@ use iced::{Size, Task};
 use crate::handler::MessageHandler;
 use crate::message::export::ExportProgress;
 use crate::message::{ExportMessage, Message};
-use crate::state::{AppState, ExportPhase, ExportProgressState, ExportResult, ViewState};
+use crate::state::{
+    AppState, DialogState, DialogType, ExportPhase, ExportProgressState, ExportResult, ViewState,
+};
 
 /// Handler for export-related messages.
 pub struct ExportHandler;
@@ -99,7 +101,10 @@ impl MessageHandler<ExportMessage> for ExportHandler {
 
             ExportMessage::DismissCompletion => {
                 // Close completion dialog
-                let task = if let Some((id, _)) = state.dialog_windows.export_complete.take() {
+                let task = if let Some((id, _)) = state
+                    .dialog_registry
+                    .close_by_type(DialogType::ExportComplete)
+                {
                     window::close(id)
                 } else {
                     Task::none()
@@ -115,7 +120,9 @@ impl MessageHandler<ExportMessage> for ExportHandler {
 
             ExportMessage::RetryExport => {
                 // Close completion dialog and restart export
-                let close_task = if let Some((id, _)) = state.dialog_windows.export_complete.take()
+                let close_task = if let Some((id, _)) = state
+                    .dialog_registry
+                    .close_by_type(DialogType::ExportComplete)
                 {
                     window::close(id)
                 } else {
@@ -136,7 +143,7 @@ impl MessageHandler<ExportMessage> for ExportHandler {
 
             ExportMessage::OpenOutputFolder => {
                 // Get output dir from completion dialog state
-                if let Some((_, ref result)) = state.dialog_windows.export_complete
+                if let Some((_, result)) = state.dialog_registry.export_complete()
                     && let ExportResult::Success { output_dir, .. } = result
                 {
                     let _ = open::that(output_dir);
@@ -237,15 +244,15 @@ fn start_export(state: &mut AppState) -> Task<Message> {
     let (id, open_task) = window::open(settings);
 
     // Store the progress state with window ID
-    state.dialog_windows.export_progress = Some((
+    state.dialog_registry.register(
         id,
-        ExportProgressState {
+        DialogState::ExportProgress(ExportProgressState {
             current_domain: None,
             current_step: "Exporting...".to_string(),
             progress: 0.0,
             files_written: 0,
-        },
-    ));
+        }),
+    );
 
     // Build export input with validation settings
     let export_input = crate::service::export::ExportInput {
@@ -274,7 +281,10 @@ fn cancel_export(state: &mut AppState) -> Task<Message> {
     let mut tasks = vec![];
 
     // Close progress dialog if open
-    if let Some((id, _)) = state.dialog_windows.export_progress.take() {
+    if let Some((id, _)) = state
+        .dialog_registry
+        .close_by_type(DialogType::ExportProgress)
+    {
         tasks.push(window::close(id));
     }
 
@@ -293,7 +303,9 @@ fn cancel_export(state: &mut AppState) -> Task<Message> {
         ..Default::default()
     };
     let (id, open_task) = window::open(settings);
-    state.dialog_windows.export_complete = Some((id, ExportResult::Cancelled));
+    state
+        .dialog_registry
+        .register(id, DialogState::ExportComplete(ExportResult::Cancelled));
     tasks.push(open_task.map(|_| Message::Noop));
 
     Task::batch(tasks)
@@ -336,7 +348,7 @@ fn update_export_progress(state: &mut AppState, progress: ExportProgress) {
         }
 
         // Also update dialog window state
-        if let Some((_, ref mut dialog_state)) = state.dialog_windows.export_progress {
+        if let Some((_, dialog_state)) = state.dialog_registry.export_progress_mut() {
             match progress {
                 ExportProgress::StartingDomain(domain) => {
                     dialog_state.current_domain = Some(domain);
@@ -358,7 +370,10 @@ fn complete_export(state: &mut AppState, result: ExportResult) -> Task<Message> 
     let mut tasks = vec![];
 
     // Close progress dialog if open
-    if let Some((id, _)) = state.dialog_windows.export_progress.take() {
+    if let Some((id, _)) = state
+        .dialog_registry
+        .close_by_type(DialogType::ExportProgress)
+    {
         tasks.push(window::close(id));
     }
 
@@ -377,7 +392,9 @@ fn complete_export(state: &mut AppState, result: ExportResult) -> Task<Message> 
         ..Default::default()
     };
     let (id, open_task) = window::open(settings);
-    state.dialog_windows.export_complete = Some((id, result));
+    state
+        .dialog_registry
+        .register(id, DialogState::ExportComplete(result));
     tasks.push(open_task.map(|_| Message::Noop));
 
     Task::batch(tasks)

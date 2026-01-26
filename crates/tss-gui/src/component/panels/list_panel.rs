@@ -47,7 +47,8 @@ use iced::widget::{
 use iced::{Alignment, Border, Color, Element, Length, Theme};
 
 use crate::theme::{
-    BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_SM, SPACING_XS, button_secondary,
+    ALPHA_LIGHT, BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_SM, SPACING_XS,
+    button_secondary,
 };
 
 // =============================================================================
@@ -67,7 +68,7 @@ fn filter_toggle<M: Clone + 'static>(
             if active {
                 let accent_primary = theme.extended_palette().primary.base.color;
                 let accent_light = Color {
-                    a: 0.15,
+                    a: ALPHA_LIGHT,
                     ..accent_primary
                 };
                 iced::widget::button::Style {

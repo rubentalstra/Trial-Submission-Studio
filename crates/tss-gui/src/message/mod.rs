@@ -7,8 +7,6 @@
 //! or are part of features still being wired up. The message system defines the application's
 //! complete capability surface.
 
-#![allow(dead_code)]
-
 pub mod dialog;
 pub mod domain_editor;
 pub mod export;

@@ -97,18 +97,16 @@ pub fn data_table<'a, M: Clone + 'a>(
     let header_row = {
         let mut header = row![].spacing(0);
         for col in columns {
-            let col_header = col.header.clone();
-            let col_width = col.width;
             header = header.push(
                 container(
-                    text(col_header)
+                    text(&col.header)
                         .size(12)
                         .style(|theme: &Theme| text::Style {
                             color: Some(theme.clinical().text_muted),
                         })
                         .font(iced::Font::DEFAULT),
                 )
-                .width(col_width)
+                .width(col.width)
                 .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X])
                 .style(|theme: &Theme| container::Style {
                     background: Some(theme.clinical().background_secondary.into()),
@@ -138,10 +136,9 @@ pub fn data_table<'a, M: Clone + 'a>(
                 .map(|c| c.width)
                 .unwrap_or(Length::Fill);
             let is_even = row_idx % 2 == 0;
-            let cell_text = cell.clone();
 
             data_row = data_row.push(
-                container(text(cell_text).size(13).style(|theme: &Theme| text::Style {
+                container(text(cell).size(13).style(|theme: &Theme| text::Style {
                     color: Some(theme.clinical().text_secondary),
                 }))
                 .width(width)

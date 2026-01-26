@@ -5,7 +5,7 @@
 use iced::widget::{button, container, row, text};
 use iced::{Border, Color, Element, Length, Theme};
 
-use crate::theme::{ClinicalColors, TAB_PADDING_X, TAB_PADDING_Y};
+use crate::theme::{ALPHA_LIGHT, ClinicalColors, TAB_PADDING_X, TAB_PADDING_Y};
 
 // =============================================================================
 // TAB DEFINITION
@@ -60,10 +60,9 @@ pub fn tab_bar<'a, M: Clone + 'a>(tabs: Vec<Tab<M>>, active_index: usize) -> Ele
 
     for (index, tab) in tabs.into_iter().enumerate() {
         let is_active = index == active_index;
-        let label = tab.label.clone();
 
         let tab_button = button(
-            container(text(label).size(14).style(move |theme: &Theme| {
+            container(text(tab.label).size(14).style(move |theme: &Theme| {
                 let clinical = theme.clinical();
                 let color = if is_active {
                     clinical.accent_pressed
@@ -82,7 +81,7 @@ pub fn tab_bar<'a, M: Clone + 'a>(tabs: Vec<Tab<M>>, active_index: usize) -> Ele
             let accent_primary = palette.primary.base.color;
             // Create light tint of accent color for active tab background
             let accent_light = Color {
-                a: 0.15,
+                a: ALPHA_LIGHT,
                 ..accent_primary
             };
 

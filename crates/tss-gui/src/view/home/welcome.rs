@@ -10,8 +10,8 @@ use crate::component::panels::SectionCard;
 use crate::message::{HomeMessage, Message};
 use crate::state::{AppState, RecentProject, WorkflowMode};
 use crate::theme::{
-    BORDER_RADIUS_MD, BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM,
-    SPACING_XL, SPACING_XS, button_primary,
+    ALPHA_LIGHT, BORDER_RADIUS_MD, BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_MD,
+    SPACING_SM, SPACING_XL, SPACING_XS, button_primary,
 };
 
 /// Embedded SVG logo bytes.
@@ -138,7 +138,7 @@ fn workflow_button<'a>(
         let disabled_text = c.text_disabled;
         let disabled_border = c.border_default;
         let selected_bg = Color {
-            a: 0.15,
+            a: ALPHA_LIGHT,
             ..accent_primary
         };
         let selected_text = accent_primary;
@@ -278,7 +278,7 @@ fn recent_project_item<'a>(project: &'a RecentProject) -> Element<'a, Message> {
         .style(|theme: &Theme| {
             let accent_primary = theme.extended_palette().primary.base.color;
             let accent_light = Color {
-                a: 0.15,
+                a: ALPHA_LIGHT,
                 ..accent_primary
             };
             container::Style {

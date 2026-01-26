@@ -15,7 +15,8 @@ use super::MessageHandler;
 use crate::error::GuiError;
 use crate::message::{HomeMessage, Message};
 use crate::state::{
-    AppState, EditorTab, SourceAssignmentUiState, TargetDomainEntry, ViewState, WorkflowMode,
+    AppState, DialogState, DialogType, EditorTab, SourceAssignmentUiState, TargetDomainEntry,
+    ViewState, WorkflowMode,
 };
 
 /// Handler for home view messages.
@@ -83,7 +84,10 @@ impl MessageHandler<HomeMessage> for HomeHandler {
 /// Handle close project button click - opens confirmation dialog.
 fn handle_close_project_clicked(state: &mut AppState) -> Task<Message> {
     // Don't open if already open
-    if state.dialog_windows.close_project_confirm.is_some() {
+    if state
+        .dialog_registry
+        .is_open(DialogType::CloseProjectConfirm)
+    {
         return Task::none();
     }
 
@@ -97,15 +101,19 @@ fn handle_close_project_clicked(state: &mut AppState) -> Task<Message> {
         ..Default::default()
     };
     let (id, task) = window::open(settings);
-    state.dialog_windows.close_project_confirm = Some(id);
+    state
+        .dialog_registry
+        .register(id, DialogState::CloseProjectConfirm);
     task.map(|_| Message::Noop)
 }
 
 /// Handle close project confirmation - actually closes the project.
 fn handle_close_project_confirmed(state: &mut AppState) -> Task<Message> {
     // Close the confirmation dialog window if open
-    let close_task = if let Some(id) = state.dialog_windows.close_project_confirm {
-        state.dialog_windows.close_project_confirm = None;
+    let close_task = if let Some((id, _)) = state
+        .dialog_registry
+        .close_by_type(DialogType::CloseProjectConfirm)
+    {
         window::close(id)
     } else {
         Task::none()
@@ -121,8 +129,10 @@ fn handle_close_project_confirmed(state: &mut AppState) -> Task<Message> {
 
 /// Handle close project cancellation - just closes the dialog.
 fn handle_close_project_cancelled(state: &mut AppState) -> Task<Message> {
-    if let Some(id) = state.dialog_windows.close_project_confirm {
-        state.dialog_windows.close_project_confirm = None;
+    if let Some((id, _)) = state
+        .dialog_registry
+        .close_by_type(DialogType::CloseProjectConfirm)
+    {
         return window::close(id);
     }
     Task::none()

@@ -11,7 +11,7 @@ use iced::{Size, Task};
 use crate::handler::MessageHandler;
 use crate::menu::MenuAction;
 use crate::message::{DialogMessage, HomeMessage, Message, SettingsCategory, UpdateMessage};
-use crate::state::AppState;
+use crate::state::{AppState, DialogState, DialogType};
 use crate::view::dialog::third_party::ThirdPartyState;
 use crate::view::dialog::update::UpdateState;
 
@@ -84,7 +84,7 @@ impl MessageHandler<MenuAction> for MenuActionHandler {
 
             MenuAction::Settings => {
                 // Don't open if already open
-                if state.dialog_windows.settings.is_some() {
+                if state.dialog_registry.is_open(DialogType::Settings) {
                     return Task::none();
                 }
                 // Open settings dialog in a new window
@@ -97,7 +97,9 @@ impl MessageHandler<MenuAction> for MenuActionHandler {
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
-                state.dialog_windows.settings = Some((id, SettingsCategory::default()));
+                state
+                    .dialog_registry
+                    .register(id, DialogState::Settings(SettingsCategory::default()));
                 task.map(|_| Message::Noop)
             }
 
@@ -146,7 +148,7 @@ impl MessageHandler<MenuAction> for MenuActionHandler {
 
             MenuAction::ThirdPartyLicenses => {
                 // Don't open if already open
-                if state.dialog_windows.third_party.is_some() {
+                if state.dialog_registry.is_open(DialogType::ThirdParty) {
                     return Task::none();
                 }
                 // Open third-party licenses dialog in a new window
@@ -159,13 +161,15 @@ impl MessageHandler<MenuAction> for MenuActionHandler {
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
-                state.dialog_windows.third_party = Some((id, ThirdPartyState::new()));
+                state
+                    .dialog_registry
+                    .register(id, DialogState::ThirdParty(ThirdPartyState::new()));
                 task.map(|_| Message::Noop)
             }
 
             MenuAction::CheckUpdates => {
                 // Don't open if already open
-                if state.dialog_windows.update.is_some() {
+                if state.dialog_registry.is_open(DialogType::Update) {
                     return Task::none();
                 }
                 // Open update dialog in a new window
@@ -178,7 +182,9 @@ impl MessageHandler<MenuAction> for MenuActionHandler {
                     ..Default::default()
                 };
                 let (id, open_task) = window::open(settings);
-                state.dialog_windows.update = Some((id, UpdateState::Checking));
+                state
+                    .dialog_registry
+                    .register(id, DialogState::Update(UpdateState::Checking));
 
                 // Start the update check task
                 let update_settings = state.settings.updates.clone();
@@ -198,7 +204,7 @@ impl MessageHandler<MenuAction> for MenuActionHandler {
 
             MenuAction::About => {
                 // Don't open if already open
-                if state.dialog_windows.about.is_some() {
+                if state.dialog_registry.is_open(DialogType::About) {
                     return Task::none();
                 }
                 // Open about dialog in a new window
@@ -211,7 +217,7 @@ impl MessageHandler<MenuAction> for MenuActionHandler {
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
-                state.dialog_windows.about = Some(id);
+                state.dialog_registry.register(id, DialogState::About);
                 task.map(|_| Message::Noop)
             }
 

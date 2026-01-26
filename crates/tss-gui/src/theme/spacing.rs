@@ -167,3 +167,16 @@ pub const TAB_PADDING_Y: f32 = 8.0;
 
 /// Tab indicator height (active tab underline)
 pub const TAB_INDICATOR_HEIGHT: f32 = 2.0;
+
+// =============================================================================
+// ALPHA VALUES
+// =============================================================================
+
+/// Light alpha for subtle backgrounds (active filters, selections)
+pub const ALPHA_LIGHT: f32 = 0.15;
+
+/// Medium alpha for hover states
+pub const ALPHA_MEDIUM: f32 = 0.30;
+
+/// Strong alpha for emphasis overlays
+pub const ALPHA_STRONG: f32 = 0.50;

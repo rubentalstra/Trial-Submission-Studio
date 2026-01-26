@@ -2,9 +2,49 @@
 //!
 //! Contains common patterns used across the GUI crate.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use crate::error::GuiError;
+// =============================================================================
+// SEARCH FILTERING
+// =============================================================================
+
+/// Case-insensitive search filter.
+///
+/// Returns `true` if:
+/// - The filter is empty (matches everything), or
+/// - The text contains the filter (case-insensitive)
+///
+/// # Example
+///
+/// ```ignore
+/// use crate::util::matches_search;
+///
+/// assert!(matches_search("USUBJID", ""));
+/// assert!(matches_search("USUBJID", "subj"));
+/// assert!(matches_search("USUBJID", "SUBJ"));
+/// assert!(!matches_search("USUBJID", "xyz"));
+/// ```
+pub fn matches_search(text: &str, filter: &str) -> bool {
+    filter.is_empty() || text.to_lowercase().contains(&filter.to_lowercase())
+}
+
+/// Check if any of the provided texts match the search filter.
+///
+/// Returns `true` if:
+/// - The filter is empty (matches everything), or
+/// - Any of the texts contain the filter (case-insensitive)
+///
+/// # Example
+///
+/// ```ignore
+/// use crate::util::matches_search_any;
+///
+/// assert!(matches_search_any(&["USUBJID", "Subject ID"], "subj"));
+/// assert!(!matches_search_any(&["USUBJID", "Subject ID"], "xyz"));
+/// ```
+pub fn matches_search_any(texts: &[&str], filter: &str) -> bool {
+    filter.is_empty() || texts.iter().any(|t| matches_search(t, filter))
+}
 
 /// Log failures for best-effort operations that should succeed but aren't critical (#273).
 ///
@@ -32,77 +72,9 @@ macro_rules! best_effort {
 pub(crate) use best_effort;
 
 // =============================================================================
-// PATH SECURITY
+// MACOS QUARANTINE CHECK
 // =============================================================================
 
-// These functions are public API for use by handlers
-#[allow(dead_code)]
-/// Validate that a path is safe and contained within an allowed directory.
-///
-/// This prevents path traversal attacks by ensuring the resolved path
-/// stays within the expected directory.
-///
-/// # Arguments
-///
-/// * `path` - The path to validate
-/// * `allowed_dir` - The directory that must contain the path
-///
-/// # Returns
-///
-/// The canonicalized path if valid, or a `GuiError::Security` if path traversal
-/// was detected.
-///
-/// # Example
-///
-/// ```ignore
-/// let safe_path = validate_path_security(&user_path, &study_dir)?;
-/// ```
-pub fn validate_path_security(path: &Path, allowed_dir: &Path) -> Result<PathBuf, GuiError> {
-    // Canonicalize both paths to resolve symlinks and ..
-    let canonical_path = path.canonicalize().map_err(|e| GuiError::FileOperation {
-        reason: format!("Cannot resolve path '{}': {}", path.display(), e),
-    })?;
-
-    let canonical_allowed = allowed_dir
-        .canonicalize()
-        .map_err(|e| GuiError::FileOperation {
-            reason: format!(
-                "Cannot resolve allowed directory '{}': {}",
-                allowed_dir.display(),
-                e
-            ),
-        })?;
-
-    // Check containment
-    if !canonical_path.starts_with(&canonical_allowed) {
-        return Err(GuiError::path_traversal(path.display()));
-    }
-
-    Ok(canonical_path)
-}
-
-#[allow(dead_code)]
-/// Validate that a path is a regular file within an allowed directory.
-///
-/// Combines path traversal protection with file type checking.
-pub fn validate_file_path(path: &Path, allowed_dir: &Path) -> Result<PathBuf, GuiError> {
-    let canonical = validate_path_security(path, allowed_dir)?;
-
-    // Check it's a regular file (not a directory or special file)
-    let metadata = std::fs::metadata(&canonical).map_err(|e| GuiError::FileOperation {
-        reason: format!("Cannot read file metadata for '{}': {}", path.display(), e),
-    })?;
-
-    if !metadata.is_file() {
-        return Err(GuiError::FileOperation {
-            reason: format!("Path '{}' is not a regular file", path.display()),
-        });
-    }
-
-    Ok(canonical)
-}
-
-#[allow(dead_code)]
 /// Check for macOS quarantine attribute on a path.
 ///
 /// Returns a user-friendly message if the path is quarantined.

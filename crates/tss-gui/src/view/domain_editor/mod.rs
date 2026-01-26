@@ -15,7 +15,9 @@ pub mod validation;
 
 use iced::widget::{column, container, text};
 use iced::{Border, Element, Length, Theme};
+use iced_fonts::lucide;
 
+use crate::component::display::EmptyState;
 use crate::component::layout::{PageHeader, Tab, tab_bar};
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, DomainState, EditorTab};
@@ -152,4 +154,45 @@ fn view_tab_bar<'a>(current_tab: EditorTab) -> Element<'a, Message> {
             }
         })
         .into()
+}
+
+// =============================================================================
+// SHARED HELPERS
+// =============================================================================
+
+/// Create a "no selection" empty state for the detail panel.
+///
+/// Used by all tabs when no item is selected in the master list.
+/// Displays a centered icon, title, and description.
+///
+/// # Arguments
+///
+/// * `icon` - Lucide icon to display (e.g., `lucide::mouse_pointer_click`)
+/// * `title` - Title text (e.g., "Select a Variable")
+/// * `description` - Description text explaining what to do
+pub fn detail_no_selection<'a>(
+    icon: impl Into<Element<'a, Message>>,
+    title: &'a str,
+    description: &'a str,
+) -> Element<'a, Message> {
+    EmptyState::new(
+        container(icon).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.clinical().text_disabled),
+            ..Default::default()
+        }),
+        title,
+    )
+    .description(description)
+    .centered()
+    .view()
+}
+
+/// Create a "no selection" empty state with the default click icon.
+///
+/// Convenience function using the standard `mouse_pointer_click` icon at size 48.
+pub fn detail_no_selection_default<'a>(
+    title: &'a str,
+    description: &'a str,
+) -> Element<'a, Message> {
+    detail_no_selection(lucide::mouse_pointer_click().size(48), title, description)
 }

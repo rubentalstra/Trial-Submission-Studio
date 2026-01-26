@@ -140,10 +140,9 @@ impl<'a, M: Clone + 'a> PageHeader<'a, M> {
         }
 
         // Title
-        let title_text = self.title.clone();
         header_row =
             header_row.push(
-                text(title_text)
+                text(self.title)
                     .size(20)
                     .style(|theme: &Theme| text::Style {
                         color: Some(theme.extended_palette().background.base.text),
