@@ -321,9 +321,8 @@ fn view_general_settings(settings: &Settings) -> Element<'_, Message> {
             }),
         Space::new().height(SPACING_XS),
         row![
-            // TODO: use the label here from the enum right??
             radio(
-                "Drag and Drop",
+                AssignmentMode::DragAndDrop.label(),
                 AssignmentMode::DragAndDrop,
                 Some(settings.general.assignment_mode),
                 |v| Message::Dialog(DialogMessage::Settings(SettingsMessage::General(
@@ -332,7 +331,7 @@ fn view_general_settings(settings: &Settings) -> Element<'_, Message> {
             ),
             Space::new().width(SPACING_MD),
             radio(
-                "Click to Assign",
+                AssignmentMode::ClickToAssign.label(),
                 AssignmentMode::ClickToAssign,
                 Some(settings.general.assignment_mode),
                 |v| Message::Dialog(DialogMessage::Settings(SettingsMessage::General(
@@ -579,10 +578,9 @@ fn view_theme_preview(
     theme_mode: ThemeMode,
     accessibility_mode: AccessibilityMode,
 ) -> Element<'static, Message> {
-    // TODO: is this really intentional, because it already updates on change of the settings and everything so why do we need to create a new theme here?
-    // Create a temporary Theme to resolve preview colors
+    // Create a temporary Theme to resolve preview colors.
     // This is intentional - we want to show preview colors for the selected settings,
-    // not the currently active theme
+    // not the currently active theme.
     let config = ThemeConfig::new(theme_mode, accessibility_mode);
     let preview_theme = config.to_theme(false);
     let preview_palette = preview_theme.extended_palette();

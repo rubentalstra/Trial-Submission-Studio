@@ -6,7 +6,7 @@
 use iced::widget::{Space, column, row, text, text_input};
 use iced::{Border, Color, Element, Length, Theme};
 
-use crate::theme::{BORDER_RADIUS_SM, ClinicalColors};
+use crate::theme::{ALPHA_LIGHT, BORDER_RADIUS_SM, ClinicalColors};
 
 // =============================================================================
 // TEXT FIELD
@@ -155,7 +155,7 @@ impl<M: Clone + 'static> TextField<M> {
 
                     let accent_primary = palette.primary.base.color;
                     let selection_bg = Color {
-                        a: 0.15,
+                        a: ALPHA_LIGHT,
                         ..accent_primary
                     };
 

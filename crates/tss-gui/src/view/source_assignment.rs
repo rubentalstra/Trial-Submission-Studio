@@ -4,7 +4,8 @@
 //! to CDISC domains.
 
 use iced::widget::{
-    Space, button, column, container, mouse_area, row, rule, scrollable, text, text_input,
+    Space, button, center, column, container, mouse_area, opaque, row, rule, scrollable, stack,
+    text, text_input,
 };
 use iced::{Alignment, Border, Element, Length, Theme};
 use iced_aw::ContextMenu;
@@ -56,17 +57,39 @@ pub fn view_source_assignment(state: &AppState) -> Element<'_, Message> {
         .height(Length::Fill);
 
     // Add loading overlay if creating study
+    let page_container = container(page)
+        .width(Length::Fill)
+        .height(Length::Fill);
+
     if assignment_ui.is_creating_study {
-        // TODO: Add loading overlay
-        container(page)
+        // Semi-transparent backdrop
+        let backdrop = container(Space::new())
             .width(Length::Fill)
             .height(Length::Fill)
-            .into()
+            .style(|theme: &Theme| container::Style {
+                background: Some(theme.clinical().backdrop.into()),
+                ..Default::default()
+            });
+
+        // Loading indicator
+        let loading_content = column![
+            container(lucide::loader_circle().size(32)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_on_accent),
+                ..Default::default()
+            }),
+            Space::new().height(SPACING_SM),
+            text("Creating study...")
+                .size(14)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_on_accent),
+                }),
+        ]
+        .align_x(Alignment::Center)
+        .spacing(SPACING_XS);
+
+        stack![page_container, opaque(backdrop), center(loading_content),].into()
     } else {
-        container(page)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
+        page_container.into()
     }
 }
 

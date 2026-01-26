@@ -21,8 +21,8 @@ use crate::message::domain_editor::PreviewMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, PreviewUiState, SourceDomainState, ViewState};
 use crate::theme::{
-    BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, ThemeConfig,
-    button_ghost, button_primary,
+    ALPHA_LIGHT, BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
+    ThemeConfig, button_ghost, button_primary,
 };
 
 // =============================================================================
@@ -743,7 +743,7 @@ fn view_rows_per_page_selector<'a>(config: &ThemeConfig, current: usize) -> Elem
 
     // Create a lighter accent background for selected state
     let accent_light = Color {
-        a: 0.15,
+        a: ALPHA_LIGHT,
         ..accent_primary
     };
 

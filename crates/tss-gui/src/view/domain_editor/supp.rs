@@ -33,8 +33,8 @@ use crate::state::{
     SuppOrigin, SuppUiState, ViewState,
 };
 use crate::theme::{
-    BORDER_RADIUS_SM, ClinicalColors, MASTER_WIDTH, MAX_CHARS_SHORT_LABEL, MAX_CHARS_VARIABLE_NAME,
-    SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
+    ALPHA_LIGHT, BORDER_RADIUS_SM, ClinicalColors, MASTER_WIDTH, MAX_CHARS_SHORT_LABEL,
+    MAX_CHARS_VARIABLE_NAME, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
 };
 
 // =============================================================================
@@ -304,7 +304,7 @@ fn build_column_item(
     .style(move |theme: &Theme, _status| {
         let accent_primary = theme.extended_palette().primary.base.color;
         let accent_light = Color {
-            a: 0.15,
+            a: ALPHA_LIGHT,
             ..accent_primary
         };
         let bg_elevated = theme.clinical().background_elevated;
@@ -900,7 +900,7 @@ fn build_skipped_view(
         let accent_primary = theme.extended_palette().primary.base.color;
         let accent_hover = theme.clinical().accent_hover;
         let accent_light = Color {
-            a: 0.15,
+            a: ALPHA_LIGHT,
             ..accent_primary
         };
         let bg_elevated = theme.clinical().background_elevated;
