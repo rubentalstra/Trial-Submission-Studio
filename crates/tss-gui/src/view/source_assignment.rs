@@ -57,9 +57,7 @@ pub fn view_source_assignment(state: &AppState) -> Element<'_, Message> {
         .height(Length::Fill);
 
     // Add loading overlay if creating study
-    let page_container = container(page)
-        .width(Length::Fill)
-        .height(Length::Fill);
+    let page_container = container(page).width(Length::Fill).height(Length::Fill);
 
     if assignment_ui.is_creating_study {
         // Semi-transparent backdrop

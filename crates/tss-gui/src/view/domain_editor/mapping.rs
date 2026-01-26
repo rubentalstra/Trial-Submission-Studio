@@ -28,6 +28,8 @@ use crate::theme::{
 use tss_standards::CoreDesignation;
 use tss_submit::VariableStatus;
 
+use crate::util::matches_search_any;
+
 /// Type alias for badge info: (label, color function)
 type BadgeInfo = (&'static str, fn(&Theme) -> iced::Color);
 
@@ -83,18 +85,10 @@ pub fn view_mapping_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
         .iter()
         .enumerate()
         .filter(|(_idx, var)| {
-            // Search filter
-            if !mapping_ui.search_filter.is_empty() {
-                let search = mapping_ui.search_filter.to_lowercase();
-                let name_match = var.name.to_lowercase().contains(&search);
-                let label_match = var
-                    .label
-                    .as_ref()
-                    .map(|l| l.to_lowercase().contains(&search))
-                    .unwrap_or(false);
-                if !name_match && !label_match {
-                    return false;
-                }
+            // Search filter - check name and label
+            let label = var.label.as_deref().unwrap_or("");
+            if !matches_search_any(&[&var.name, label], &mapping_ui.search_filter) {
+                return false;
             }
 
             // Unmapped filter

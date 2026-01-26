@@ -30,7 +30,7 @@ mod settings;
 mod study;
 mod view_state;
 
-// Re-exports - Dialog types are exported but local DialogWindows is kept for backward compatibility
+// Re-exports - Dialog types from the unified registry
 pub use dialog::{DialogRegistry, DialogState, ExportProgressState, PendingAction};
 // Re-export DialogType from dialog module (remove local definition)
 pub use dialog::DialogType;
@@ -128,8 +128,8 @@ pub struct AppState {
     #[cfg(not(target_os = "macos"))]
     pub menu_dropdown: MenuDropdownState,
 
-    /// Tracks open dialog windows (multi-window mode).
-    pub dialog_windows: DialogWindows,
+    /// Unified registry for managing dialog windows (multi-window mode).
+    pub dialog_registry: DialogRegistry,
 
     /// Main window ID (for identifying the main window in multi-window mode).
     pub main_window_id: Option<window::Id>,
@@ -168,91 +168,7 @@ pub struct AppState {
     pub pending_project_restore: Option<(std::path::PathBuf, tss_persistence::ProjectFile)>,
 }
 
-// ExportProgressState is now defined in dialog.rs and re-exported above
-
-/// Tracks open dialog windows.
-#[derive(Debug, Clone, Default)]
-pub struct DialogWindows {
-    /// About dialog window ID.
-    pub about: Option<window::Id>,
-    /// Settings dialog window ID.
-    pub settings: Option<(window::Id, crate::message::SettingsCategory)>,
-    /// Third-party licenses dialog window ID.
-    pub third_party: Option<(
-        window::Id,
-        crate::view::dialog::third_party::ThirdPartyState,
-    )>,
-    /// Update dialog window ID and state.
-    pub update: Option<(window::Id, crate::view::dialog::update::UpdateState)>,
-    /// Close project confirmation dialog window ID.
-    pub close_project_confirm: Option<window::Id>,
-    /// Export progress dialog window ID and state.
-    pub export_progress: Option<(window::Id, ExportProgressState)>,
-    /// Export completion dialog window ID and result.
-    pub export_complete: Option<(window::Id, ExportResult)>,
-    /// Unsaved changes confirmation dialog window ID and pending action.
-    pub unsaved_changes: Option<(window::Id, PendingAction)>,
-}
-
-impl DialogWindows {
-    /// Check if a window ID belongs to any dialog.
-    pub fn is_dialog_window(&self, id: window::Id) -> bool {
-        self.about == Some(id)
-            || self.settings.as_ref().map(|(i, _)| *i) == Some(id)
-            || self.third_party.as_ref().map(|(i, _)| *i) == Some(id)
-            || self.update.as_ref().map(|(i, _)| *i) == Some(id)
-            || self.close_project_confirm == Some(id)
-            || self.export_progress.as_ref().map(|(i, _)| *i) == Some(id)
-            || self.export_complete.as_ref().map(|(i, _)| *i) == Some(id)
-            || self.unsaved_changes.as_ref().map(|(i, _)| *i) == Some(id)
-    }
-
-    /// Get the dialog type for a window ID.
-    pub fn dialog_type(&self, id: window::Id) -> Option<DialogType> {
-        if self.about == Some(id) {
-            Some(DialogType::About)
-        } else if self.settings.as_ref().map(|(i, _)| *i) == Some(id) {
-            Some(DialogType::Settings)
-        } else if self.third_party.as_ref().map(|(i, _)| *i) == Some(id) {
-            Some(DialogType::ThirdParty)
-        } else if self.update.as_ref().map(|(i, _)| *i) == Some(id) {
-            Some(DialogType::Update)
-        } else if self.close_project_confirm == Some(id) {
-            Some(DialogType::CloseProjectConfirm)
-        } else if self.export_progress.as_ref().map(|(i, _)| *i) == Some(id) {
-            Some(DialogType::ExportProgress)
-        } else if self.export_complete.as_ref().map(|(i, _)| *i) == Some(id) {
-            Some(DialogType::ExportComplete)
-        } else if self.unsaved_changes.as_ref().map(|(i, _)| *i) == Some(id) {
-            Some(DialogType::UnsavedChanges)
-        } else {
-            None
-        }
-    }
-
-    /// Close a dialog window by ID.
-    pub fn close(&mut self, id: window::Id) {
-        if self.about == Some(id) {
-            self.about = None;
-        } else if self.settings.as_ref().map(|(i, _)| *i) == Some(id) {
-            self.settings = None;
-        } else if self.third_party.as_ref().map(|(i, _)| *i) == Some(id) {
-            self.third_party = None;
-        } else if self.update.as_ref().map(|(i, _)| *i) == Some(id) {
-            self.update = None;
-        } else if self.close_project_confirm == Some(id) {
-            self.close_project_confirm = None;
-        } else if self.export_progress.as_ref().map(|(i, _)| *i) == Some(id) {
-            self.export_progress = None;
-        } else if self.export_complete.as_ref().map(|(i, _)| *i) == Some(id) {
-            self.export_complete = None;
-        } else if self.unsaved_changes.as_ref().map(|(i, _)| *i) == Some(id) {
-            self.unsaved_changes = None;
-        }
-    }
-}
-
-// DialogType is now defined in dialog.rs and re-exported above
+// ExportProgressState and DialogType are now defined in dialog.rs and re-exported above
 
 impl AppState {
     /// Create app state with loaded settings.
@@ -280,7 +196,7 @@ impl AppState {
             is_loading: false,
             #[cfg(not(target_os = "macos"))]
             menu_dropdown: MenuDropdownState::default(),
-            dialog_windows: DialogWindows::default(),
+            dialog_registry: DialogRegistry::new(),
             main_window_id: None,
             toast: None,
             project_path: None,

@@ -4,6 +4,48 @@
 
 use std::path::Path;
 
+// =============================================================================
+// SEARCH FILTERING
+// =============================================================================
+
+/// Case-insensitive search filter.
+///
+/// Returns `true` if:
+/// - The filter is empty (matches everything), or
+/// - The text contains the filter (case-insensitive)
+///
+/// # Example
+///
+/// ```ignore
+/// use crate::util::matches_search;
+///
+/// assert!(matches_search("USUBJID", ""));
+/// assert!(matches_search("USUBJID", "subj"));
+/// assert!(matches_search("USUBJID", "SUBJ"));
+/// assert!(!matches_search("USUBJID", "xyz"));
+/// ```
+pub fn matches_search(text: &str, filter: &str) -> bool {
+    filter.is_empty() || text.to_lowercase().contains(&filter.to_lowercase())
+}
+
+/// Check if any of the provided texts match the search filter.
+///
+/// Returns `true` if:
+/// - The filter is empty (matches everything), or
+/// - Any of the texts contain the filter (case-insensitive)
+///
+/// # Example
+///
+/// ```ignore
+/// use crate::util::matches_search_any;
+///
+/// assert!(matches_search_any(&["USUBJID", "Subject ID"], "subj"));
+/// assert!(!matches_search_any(&["USUBJID", "Subject ID"], "xyz"));
+/// ```
+pub fn matches_search_any(texts: &[&str], filter: &str) -> bool {
+    filter.is_empty() || texts.iter().any(|t| matches_search(t, filter))
+}
+
 /// Log failures for best-effort operations that should succeed but aren't critical (#273).
 ///
 /// Use this macro instead of `let _ = ...` for operations that:

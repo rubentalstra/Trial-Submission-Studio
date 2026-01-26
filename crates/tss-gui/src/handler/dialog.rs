@@ -21,7 +21,7 @@ use crate::message::{
     GeneralSettingsMessage, SettingsMessage, ThirdPartyMessage, UpdateMessage,
     UpdateSettingsMessage, VerifyOutcome,
 };
-use crate::state::{AppState, Settings};
+use crate::state::{AppState, DialogState, DialogType, Settings};
 use crate::view::dialog::update::{
     DownloadStats, RetryContext, UpdateErrorInfo, UpdateState, parse_changelog,
 };
@@ -65,7 +65,7 @@ fn handle_about_message(state: &mut AppState, msg: AboutMessage) -> Task<Message
         AboutMessage::Open => Task::none(),
         AboutMessage::Close => {
             // Close dialog window in multi-window mode
-            if let Some(id) = state.dialog_windows.about.take() {
+            if let Some((id, _)) = state.dialog_registry.close_by_type(DialogType::About) {
                 return window::close(id);
             }
             Task::none()
@@ -76,7 +76,7 @@ fn handle_about_message(state: &mut AppState, msg: AboutMessage) -> Task<Message
             let copy_task = iced::clipboard::write(info);
 
             // Close dialog window in multi-window mode
-            if let Some(id) = state.dialog_windows.about.take() {
+            if let Some((id, _)) = state.dialog_registry.close_by_type(DialogType::About) {
                 return Task::batch([copy_task, window::close(id)]);
             }
             copy_task
@@ -107,7 +107,7 @@ fn handle_settings_message(state: &mut AppState, msg: SettingsMessage) -> Task<M
         SettingsMessage::Open => Task::none(),
         SettingsMessage::Close => {
             // Close dialog window in multi-window mode
-            if let Some((id, _)) = state.dialog_windows.settings.take() {
+            if let Some((id, _)) = state.dialog_registry.close_by_type(DialogType::Settings) {
                 return window::close(id);
             }
             Task::none()
@@ -118,7 +118,7 @@ fn handle_settings_message(state: &mut AppState, msg: SettingsMessage) -> Task<M
             tracing::info!("Settings saved");
 
             // Close dialog window in multi-window mode
-            if let Some((id, _)) = state.dialog_windows.settings.take() {
+            if let Some((id, _)) = state.dialog_registry.close_by_type(DialogType::Settings) {
                 return window::close(id);
             }
             Task::none()
@@ -128,9 +128,11 @@ fn handle_settings_message(state: &mut AppState, msg: SettingsMessage) -> Task<M
             Task::none()
         }
         SettingsMessage::CategorySelected(category) => {
-            // Update dialog_windows.settings for multi-window mode
-            if let Some((id, _)) = state.dialog_windows.settings {
-                state.dialog_windows.settings = Some((id, category));
+            // Update dialog_registry.settings for multi-window mode
+            if let Some((id, _)) = state.dialog_registry.settings() {
+                state
+                    .dialog_registry
+                    .register(id, DialogState::Settings(category));
             }
             Task::none()
         }
@@ -235,7 +237,7 @@ fn handle_third_party_message(state: &mut AppState, msg: ThirdPartyMessage) -> T
     match msg {
         ThirdPartyMessage::Open => Task::none(),
         ThirdPartyMessage::Close => {
-            if let Some((id, _)) = state.dialog_windows.third_party.take() {
+            if let Some((id, _)) = state.dialog_registry.close_by_type(DialogType::ThirdParty) {
                 return window::close(id);
             }
             Task::none()
@@ -280,7 +282,7 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
         }
 
         UpdateMessage::Close => {
-            if let Some((id, _)) = state.dialog_windows.update.take() {
+            if let Some((id, _)) = state.dialog_registry.close_by_type(DialogType::Update) {
                 return window::close(id);
             }
             Task::none()
@@ -288,7 +290,7 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
 
         UpdateMessage::ConfirmDownload => {
             // Get update info from current state
-            let info = match &state.dialog_windows.update {
+            let info = match state.dialog_registry.update() {
                 Some((_, UpdateState::Available { info, .. })) => info.clone(),
                 Some((
                     _,
@@ -301,14 +303,14 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
             };
 
             // Update state to Downloading
-            if let Some((id, _)) = state.dialog_windows.update {
-                state.dialog_windows.update = Some((
+            if let Some((id, _)) = state.dialog_registry.update() {
+                state.dialog_registry.register(
                     id,
-                    UpdateState::Downloading {
+                    DialogState::Update(UpdateState::Downloading {
                         info: info.clone(),
                         stats: DownloadStats::new(info.asset.size),
-                    },
-                ));
+                    }),
+                );
             }
 
             // Stream download with progress
@@ -335,7 +337,7 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
 
         UpdateMessage::ConfirmInstall => {
             // Get data from current state (Arc::clone is cheap for large binaries)
-            let (info, data) = match &state.dialog_windows.update {
+            let (info, data) = match state.dialog_registry.update() {
                 Some((_, UpdateState::ReadyToInstall { info, data, .. })) => {
                     (info.clone(), Arc::clone(data))
                 }
@@ -350,9 +352,11 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
             };
 
             // Update state to Installing
-            if let Some((id, _)) = state.dialog_windows.update {
-                state.dialog_windows.update =
-                    Some((id, UpdateState::Installing { info: info.clone() }));
+            if let Some((id, _)) = state.dialog_registry.update() {
+                state.dialog_registry.register(
+                    id,
+                    DialogState::Update(UpdateState::Installing { info: info.clone() }),
+                );
             }
 
             // Spawn async installation with timeout (#149)
@@ -376,17 +380,17 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
         UpdateMessage::RestartNow => {
             if let Err(e) = tss_updater::restart() {
                 tracing::error!("Failed to restart application: {}", e);
-                if let Some((id, _)) = state.dialog_windows.update {
-                    state.dialog_windows.update = Some((
+                if let Some((id, _)) = state.dialog_registry.update() {
+                    state.dialog_registry.register(
                         id,
-                        UpdateState::Error {
+                        DialogState::Update(UpdateState::Error {
                             error: UpdateErrorInfo::from_message(format!(
                                 "Failed to restart: {}",
                                 e
                             )),
                             retry_context: None,
-                        },
-                    ));
+                        }),
+                    );
                 }
             }
             Task::none()
@@ -394,14 +398,14 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
 
         UpdateMessage::SkipVersion => {
             // Get version from current state and skip it
-            if let Some((_, UpdateState::Available { info, .. })) = &state.dialog_windows.update {
+            if let Some((_, UpdateState::Available { info, .. })) = state.dialog_registry.update() {
                 state.settings.updates.skip_version(&info.version);
                 let _ = state.settings.save();
                 tracing::info!("Skipped version: {}", info.version);
             }
 
             // Close dialog
-            if let Some((id, _)) = state.dialog_windows.update.take() {
+            if let Some((id, _)) = state.dialog_registry.close_by_type(DialogType::Update) {
                 return window::close(id);
             }
             Task::none()
@@ -416,23 +420,23 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
                     changelog_items,
                     changelog_expanded,
                 },
-            )) = state.dialog_windows.update.take()
+            )) = state.dialog_registry.update()
             {
-                state.dialog_windows.update = Some((
+                state.dialog_registry.register(
                     id,
-                    UpdateState::Available {
-                        info,
-                        changelog_items,
+                    DialogState::Update(UpdateState::Available {
+                        info: info.clone(),
+                        changelog_items: changelog_items.clone(),
                         changelog_expanded: !changelog_expanded,
-                    },
-                ));
+                    }),
+                );
             }
             Task::none()
         }
 
         UpdateMessage::Retry => {
             // Get retry context from current error state
-            let retry_context = match &state.dialog_windows.update {
+            let retry_context = match state.dialog_registry.update() {
                 Some((_, UpdateState::Error { retry_context, .. })) => retry_context.clone(),
                 _ => return Task::none(),
             };
@@ -440,8 +444,10 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
             match retry_context {
                 Some(RetryContext::Check) => {
                     // Retry the check
-                    if let Some((id, _)) = state.dialog_windows.update {
-                        state.dialog_windows.update = Some((id, UpdateState::Checking));
+                    if let Some((id, _)) = state.dialog_registry.update() {
+                        state
+                            .dialog_registry
+                            .register(id, DialogState::Update(UpdateState::Checking));
                     }
 
                     let settings = state.settings.updates.clone();
@@ -460,29 +466,29 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
                 }
                 Some(RetryContext::Download { info }) => {
                     // Retry download - dispatch to ConfirmDownload
-                    if let Some((id, _)) = state.dialog_windows.update {
-                        state.dialog_windows.update = Some((
+                    if let Some((id, _)) = state.dialog_registry.update() {
+                        state.dialog_registry.register(
                             id,
-                            UpdateState::Available {
+                            DialogState::Update(UpdateState::Available {
                                 changelog_items: parse_changelog(&info.changelog),
                                 info,
                                 changelog_expanded: false,
-                            },
-                        ));
+                            }),
+                        );
                     }
                     handle_update_message(state, UpdateMessage::ConfirmDownload)
                 }
                 Some(RetryContext::Install { info, data }) => {
                     // Retry install - dispatch to ConfirmInstall
-                    if let Some((id, _)) = state.dialog_windows.update {
-                        state.dialog_windows.update = Some((
+                    if let Some((id, _)) = state.dialog_registry.update() {
+                        state.dialog_registry.register(
                             id,
-                            UpdateState::ReadyToInstall {
+                            DialogState::Update(UpdateState::ReadyToInstall {
                                 info,
                                 data,
                                 verified: false,
-                            },
-                        ));
+                            }),
+                        );
                     }
                     handle_update_message(state, UpdateMessage::ConfirmInstall)
                 }
@@ -502,32 +508,34 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
                     let changelog_items: Vec<markdown::Item> =
                         markdown::parse(&info.changelog).collect();
 
-                    if let Some((id, _)) = state.dialog_windows.update {
-                        state.dialog_windows.update = Some((
+                    if let Some((id, _)) = state.dialog_registry.update() {
+                        state.dialog_registry.register(
                             id,
-                            UpdateState::Available {
+                            DialogState::Update(UpdateState::Available {
                                 info,
                                 changelog_items,
                                 changelog_expanded: false,
-                            },
-                        ));
+                            }),
+                        );
                     }
                 }
                 Ok(None) => {
-                    if let Some((id, _)) = state.dialog_windows.update {
-                        state.dialog_windows.update = Some((id, UpdateState::UpToDate));
+                    if let Some((id, _)) = state.dialog_registry.update() {
+                        state
+                            .dialog_registry
+                            .register(id, DialogState::Update(UpdateState::UpToDate));
                     }
                 }
                 Err(e) => {
                     tracing::error!("Update check failed: {}", e);
-                    if let Some((id, _)) = state.dialog_windows.update {
-                        state.dialog_windows.update = Some((
+                    if let Some((id, _)) = state.dialog_registry.update() {
+                        state.dialog_registry.register(
                             id,
-                            UpdateState::Error {
+                            DialogState::Update(UpdateState::Error {
                                 error: UpdateErrorInfo::from_message(e),
                                 retry_context: Some(RetryContext::Check),
-                            },
-                        ));
+                            }),
+                        );
                     }
                 }
             }
@@ -535,17 +543,19 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
         }
 
         UpdateMessage::DownloadProgress(progress) => {
-            // Update download stats
+            // Update download stats using mutable access
             if let Some((id, UpdateState::Downloading { info, stats })) =
-                &mut state.dialog_windows.update
+                state.dialog_registry.update_mut()
             {
                 stats.update(progress.downloaded, progress.speed);
                 // Clone to update state properly
-                let id = *id;
                 let info = info.clone();
                 let mut stats = stats.clone();
                 stats.update(progress.downloaded, progress.speed);
-                state.dialog_windows.update = Some((id, UpdateState::Downloading { info, stats }));
+                state.dialog_registry.register(
+                    id,
+                    DialogState::Update(UpdateState::Downloading { info, stats }),
+                );
             }
             Task::none()
         }
@@ -554,15 +564,17 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
             match result {
                 Ok(download_result) => {
                     // Get info from current state
-                    let info = match &state.dialog_windows.update {
+                    let info = match state.dialog_registry.update() {
                         Some((_, UpdateState::Downloading { info, .. })) => info.clone(),
                         _ => return Task::none(),
                     };
 
                     // Update state to Verifying
-                    if let Some((id, _)) = state.dialog_windows.update {
-                        state.dialog_windows.update =
-                            Some((id, UpdateState::Verifying { info: info.clone() }));
+                    if let Some((id, _)) = state.dialog_registry.update() {
+                        state.dialog_registry.register(
+                            id,
+                            DialogState::Update(UpdateState::Verifying { info: info.clone() }),
+                        );
                     }
 
                     // Spawn verification task with timeout (#149)
@@ -616,19 +628,19 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
                     tracing::error!("Download failed: {}", e);
 
                     // Get info for retry
-                    let info = match &state.dialog_windows.update {
+                    let info = match state.dialog_registry.update() {
                         Some((_, UpdateState::Downloading { info, .. })) => Some(info.clone()),
                         _ => None,
                     };
 
-                    if let Some((id, _)) = state.dialog_windows.update {
-                        state.dialog_windows.update = Some((
+                    if let Some((id, _)) = state.dialog_registry.update() {
+                        state.dialog_registry.register(
                             id,
-                            UpdateState::Error {
+                            DialogState::Update(UpdateState::Error {
                                 error: UpdateErrorInfo::from_message(e),
                                 retry_context: info.map(|i| RetryContext::Download { info: i }),
-                            },
-                        ));
+                            }),
+                        );
                     }
                     Task::none()
                 }
@@ -637,7 +649,7 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
 
         UpdateMessage::VerifyResult(result) => {
             // Get info from Verifying state
-            let info = match &state.dialog_windows.update {
+            let info = match state.dialog_registry.update() {
                 Some((_, UpdateState::Verifying { info })) => info.clone(),
                 _ => return Task::none(),
             };
@@ -645,27 +657,27 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
             match result {
                 Ok(outcome) => {
                     // Move to ReadyToInstall (wrap data in Arc for cheap cloning)
-                    if let Some((id, _)) = state.dialog_windows.update {
-                        state.dialog_windows.update = Some((
+                    if let Some((id, _)) = state.dialog_registry.update() {
+                        state.dialog_registry.register(
                             id,
-                            UpdateState::ReadyToInstall {
+                            DialogState::Update(UpdateState::ReadyToInstall {
                                 info,
                                 data: Arc::new(outcome.data),
                                 verified: outcome.verified,
-                            },
-                        ));
+                            }),
+                        );
                     }
                 }
                 Err(e) => {
                     tracing::error!("Verification failed: {}", e);
-                    if let Some((id, _)) = state.dialog_windows.update {
-                        state.dialog_windows.update = Some((
+                    if let Some((id, _)) = state.dialog_registry.update() {
+                        state.dialog_registry.register(
                             id,
-                            UpdateState::Error {
+                            DialogState::Update(UpdateState::Error {
                                 error: UpdateErrorInfo::from_message(e),
                                 retry_context: Some(RetryContext::Download { info }),
-                            },
-                        ));
+                            }),
+                        );
                     }
                 }
             }
@@ -675,15 +687,17 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
         UpdateMessage::InstallResult(result) => {
             match result {
                 Ok(version) => {
-                    if let Some((id, _)) = state.dialog_windows.update {
-                        state.dialog_windows.update = Some((id, UpdateState::Complete { version }));
+                    if let Some((id, _)) = state.dialog_registry.update() {
+                        state
+                            .dialog_registry
+                            .register(id, DialogState::Update(UpdateState::Complete { version }));
                     }
                 }
                 Err(e) => {
                     tracing::error!("Installation failed: {}", e);
 
                     // Get info for retry if available (data is lost at this point)
-                    let retry_context = match &state.dialog_windows.update {
+                    let retry_context = match state.dialog_registry.update() {
                         Some((_, UpdateState::Installing { info })) => {
                             Some(RetryContext::Install {
                                 info: info.clone(),
@@ -693,14 +707,14 @@ fn handle_update_message(state: &mut AppState, msg: UpdateMessage) -> Task<Messa
                         _ => None,
                     };
 
-                    if let Some((id, _)) = state.dialog_windows.update {
-                        state.dialog_windows.update = Some((
+                    if let Some((id, _)) = state.dialog_registry.update() {
+                        state.dialog_registry.register(
                             id,
-                            UpdateState::Error {
+                            DialogState::Update(UpdateState::Error {
                                 error: UpdateErrorInfo::from_message(e),
                                 retry_context,
-                            },
-                        ));
+                            }),
+                        );
                     }
                 }
             }

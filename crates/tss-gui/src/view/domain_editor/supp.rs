@@ -36,6 +36,7 @@ use crate::theme::{
     ALPHA_LIGHT, BORDER_RADIUS_SM, ClinicalColors, MASTER_WIDTH, MAX_CHARS_SHORT_LABEL,
     MAX_CHARS_VARIABLE_NAME, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
 };
+use crate::util::matches_search;
 
 // =============================================================================
 // MAIN SUPP TAB VIEW
@@ -97,11 +98,7 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
         .iter()
         .filter(|col: &&String| {
             // Search filter
-            if !supp_ui.search_filter.is_empty()
-                && !col
-                    .to_lowercase()
-                    .contains(&supp_ui.search_filter.to_lowercase())
-            {
+            if !matches_search(col, &supp_ui.search_filter) {
                 return false;
             }
 
