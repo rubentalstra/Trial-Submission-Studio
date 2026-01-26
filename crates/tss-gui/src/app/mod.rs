@@ -28,7 +28,7 @@ use iced::{Element, Size, Subscription, Task, Theme};
 
 use crate::handler::{
     DialogHandler, DomainEditorHandler, ExportHandler, HomeHandler, MenuActionHandler,
-    MessageHandler, SourceAssignmentHandler,
+    MessageHandler, SourceAssignmentHandler, rebuild_validation_cache,
 };
 use crate::message::{Message, SettingsCategory};
 use crate::state::{AppState, DialogState, DialogType, Settings, ViewState};
@@ -64,9 +64,12 @@ impl App {
         };
 
         // Check for post-update status and show toast if update was successful
-        if let Some(toast) = check_update_status() {
+        let startup_toast_task = if let Some(toast) = check_update_status() {
             app.state.toast = Some(toast);
-        }
+            schedule_toast_dismiss()
+        } else {
+            Task::none()
+        };
 
         // Open the main window (daemon mode requires explicit window creation)
         // exit_on_close_request: false allows us to handle close events in our subscription
@@ -88,7 +91,7 @@ impl App {
         let init_menu = Task::perform(async {}, |_| Message::InitNativeMenu);
 
         // Chain the tasks
-        let startup = open_window.chain(init_menu);
+        let startup = open_window.chain(init_menu).chain(startup_toast_task);
         (app, startup)
     }
 
@@ -178,7 +181,7 @@ impl App {
                 );
                 self.state.toast =
                     Some(crate::component::feedback::toast::ToastState::warning(msg));
-                Task::none()
+                schedule_toast_dismiss()
             }
 
             // =================================================================
@@ -309,12 +312,14 @@ impl App {
 
                         // Check if there's a pending project restoration
                         // (when opening a .tss file, we need to apply saved mappings)
-                        if let Some((_, project)) = self.state.pending_project_restore.take() {
+                        let toast_task = if let Some((_, project)) =
+                            self.state.pending_project_restore.take()
+                        {
                             // Check for changed source files
                             let changed_files =
                                 crate::handler::project::detect_changed_source_files(&project);
 
-                            if !changed_files.is_empty() {
+                            let toast_task = if !changed_files.is_empty() {
                                 tracing::warn!(
                                     "Source files changed since last save: {:?}",
                                     changed_files
@@ -327,14 +332,21 @@ impl App {
                                 self.state.toast = Some(
                                     crate::component::feedback::toast::ToastState::warning(msg),
                                 );
-                            }
+                                schedule_toast_dismiss()
+                            } else {
+                                Task::none()
+                            };
 
                             // Restore mappings regardless (user can re-map if needed)
                             crate::handler::project::restore_project_mappings(
                                 &mut self.state,
                                 &project,
                             );
-                        }
+                            toast_task
+                        } else {
+                            Task::none()
+                        };
+                        return toast_task;
                     }
                     Err(err) => {
                         tracing::error!("Failed to load study: {}", err);
@@ -370,6 +382,12 @@ impl App {
                     && let Some(domain_state) = study.domain_mut(&domain)
                 {
                     domain_state.set_validation_cache(report);
+                }
+                // Rebuild validation UI cache since results changed
+                if let ViewState::DomainEditor(editor) = &self.state.view
+                    && editor.domain == domain
+                {
+                    rebuild_validation_cache(&mut self.state, &domain);
                 }
                 Task::none()
             }
@@ -469,11 +487,53 @@ impl App {
             }
             ToastMessage::Show(toast_state) => {
                 self.state.toast = Some(toast_state);
-                Task::none()
+                // Schedule auto-dismiss after 5 seconds (#187)
+                schedule_toast_dismiss()
             }
         }
     }
+}
 
+// =============================================================================
+// EVENT-DRIVEN TIMERS (#187, #193)
+// =============================================================================
+
+/// Duration before a toast auto-dismisses.
+const TOAST_DISMISS_DELAY: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// Duration before checking if auto-save should trigger (debounce).
+const AUTO_SAVE_DEBOUNCE_DELAY: std::time::Duration = std::time::Duration::from_secs(2);
+
+/// Schedule a one-shot timer to auto-dismiss the current toast.
+///
+/// This replaces the polling subscription with an event-driven pattern.
+/// Returns a Task that sleeps for 5 seconds then sends a Dismiss message.
+fn schedule_toast_dismiss() -> Task<Message> {
+    use crate::component::feedback::toast::ToastMessage;
+
+    Task::perform(
+        async {
+            tokio::time::sleep(TOAST_DISMISS_DELAY).await;
+        },
+        |()| Message::Toast(ToastMessage::Dismiss),
+    )
+}
+
+/// Schedule a one-shot timer to check if auto-save should trigger.
+///
+/// This replaces the polling subscription with an event-driven pattern.
+/// Multiple timers can be in-flight - `should_auto_save()` returns false
+/// if already saved or save in progress, making extra triggers harmless.
+pub fn schedule_auto_save_check() -> Task<Message> {
+    Task::perform(
+        async {
+            tokio::time::sleep(AUTO_SAVE_DEBOUNCE_DELAY).await;
+        },
+        |()| Message::AutoSaveTick,
+    )
+}
+
+impl App {
     /// Render the view for a specific window.
     ///
     /// This is a pure function that produces UI based on current state.

@@ -29,6 +29,48 @@ use detail::view_variable_detail;
 use master::{view_variable_list_content, view_variable_list_header};
 
 // =============================================================================
+// FILTER CACHE COMPUTATION
+// =============================================================================
+
+/// Compute the filtered variable indices based on current filter settings.
+///
+/// This is used both for cache rebuilding in handlers and as a fallback in views.
+pub fn compute_mapping_filtered_indices(
+    sdtm_domain: &tss_standards::SdtmDomain,
+    source: &crate::state::SourceDomainState,
+    mapping_ui: &crate::state::MappingUiState,
+) -> Vec<usize> {
+    sdtm_domain
+        .variables
+        .iter()
+        .enumerate()
+        .filter(|(_idx, var)| {
+            // Search filter - check name and label
+            let label = var.label.as_deref().unwrap_or("");
+            if !matches_search_any(&[&var.name, label], &mapping_ui.search_filter) {
+                return false;
+            }
+
+            // Unmapped filter
+            if mapping_ui.filter_unmapped {
+                let status = source.mapping.status(&var.name);
+                if !matches!(status, VariableStatus::Unmapped | VariableStatus::Suggested) {
+                    return false;
+                }
+            }
+
+            // Required filter
+            if mapping_ui.filter_required && var.core != Some(CoreDesignation::Required) {
+                return false;
+            }
+
+            true
+        })
+        .map(|(idx, _)| idx)
+        .collect()
+}
+
+// =============================================================================
 // MAIN MAPPING TAB VIEW
 // =============================================================================
 
@@ -74,38 +116,20 @@ pub fn view_mapping_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
 
     let sdtm_domain = source.mapping.domain();
 
-    // Apply filters
-    let filtered_indices: Vec<usize> = sdtm_domain
-        .variables
-        .iter()
-        .enumerate()
-        .filter(|(_idx, var)| {
-            // Search filter - check name and label
-            let label = var.label.as_deref().unwrap_or("");
-            if !matches_search_any(&[&var.name, label], &mapping_ui.search_filter) {
-                return false;
-            }
-
-            // Unmapped filter
-            if mapping_ui.filter_unmapped {
-                let status = source.mapping.status(&var.name);
-                if !matches!(status, VariableStatus::Unmapped | VariableStatus::Suggested) {
-                    return false;
-                }
-            }
-
-            // Required filter
-            if mapping_ui.filter_required && var.core != Some(CoreDesignation::Required) {
-                return false;
-            }
-
-            true
-        })
-        .map(|(idx, _)| idx)
-        .collect();
+    // Use cached indices if valid, otherwise compute on the fly
+    // (handlers are responsible for rebuilding the cache when filters change)
+    let computed_indices: Vec<usize>;
+    let filtered_indices: &[usize] = if mapping_ui.cache_valid {
+        &mapping_ui.filtered_indices
+    } else {
+        // Fallback: compute indices if cache is invalid
+        // This ensures correct behavior even if cache wasn't rebuilt
+        computed_indices = compute_mapping_filtered_indices(sdtm_domain, source, mapping_ui);
+        &computed_indices
+    };
 
     let master_header = view_variable_list_header(source, mapping_ui);
-    let master_content = view_variable_list_content(source, &filtered_indices, mapping_ui);
+    let master_content = view_variable_list_content(source, filtered_indices, mapping_ui);
     let detail = if let Some(selected_idx) = mapping_ui.selected_variable {
         if let Some(var) = sdtm_domain.variables.get(selected_idx) {
             view_variable_detail(state, source, var)

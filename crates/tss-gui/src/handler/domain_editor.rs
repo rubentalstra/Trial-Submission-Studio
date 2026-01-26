@@ -7,6 +7,7 @@
 use iced::Task;
 
 use super::MessageHandler;
+use crate::app::schedule_auto_save_check;
 use crate::message::Message;
 use crate::message::domain_editor::{
     DomainEditorMessage, MappingMessage, NormalizationMessage, PreviewMessage, SuppMessage,
@@ -51,6 +52,86 @@ impl MessageHandler<DomainEditorMessage> for DomainEditorHandler {
             DomainEditorMessage::Supp(supp_msg) => handle_supp_message(state, supp_msg),
         }
     }
+}
+
+// =============================================================================
+// HELPER: REBUILD FILTER CACHES
+// =============================================================================
+
+/// Rebuild the mapping filter cache after filters or data change.
+fn rebuild_mapping_cache(state: &mut AppState, domain_code: &str) {
+    let Some(domain) = state.study.as_ref().and_then(|s| s.domain(domain_code)) else {
+        return;
+    };
+
+    let Some(source) = domain.as_source() else {
+        return;
+    };
+
+    let ViewState::DomainEditor(editor) = &mut state.view else {
+        return;
+    };
+
+    // Rebuild the filtered indices using the helper from the view module
+    let sdtm_domain = source.mapping.domain();
+    let indices = crate::view::domain_editor::mapping::compute_mapping_filtered_indices(
+        sdtm_domain,
+        source,
+        &editor.mapping_ui,
+    );
+
+    editor.mapping_ui.filtered_indices = indices;
+    editor.mapping_ui.cache_valid = true;
+}
+
+/// Rebuild the SUPP filter cache after filters or data change.
+fn rebuild_supp_cache(state: &mut AppState, domain_code: &str) {
+    let Some(domain) = state.study.as_ref().and_then(|s| s.domain(domain_code)) else {
+        return;
+    };
+
+    let Some(source) = domain.as_source() else {
+        return;
+    };
+
+    let ViewState::DomainEditor(editor) = &mut state.view else {
+        return;
+    };
+
+    // Rebuild the filtered columns using the helper from the view module
+    let unmapped_columns = source.unmapped_columns();
+    let columns = crate::view::domain_editor::supp::compute_supp_filtered_columns(
+        &unmapped_columns,
+        source,
+        &editor.supp_ui,
+    );
+
+    editor.supp_ui.filtered_columns = columns;
+    editor.supp_ui.cache_valid = true;
+}
+
+/// Rebuild the validation filter cache after filter or results change.
+pub fn rebuild_validation_cache(state: &mut AppState, domain_code: &str) {
+    let Some(domain) = state.study.as_ref().and_then(|s| s.domain(domain_code)) else {
+        return;
+    };
+
+    let Some(report) = domain.validation_cache() else {
+        return;
+    };
+
+    let ViewState::DomainEditor(editor) = &mut state.view else {
+        return;
+    };
+
+    // Rebuild the filtered indices using the helper from the view module
+    let indices = crate::view::domain_editor::validation::compute_validation_filtered_indices(
+        report,
+        &editor.validation_ui,
+    );
+
+    editor.validation_ui.filtered_indices = indices;
+    editor.validation_ui.cache_valid = true;
 }
 
 // =============================================================================
@@ -108,6 +189,7 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
             if let ViewState::DomainEditor(editor) = &mut state.view {
                 editor.mapping_ui.search_filter = text;
             }
+            rebuild_mapping_cache(state, &domain_code);
             Task::none()
         }
 
@@ -115,6 +197,7 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
             if let ViewState::DomainEditor(editor) = &mut state.view {
                 editor.mapping_ui.search_filter.clear();
             }
+            rebuild_mapping_cache(state, &domain_code);
             Task::none()
         }
 
@@ -137,8 +220,11 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 editor.validation_dirty = true;
                 editor.preview_ui.is_rebuilding = true;
             }
-            // Automatically rebuild preview (#79)
-            trigger_preview_rebuild(state, &domain_code)
+            // Rebuild filter caches (mapping status may have changed)
+            rebuild_mapping_cache(state, &domain_code);
+            rebuild_supp_cache(state, &domain_code);
+            // Automatically rebuild preview (#79), schedule auto-save (#193)
+            trigger_preview_rebuild(state, &domain_code).chain(schedule_auto_save_check())
         }
 
         MappingMessage::ClearMapping(variable) => {
@@ -158,8 +244,11 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 editor.validation_dirty = true;
                 editor.preview_ui.is_rebuilding = true;
             }
-            // Automatically rebuild preview (#79)
-            trigger_preview_rebuild(state, &domain_code)
+            // Rebuild filter caches (mapping status may have changed)
+            rebuild_mapping_cache(state, &domain_code);
+            rebuild_supp_cache(state, &domain_code);
+            // Automatically rebuild preview (#79), schedule auto-save (#193)
+            trigger_preview_rebuild(state, &domain_code).chain(schedule_auto_save_check())
         }
 
         MappingMessage::ManualMap { variable, column } => {
@@ -181,8 +270,11 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 editor.validation_dirty = true;
                 editor.preview_ui.is_rebuilding = true;
             }
-            // Automatically rebuild preview (#79)
-            trigger_preview_rebuild(state, &domain_code)
+            // Rebuild filter caches (mapping status may have changed)
+            rebuild_mapping_cache(state, &domain_code);
+            rebuild_supp_cache(state, &domain_code);
+            // Automatically rebuild preview (#79), schedule auto-save (#193)
+            trigger_preview_rebuild(state, &domain_code).chain(schedule_auto_save_check())
         }
 
         MappingMessage::MarkNotCollected { variable } => {
@@ -225,8 +317,9 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 editor.validation_dirty = true;
                 editor.preview_ui.is_rebuilding = true;
             }
-            // Automatically rebuild preview (#79)
-            trigger_preview_rebuild(state, &domain_code)
+            rebuild_mapping_cache(state, &domain_code);
+            // Automatically rebuild preview (#79), schedule auto-save (#193)
+            trigger_preview_rebuild(state, &domain_code).chain(schedule_auto_save_check())
         }
 
         MappingMessage::NotCollectedCancel => {
@@ -266,8 +359,9 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 editor.validation_dirty = true;
                 editor.preview_ui.is_rebuilding = true;
             }
-            // Automatically rebuild preview (#79)
-            trigger_preview_rebuild(state, &domain_code)
+            rebuild_mapping_cache(state, &domain_code);
+            // Automatically rebuild preview (#79), schedule auto-save (#193)
+            trigger_preview_rebuild(state, &domain_code).chain(schedule_auto_save_check())
         }
 
         MappingMessage::MarkOmitted(variable) => {
@@ -287,8 +381,9 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 editor.validation_dirty = true;
                 editor.preview_ui.is_rebuilding = true;
             }
-            // Automatically rebuild preview (#79)
-            trigger_preview_rebuild(state, &domain_code)
+            rebuild_mapping_cache(state, &domain_code);
+            // Automatically rebuild preview (#79), schedule auto-save (#193)
+            trigger_preview_rebuild(state, &domain_code).chain(schedule_auto_save_check())
         }
 
         MappingMessage::ClearOmitted(variable) => {
@@ -308,14 +403,16 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
                 editor.validation_dirty = true;
                 editor.preview_ui.is_rebuilding = true;
             }
-            // Automatically rebuild preview (#79)
-            trigger_preview_rebuild(state, &domain_code)
+            rebuild_mapping_cache(state, &domain_code);
+            // Automatically rebuild preview (#79), schedule auto-save (#193)
+            trigger_preview_rebuild(state, &domain_code).chain(schedule_auto_save_check())
         }
 
         MappingMessage::FilterUnmappedToggled(enabled) => {
             if let ViewState::DomainEditor(editor) = &mut state.view {
                 editor.mapping_ui.filter_unmapped = enabled;
             }
+            rebuild_mapping_cache(state, &domain_code);
             Task::none()
         }
 
@@ -323,6 +420,7 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
             if let ViewState::DomainEditor(editor) = &mut state.view {
                 editor.mapping_ui.filter_required = enabled;
             }
+            rebuild_mapping_cache(state, &domain_code);
             Task::none()
         }
     }
@@ -421,6 +519,7 @@ fn handle_validation_message(state: &mut AppState, msg: ValidationMessage) -> Ta
                     }
                 };
             }
+            rebuild_validation_cache(state, &domain_code);
             Task::none()
         }
 
@@ -559,6 +658,7 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
             if let ViewState::DomainEditor(editor) = &mut state.view {
                 editor.supp_ui.search_filter = text;
             }
+            rebuild_supp_cache(state, &domain_code);
             Task::none()
         }
 
@@ -566,6 +666,7 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
             if let ViewState::DomainEditor(editor) = &mut state.view {
                 editor.supp_ui.filter_mode = mode;
             }
+            rebuild_supp_cache(state, &domain_code);
             Task::none()
         }
 
@@ -621,6 +722,7 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                 _ => None,
             };
 
+            let mut did_change = false;
             if let Some(col_name) = col
                 && let Some(source) = state
                     .study
@@ -634,11 +736,18 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                 }
                 config.action = SuppAction::Include;
                 state.dirty_tracker.mark_dirty();
+                did_change = true;
             }
             if let ViewState::DomainEditor(editor) = &mut state.view {
                 editor.supp_ui.edit_draft = None;
             }
-            Task::none()
+            rebuild_supp_cache(state, &domain_code);
+            // Schedule auto-save if data changed (#193)
+            if did_change {
+                schedule_auto_save_check()
+            } else {
+                Task::none()
+            }
         }
 
         SuppMessage::Skip => {
@@ -647,6 +756,7 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                 _ => None,
             };
 
+            let mut did_change = false;
             if let Some(col_name) = col
                 && let Some(source) = state
                     .study
@@ -657,11 +767,18 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
             {
                 config.action = SuppAction::Skip;
                 state.dirty_tracker.mark_dirty();
+                did_change = true;
             }
             if let ViewState::DomainEditor(editor) = &mut state.view {
                 editor.supp_ui.edit_draft = None;
             }
-            Task::none()
+            rebuild_supp_cache(state, &domain_code);
+            // Schedule auto-save if data changed (#193)
+            if did_change {
+                schedule_auto_save_check()
+            } else {
+                Task::none()
+            }
         }
 
         SuppMessage::UndoAction => {
@@ -670,6 +787,7 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                 _ => None,
             };
 
+            let mut did_change = false;
             if let Some(col_name) = col
                 && let Some(source) = state
                     .study
@@ -680,11 +798,18 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
             {
                 config.action = SuppAction::Pending;
                 state.dirty_tracker.mark_dirty();
+                did_change = true;
             }
             if let ViewState::DomainEditor(editor) = &mut state.view {
                 editor.supp_ui.edit_draft = None;
             }
-            Task::none()
+            rebuild_supp_cache(state, &domain_code);
+            // Schedule auto-save if data changed (#193)
+            if did_change {
+                schedule_auto_save_check()
+            } else {
+                Task::none()
+            }
         }
 
         SuppMessage::StartEdit => {
@@ -718,6 +843,7 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                 _ => (None, None),
             };
 
+            let mut did_change = false;
             if let (Some(col_name), Some(draft)) = (col, draft) {
                 if draft.qnam.trim().is_empty() || draft.qlabel.trim().is_empty() {
                     return Task::none();
@@ -739,12 +865,18 @@ fn handle_supp_message(state: &mut AppState, msg: SuppMessage) -> Task<Message> 
                         Some(draft.qeval)
                     };
                     state.dirty_tracker.mark_dirty();
+                    did_change = true;
                 }
             }
             if let ViewState::DomainEditor(editor) = &mut state.view {
                 editor.supp_ui.edit_draft = None;
             }
-            Task::none()
+            // Schedule auto-save if data changed (#193)
+            if did_change {
+                schedule_auto_save_check()
+            } else {
+                Task::none()
+            }
         }
 
         SuppMessage::CancelEdit => {

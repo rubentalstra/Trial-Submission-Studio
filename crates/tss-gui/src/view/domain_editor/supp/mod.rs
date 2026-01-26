@@ -34,6 +34,45 @@ use detail::build_detail_panel;
 use master::{build_master_content, build_master_header_pinned};
 
 // =============================================================================
+// FILTER CACHE COMPUTATION
+// =============================================================================
+
+/// Compute the filtered column names based on current filter settings.
+///
+/// This is used both for cache rebuilding in handlers and as a fallback in views.
+pub fn compute_supp_filtered_columns(
+    unmapped_columns: &[String],
+    source: &crate::state::SourceDomainState,
+    supp_ui: &crate::state::SuppUiState,
+) -> Vec<String> {
+    unmapped_columns
+        .iter()
+        .filter(|col: &&String| {
+            // Search filter
+            if !matches_search(col, &supp_ui.search_filter) {
+                return false;
+            }
+
+            // Action filter
+            let supp_config = source.supp_config.get(*col);
+            match supp_ui.filter_mode {
+                SuppFilterMode::All => true,
+                SuppFilterMode::Pending => {
+                    supp_config.is_none_or(|c| c.action == SuppAction::Pending)
+                }
+                SuppFilterMode::Included => {
+                    supp_config.is_some_and(|c| c.action == SuppAction::Include)
+                }
+                SuppFilterMode::Skipped => {
+                    supp_config.is_some_and(|c| c.action == SuppAction::Skip)
+                }
+            }
+        })
+        .cloned()
+        .collect()
+}
+
+// =============================================================================
 // MAIN SUPP TAB VIEW
 // =============================================================================
 
@@ -88,38 +127,22 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
         return view_all_mapped_state(domain_code);
     }
 
-    // Filter columns based on search and filter mode
-    let filtered: Vec<String> = unmapped_columns
-        .iter()
-        .filter(|col: &&String| {
-            // Search filter
-            if !matches_search(col, &supp_ui.search_filter) {
-                return false;
-            }
-
-            // Action filter
-            let supp_config = source.supp_config.get(*col);
-            match supp_ui.filter_mode {
-                SuppFilterMode::All => true,
-                SuppFilterMode::Pending => {
-                    supp_config.is_none_or(|c| c.action == SuppAction::Pending)
-                }
-                SuppFilterMode::Included => {
-                    supp_config.is_some_and(|c| c.action == SuppAction::Include)
-                }
-                SuppFilterMode::Skipped => {
-                    supp_config.is_some_and(|c| c.action == SuppAction::Skip)
-                }
-            }
-        })
-        .cloned()
-        .collect();
+    // Use cached columns if valid, otherwise compute on the fly
+    // (handlers are responsible for rebuilding the cache when filters change)
+    let computed_columns: Vec<String>;
+    let filtered: &[String] = if supp_ui.cache_valid {
+        &supp_ui.filtered_columns
+    } else {
+        // Fallback: compute columns if cache is invalid
+        computed_columns = compute_supp_filtered_columns(&unmapped_columns, source, supp_ui);
+        &computed_columns
+    };
 
     // Build master header (pinned at top)
     let master_header = build_master_header_pinned(supp_ui, filtered.len());
 
     // Build master content (scrollable column list)
-    let master_content = build_master_content(&filtered, source, supp_ui);
+    let master_content = build_master_content(filtered, source, supp_ui);
 
     // Build detail panel
     let detail = build_detail_panel(source, supp_ui, domain_code);

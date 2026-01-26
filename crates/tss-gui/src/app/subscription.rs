@@ -5,28 +5,29 @@
 //!
 //! # Subscription Overview
 //!
-//! | Subscription | Interval | Condition | Purpose |
-//! |--------------|----------|-----------|---------|
-//! | Keyboard | Continuous | Always | Global keyboard shortcuts |
-//! | System Theme | Continuous | Always | Track OS theme changes |
+//! | Subscription | Type | Condition | Purpose |
+//! |--------------|------|-----------|---------|
+//! | Keyboard | Event-driven | Always | Global keyboard shortcuts |
+//! | System Theme | Event-driven | Always | Track OS theme changes |
 //! | Menu (macOS) | 100ms poll | Always | Native menu bar events |
-//! | Window Close | Continuous | Always | Dialog window cleanup |
-//! | Toast Dismiss | 5 seconds | Toast visible | Auto-dismiss notifications |
-//! | Auto-Save | 500ms poll | Study loaded + enabled | Debounced project saves |
+//! | Window Close | Event-driven | Always | Dialog window cleanup |
+//! | Auto-Save | Event-driven | Study loaded + enabled | Debounced project saves |
+//!
+//! # Event-Driven Patterns (Issue #187, #193)
+//!
+//! Toast notifications and auto-save use one-shot Task::perform timers instead
+//! of polling subscriptions:
+//! - Toast: 5-second timer started when toast is shown
+//! - Auto-save: 2-second debounce timer started when changes are made
 //!
 //! # Architecture
 //!
 //! Subscriptions are batched together in `create_subscription()` and run
-//! concurrently. Conditional subscriptions (toast, auto-save) return
-//! `Subscription::none()` when their condition is not met, avoiding
-//! unnecessary polling.
+//! concurrently.
 
-use std::time::Duration;
-
-use iced::Subscription;
 use iced::keyboard;
 use iced::window;
-use iced::{system, time};
+use iced::{Subscription, system};
 
 use crate::message::Message;
 use crate::state::AppState;
@@ -38,16 +39,15 @@ use crate::state::AppState;
 /// - System theme changes for automatic theme switching
 /// - Native menu events (macOS only)
 /// - Window close events for dialog cleanup
-/// - Toast auto-dismiss timer (conditional)
-/// - Auto-save timer (conditional)
-pub fn create_subscription(state: &AppState) -> Subscription<Message> {
+///
+/// Note: Toast auto-dismiss and auto-save use Task::perform instead of
+/// polling subscriptions (see #187, #193).
+pub fn create_subscription(_state: &AppState) -> Subscription<Message> {
     Subscription::batch([
         keyboard_subscription(),
         system_theme_subscription(),
         menu_subscription(),
         window_close_subscription(),
-        toast_subscription(state),
-        auto_save_subscription(state),
     ])
 }
 
@@ -100,43 +100,6 @@ fn menu_subscription() -> Subscription<Message> {
 /// Runs continuously without polling.
 fn window_close_subscription() -> Subscription<Message> {
     window::close_requests().map(Message::DialogWindowClosed)
-}
-
-/// Toast auto-dismiss subscription.
-///
-/// When a toast notification is visible, polls every 5 seconds to
-/// trigger auto-dismissal. Returns no subscription when no toast exists.
-///
-/// # Conditional Behavior
-/// - Active: When `state.toast.is_some()`
-/// - Inactive: When no toast is displayed
-fn toast_subscription(state: &AppState) -> Subscription<Message> {
-    if state.toast.is_some() {
-        time::every(Duration::from_secs(5))
-            .map(|_| Message::Toast(crate::message::ToastMessage::Dismiss))
-    } else {
-        Subscription::none()
-    }
-}
-
-/// Auto-save subscription.
-///
-/// Polls every 500ms to check if an auto-save should trigger. The actual
-/// save only occurs if the dirty tracker indicates changes need saving.
-///
-/// # Conditional Behavior
-/// - Active: When auto-save is enabled AND a study is loaded
-/// - Inactive: When auto-save is disabled OR no study is loaded
-///
-/// The 500ms interval provides a balance between:
-/// - Responsiveness (saves happen within 500ms of idle threshold)
-/// - Efficiency (only 2 checks per second)
-fn auto_save_subscription(state: &AppState) -> Subscription<Message> {
-    if state.auto_save_config.enabled && state.study.is_some() {
-        time::every(Duration::from_millis(500)).map(|_| Message::AutoSaveTick)
-    } else {
-        Subscription::none()
-    }
 }
 
 #[cfg(test)]
