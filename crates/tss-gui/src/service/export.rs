@@ -18,8 +18,7 @@ use tss_submit::{NormalizationContext, execute_normalization};
 use tss_submit::{Severity, ValidationReport};
 
 use crate::state::{
-    DomainState, ExportFormat, ExportResult, SdtmIgVersion, SourceDomainState, SuppColumnConfig,
-    XptVersion,
+    DomainState, ExportFormat, ExportResult, SdtmIgVersion, SuppColumnConfig, XptVersion,
 };
 
 // =============================================================================
@@ -418,38 +417,28 @@ fn build_supp_domain_definition(
 // DOMAIN EXPORT DATA BUILDER
 // =============================================================================
 
-/// Build export data from a GUI domain.
+/// Build export data from a domain.
 ///
 /// Performs data transformation using the normalization pipeline
 /// and builds SUPP DataFrame if the domain has included SUPP columns.
 pub fn build_domain_export_data(
     code: &str,
-    gui_domain: &DomainState,
-    study_id: &str,
-    terminology: Option<&TerminologyRegistry>,
-) -> Result<DomainExportData, ExportError> {
-    build_source_domain_export_data(code, gui_domain, study_id, terminology)
-}
-
-/// Build export data from a source domain (mapped from CSV).
-fn build_source_domain_export_data(
-    code: &str,
-    source: &SourceDomainState,
+    domain: &DomainState,
     study_id: &str,
     terminology: Option<&TerminologyRegistry>,
 ) -> Result<DomainExportData, ExportError> {
     // Get CDISC domain definition from mapping state
-    let cdisc_domain = source.mapping.domain().clone();
+    let cdisc_domain = domain.mapping.domain().clone();
 
     // Build NormalizationContext from mapping state
-    let mappings: BTreeMap<String, String> = source
+    let mappings: BTreeMap<String, String> = domain
         .mapping
         .all_accepted()
         .iter()
         .map(|(target, (src, _)): (&String, &(String, f32))| (target.clone(), src.clone()))
         .collect();
 
-    let omitted = source.mapping.all_omitted().clone();
+    let omitted = domain.mapping.all_omitted().clone();
 
     let mut context = NormalizationContext::new(study_id, code)
         .with_mappings(mappings)
@@ -461,11 +450,11 @@ fn build_source_domain_export_data(
 
     // Execute normalization pipeline to transform source data
     let transformed_data =
-        execute_normalization(&source.source.data, &source.normalization, &context)
+        execute_normalization(&domain.source.data, &domain.normalization, &context)
             .map_err(|e| ExportError::for_domain(code, format!("Normalization failed: {}", e)))?;
 
     // Build SUPP DataFrame if there are included SUPP columns
-    let supp_data = build_supp_dataframe_from_source(code, source, study_id, &transformed_data)?;
+    let supp_data = build_supp_dataframe(code, domain, study_id, &transformed_data)?;
 
     Ok(DomainExportData {
         code: code.to_string(),
@@ -475,15 +464,15 @@ fn build_source_domain_export_data(
     })
 }
 
-/// Build SUPP DataFrame from source domain's supp_config.
-fn build_supp_dataframe_from_source(
+/// Build SUPP DataFrame from domain's supp_config.
+fn build_supp_dataframe(
     domain_code: &str,
-    source: &SourceDomainState,
+    domain: &DomainState,
     study_id: &str,
     transformed_data: &DataFrame,
 ) -> Result<Option<DataFrame>, ExportError> {
     // Get included SUPP columns
-    let included: Vec<(&String, &SuppColumnConfig)> = source
+    let included: Vec<(&String, &SuppColumnConfig)> = domain
         .supp_config
         .iter()
         .filter(|(_, config)| config.should_include())
@@ -493,7 +482,7 @@ fn build_supp_dataframe_from_source(
         return Ok(None);
     }
 
-    let source_df = &source.source.data;
+    let source_df = &domain.source.data;
     let row_count = source_df.height();
 
     // SUPP columns: STUDYID, RDOMAIN, USUBJID, IDVAR, IDVARVAL, QNAM, QLABEL, QVAL, QORIG, QEVAL
