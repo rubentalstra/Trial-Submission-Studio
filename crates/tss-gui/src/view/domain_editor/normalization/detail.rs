@@ -1,283 +1,31 @@
-//! Normalization tab view.
+//! Detail panel components for the Normalization tab.
 //!
-//! The normalization tab displays data normalization rules that are automatically
-//! inferred from SDTM variable metadata. Users can see what transformations
-//! will be applied to each variable during export.
-//!
-//! - **Left (Master)**: List of variables with their normalization types
-//! - **Right (Detail)**: Detailed view of the selected rule
+//! Contains the right-side detail view with metadata, transformation info,
+//! and before/after preview.
 
 use iced::widget::{Space, column, container, row, rule, scrollable, text};
-use iced::{Alignment, Border, Color, Element, Length, Theme};
+use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
+use polars::prelude::AnyValue;
 
-use crate::component::display::{EmptyState, MetadataCard, VariableListItem};
-use crate::component::layout::SplitView;
+use crate::component::display::MetadataCard;
 use crate::component::panels::DetailHeader;
-use crate::message::domain_editor::NormalizationMessage;
-use crate::message::{DomainEditorMessage, Message};
-use crate::state::{AppState, NormalizationUiState, SourceDomainState, ViewState};
+use crate::message::Message;
+use crate::state::SourceDomainState;
 use crate::theme::{
-    BORDER_RADIUS_SM, ClinicalColors, MASTER_WIDTH, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
+    BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
 };
-use crate::view::domain_editor::detail_no_selection;
 
 use tss_standards::TerminologyRegistry;
 use tss_submit::NormalizationType;
-use tss_submit::VariableStatus;
 
-// =============================================================================
-// MAIN VIEW
-// =============================================================================
-
-/// Render the normalization tab content using master-detail layout.
-pub fn view_normalization_tab<'a>(
-    state: &'a AppState,
-    domain_code: &'a str,
-) -> Element<'a, Message> {
-    let domain = match state.domain(domain_code) {
-        Some(d) => d,
-        None => {
-            return EmptyState::new(
-                container(lucide::circle_alert().size(48)).style(|theme: &Theme| {
-                    container::Style {
-                        text_color: Some(theme.clinical().text_disabled),
-                        ..Default::default()
-                    }
-                }),
-                "Domain not found",
-            )
-            .centered()
-            .view();
-        }
-    };
-
-    // Normalization only applies to source domains
-    let source = match domain.as_source() {
-        Some(s) => s,
-        None => {
-            return EmptyState::new(
-                container(lucide::info().size(48)).style(|theme: &Theme| container::Style {
-                    text_color: Some(theme.clinical().text_muted),
-                    ..Default::default()
-                }),
-                "Generated domains do not require normalization",
-            )
-            .centered()
-            .view();
-        }
-    };
-
-    let normalization_ui = match &state.view {
-        ViewState::DomainEditor(editor) => &editor.normalization_ui,
-        _ => return text("Invalid view state").into(),
-    };
-
-    let normalization = &source.normalization;
-    let sdtm_domain = source.mapping.domain();
-
-    let master_header = view_rules_header(normalization.rules.len(), &normalization.rules);
-    let master_content = view_rules_list(source, &normalization.rules, normalization_ui);
-    let detail = if let Some(selected_idx) = normalization_ui.selected_rule {
-        if let Some(rule) = normalization.rules.get(selected_idx) {
-            view_rule_detail(source, rule, sdtm_domain, state.terminology.as_ref())
-        } else {
-            detail_no_selection(
-                lucide::wand_sparkles().size(48),
-                "Select a Rule",
-                "Click a variable from the list to view its normalization details",
-            )
-        }
-    } else {
-        detail_no_selection(
-            lucide::wand_sparkles().size(48),
-            "Select a Rule",
-            "Click a variable from the list to view its normalization details",
-        )
-    };
-
-    SplitView::new(master_content, detail)
-        .master_width(MASTER_WIDTH)
-        .master_header(master_header)
-        .view()
-}
-
-// =============================================================================
-// MASTER PANEL
-// =============================================================================
-
-fn view_rules_header<'a>(
-    total_rules: usize,
-    rules: &[tss_submit::NormalizationRule],
-) -> Element<'a, Message> {
-    let title = text("Normalization Rules")
-        .size(14)
-        .style(|theme: &Theme| text::Style {
-            color: Some(theme.clinical().text_secondary),
-        });
-
-    let auto_count = rules
-        .iter()
-        .filter(|r| {
-            matches!(
-                r.transform_type,
-                NormalizationType::Constant
-                    | NormalizationType::UsubjidPrefix
-                    | NormalizationType::SequenceNumber
-            )
-        })
-        .count();
-    let transform_count = rules
-        .iter()
-        .filter(|r| {
-            matches!(
-                r.transform_type,
-                NormalizationType::Iso8601DateTime
-                    | NormalizationType::Iso8601Date
-                    | NormalizationType::Iso8601Duration
-                    | NormalizationType::StudyDay { .. }
-                    | NormalizationType::NumericConversion
-            )
-        })
-        .count();
-    let ct_count = rules
-        .iter()
-        .filter(|r| matches!(r.transform_type, NormalizationType::CtNormalization { .. }))
-        .count();
-
-    let stats = row![
-        text(format!("{} rules", total_rules))
-            .size(12)
-            .style(|theme: &Theme| text::Style {
-                color: Some(theme.clinical().text_secondary),
-            }),
-        Space::new().width(SPACING_SM),
-        text("•").size(12).style(|theme: &Theme| text::Style {
-            color: Some(theme.clinical().text_disabled),
-        }),
-        Space::new().width(SPACING_SM),
-        text(format!("{} auto", auto_count))
-            .size(11)
-            .style(|theme: &Theme| text::Style {
-                color: Some(theme.clinical().text_muted),
-            }),
-        Space::new().width(4.0),
-        text(format!("{} transform", transform_count))
-            .size(11)
-            .style(|theme: &Theme| text::Style {
-                color: Some(theme.clinical().text_muted),
-            }),
-        Space::new().width(4.0),
-        text(format!("{} CT", ct_count))
-            .size(11)
-            .style(|theme: &Theme| text::Style {
-                color: Some(theme.clinical().text_muted),
-            }),
-    ]
-    .align_y(Alignment::Center);
-
-    column![
-        title,
-        Space::new().height(SPACING_XS),
-        stats,
-        Space::new().height(SPACING_SM),
-        rule::horizontal(1),
-        Space::new().height(SPACING_SM),
-    ]
-    .into()
-}
-
-fn view_rules_list<'a>(
-    domain: &'a SourceDomainState,
-    rules: &'a [tss_submit::NormalizationRule],
-    ui_state: &'a NormalizationUiState,
-) -> Element<'a, Message> {
-    let mut items = column![].spacing(2.0);
-    for (idx, rule) in rules.iter().enumerate() {
-        let is_selected = ui_state.selected_rule == Some(idx);
-        let var_status = domain.mapping.status(&rule.target_variable);
-        items = items.push(view_rule_row(idx, rule, var_status, is_selected));
-    }
-    items.into()
-}
-
-fn view_rule_row<'a>(
-    index: usize,
-    rule: &'a tss_submit::NormalizationRule,
-    var_status: VariableStatus,
-    is_selected: bool,
-) -> Element<'a, Message> {
-    let icon_color = get_transform_color(&rule.transform_type);
-    let type_label = get_transform_short_label(&rule.transform_type);
-
-    // Build icon
-    let icon: Element<'a, Message> = match &rule.transform_type {
-        NormalizationType::Constant => lucide::hash().size(14).color(icon_color).into(),
-        NormalizationType::UsubjidPrefix => lucide::user().size(14).color(icon_color).into(),
-        NormalizationType::SequenceNumber => {
-            lucide::list_ordered().size(14).color(icon_color).into()
-        }
-        NormalizationType::Iso8601DateTime | NormalizationType::Iso8601Date => {
-            lucide::calendar().size(14).color(icon_color).into()
-        }
-        NormalizationType::Iso8601Duration => lucide::timer().size(14).color(icon_color).into(),
-        NormalizationType::StudyDay { .. } => {
-            lucide::calendar_days().size(14).color(icon_color).into()
-        }
-        NormalizationType::CtNormalization { .. } => {
-            lucide::list().size(14).color(icon_color).into()
-        }
-        NormalizationType::NumericConversion => {
-            lucide::calculator().size(14).color(icon_color).into()
-        }
-        NormalizationType::CopyDirect => lucide::copy().size(14).color(icon_color).into(),
-        _ => lucide::wand_sparkles().size(14).color(icon_color).into(),
-    };
-
-    // Status dot color - use semantic colors
-    let dot_color = get_status_dot_color(var_status);
-
-    let mut item = VariableListItem::new(
-        &rule.target_variable,
-        Message::DomainEditor(DomainEditorMessage::Normalization(
-            NormalizationMessage::RuleSelected(index),
-        )),
-    )
-    .leading_icon(icon)
-    .label(type_label)
-    .selected(is_selected);
-
-    // Add trailing status indicator as text for now
-    // (VariableListItem doesn't support arbitrary trailing content, but we can use the badge)
-    item = item.trailing_badge("●", dot_color);
-
-    item.view()
-}
-
-/// Get the status dot color based on variable status.
-/// This function returns a static Color that works across all themes.
-fn get_status_dot_color(var_status: VariableStatus) -> Color {
-    match var_status {
-        VariableStatus::Accepted | VariableStatus::Suggested => {
-            // Success green
-            Color::from_rgb(0.20, 0.78, 0.35)
-        }
-        VariableStatus::AutoGenerated => {
-            // Primary blue
-            Color::from_rgb(0.13, 0.53, 0.90)
-        }
-        _ => {
-            // Border default gray
-            Color::from_rgb(0.75, 0.75, 0.78)
-        }
-    }
-}
+use super::helpers::{get_transform_color, get_transform_explanation, get_transform_label};
 
 // =============================================================================
 // DETAIL PANEL
 // =============================================================================
 
-fn view_rule_detail<'a>(
+pub(super) fn view_rule_detail<'a>(
     domain: &'a SourceDomainState,
     rule: &'a tss_submit::NormalizationRule,
     sdtm_domain: &'a tss_standards::SdtmDomain,
@@ -778,7 +526,6 @@ fn view_preview_row<'a>(before: String, after: String) -> Element<'a, Message> {
 }
 
 fn get_unique_values(df: &polars::prelude::DataFrame, column: &str, limit: usize) -> Vec<String> {
-    use polars::prelude::*;
     use std::collections::HashSet;
     let mut seen = HashSet::new();
     let mut result = Vec::new();
@@ -836,95 +583,5 @@ fn simulate_transform(
             input.to_string()
         }
         _ => input.to_string(),
-    }
-}
-
-// =============================================================================
-// HELPERS
-// =============================================================================
-
-fn get_transform_color(transform_type: &NormalizationType) -> Color {
-    match transform_type {
-        NormalizationType::Constant => Color::from_rgb(0.50, 0.50, 0.55),
-        NormalizationType::UsubjidPrefix | NormalizationType::SequenceNumber => {
-            Color::from_rgb(0.13, 0.53, 0.90)
-        }
-        // Use semantic colors for better accessibility support
-        NormalizationType::Iso8601DateTime
-        | NormalizationType::Iso8601Date
-        | NormalizationType::Iso8601Duration => Color::from_rgb(0.25, 0.55, 0.85),
-        NormalizationType::StudyDay { .. } => Color::from_rgb(0.35, 0.65, 0.95),
-        NormalizationType::CtNormalization { .. } => Color::from_rgb(0.20, 0.78, 0.35),
-        NormalizationType::NumericConversion => Color::from_rgb(0.95, 0.65, 0.15),
-        NormalizationType::CopyDirect => Color::from_rgb(0.50, 0.50, 0.55),
-        _ => Color::from_rgb(0.50, 0.50, 0.55),
-    }
-}
-
-fn get_transform_short_label(transform_type: &NormalizationType) -> &'static str {
-    match transform_type {
-        NormalizationType::Constant => "Constant",
-        NormalizationType::UsubjidPrefix => "USUBJID",
-        NormalizationType::SequenceNumber => "Sequence",
-        NormalizationType::Iso8601DateTime => "DateTime",
-        NormalizationType::Iso8601Date => "Date",
-        NormalizationType::Iso8601Duration => "Duration",
-        NormalizationType::StudyDay { .. } => "Study Day",
-        NormalizationType::CtNormalization { .. } => "CT",
-        NormalizationType::NumericConversion => "Numeric",
-        NormalizationType::CopyDirect => "Copy",
-        _ => "Transform",
-    }
-}
-
-fn get_transform_label(transform_type: &NormalizationType) -> &'static str {
-    match transform_type {
-        NormalizationType::Constant => "Constant Value",
-        NormalizationType::UsubjidPrefix => "USUBJID Derivation",
-        NormalizationType::SequenceNumber => "Sequence Number",
-        NormalizationType::Iso8601DateTime => "ISO 8601 DateTime",
-        NormalizationType::Iso8601Date => "ISO 8601 Date",
-        NormalizationType::Iso8601Duration => "ISO 8601 Duration",
-        NormalizationType::StudyDay { .. } => "Study Day Calculation",
-        NormalizationType::CtNormalization { .. } => "Controlled Terminology",
-        NormalizationType::NumericConversion => "Numeric Conversion",
-        NormalizationType::CopyDirect => "Direct Copy",
-        _ => "Transform",
-    }
-}
-
-fn get_transform_explanation(transform_type: &NormalizationType) -> &'static str {
-    match transform_type {
-        NormalizationType::Constant => {
-            "This value is set automatically from study configuration (STUDYID) or domain code (DOMAIN)."
-        }
-        NormalizationType::UsubjidPrefix => {
-            "Unique Subject Identifier is derived by combining STUDYID with SUBJID in the format 'STUDYID-SUBJID'."
-        }
-        NormalizationType::SequenceNumber => {
-            "A unique sequence number is generated for each record within a subject (USUBJID) in this domain."
-        }
-        NormalizationType::Iso8601DateTime => {
-            "Date and time values are formatted to ISO 8601 standard (YYYY-MM-DDTHH:MM:SS)."
-        }
-        NormalizationType::Iso8601Date => {
-            "Date values are formatted to ISO 8601 standard (YYYY-MM-DD)."
-        }
-        NormalizationType::Iso8601Duration => {
-            "Duration values are formatted to ISO 8601 standard (PnYnMnDTnHnMnS or PnW)."
-        }
-        NormalizationType::StudyDay { .. } => {
-            "Study day is calculated as the number of days from the reference start date (RFSTDTC from DM)."
-        }
-        NormalizationType::CtNormalization { .. } => {
-            "Values are normalized against CDISC Controlled Terminology."
-        }
-        NormalizationType::NumericConversion => {
-            "Text values are converted to numeric (Float64) format."
-        }
-        NormalizationType::CopyDirect => {
-            "Value is copied directly from the source column without modification."
-        }
-        _ => "Custom transformation applied to this variable.",
     }
 }
