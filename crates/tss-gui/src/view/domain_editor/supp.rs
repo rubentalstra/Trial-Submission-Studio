@@ -37,6 +37,7 @@ use crate::theme::{
     MAX_CHARS_VARIABLE_NAME, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
 };
 use crate::util::matches_search;
+use crate::view::domain_editor::detail_no_selection_default;
 
 // =============================================================================
 // MAIN SUPP TAB VIEW
@@ -357,21 +358,11 @@ fn build_detail_panel(
                 (SuppAction::Skip, _) => build_skipped_view(source, col, domain_code),
             }
         }
-        None => build_no_selection_state(),
+        None => detail_no_selection_default(
+            "Select a Column",
+            "Click on a column in the list to configure its SUPP settings",
+        ),
     }
-}
-
-fn build_no_selection_state() -> Element<'static, Message> {
-    EmptyState::new(
-        container(lucide::mouse_pointer_click().size(48)).style(|theme: &Theme| container::Style {
-            text_color: Some(theme.clinical().text_disabled),
-            ..Default::default()
-        }),
-        "Select a Column",
-    )
-    .description("Click on a column in the list to configure its SUPP settings")
-    .centered()
-    .view()
 }
 
 // =============================================================================

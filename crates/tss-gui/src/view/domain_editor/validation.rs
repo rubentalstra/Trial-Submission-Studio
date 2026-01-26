@@ -21,6 +21,7 @@ use crate::theme::{
     ClinicalColors, MASTER_WIDTH, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, button_primary,
     button_secondary,
 };
+use crate::view::domain_editor::detail_no_selection_default;
 
 // =============================================================================
 // MAIN VALIDATION TAB VIEW
@@ -83,10 +84,16 @@ pub fn view_validation_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Ele
         if let Some(issue) = report.issues.get(selected_idx) {
             view_issue_detail(issue)
         } else {
-            view_no_selection()
+            detail_no_selection_default(
+                "Select an Issue",
+                "Choose a validation issue from the list to view details",
+            )
         }
     } else {
-        view_no_selection()
+        detail_no_selection_default(
+            "Select an Issue",
+            "Choose a validation issue from the list to view details",
+        )
     };
 
     SplitView::new(master_content, detail)
@@ -487,20 +494,6 @@ fn view_issue_actions<'a>(variable_name: &str) -> Element<'a, Message> {
 // =============================================================================
 // EMPTY STATES
 // =============================================================================
-
-/// Empty state when no issue is selected.
-fn view_no_selection<'a>() -> Element<'a, Message> {
-    EmptyState::new(
-        container(lucide::mouse_pointer_click().size(48)).style(|theme: &Theme| container::Style {
-            text_color: Some(theme.clinical().text_disabled),
-            ..Default::default()
-        }),
-        "Select an Issue",
-    )
-    .description("Choose a validation issue from the list to view details")
-    .centered()
-    .view()
-}
 
 /// Empty state when no validation has been run.
 fn view_no_validation_run<'a>() -> Element<'a, Message> {

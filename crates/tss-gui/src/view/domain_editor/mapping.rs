@@ -24,6 +24,7 @@ use crate::theme::{
     BORDER_RADIUS_SM, ClinicalColors, MASTER_WIDTH, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
     button_primary, button_secondary,
 };
+use crate::view::domain_editor::detail_no_selection_default;
 
 use tss_standards::CoreDesignation;
 use tss_submit::VariableStatus;
@@ -115,10 +116,16 @@ pub fn view_mapping_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
         if let Some(var) = sdtm_domain.variables.get(selected_idx) {
             view_variable_detail(state, source, var)
         } else {
-            view_no_selection()
+            detail_no_selection_default(
+                "Select a Variable",
+                "Click a variable from the list to view details and configure mapping",
+            )
         }
     } else {
-        view_no_selection()
+        detail_no_selection_default(
+            "Select a Variable",
+            "Click a variable from the list to view details and configure mapping",
+        )
     };
 
     SplitView::new(master_content, detail)
@@ -1119,21 +1126,4 @@ fn view_not_collected_inline_edit<'a>(
         row![save_btn, Space::new().width(SPACING_SM), cancel_btn],
     ]
     .into()
-}
-
-// =============================================================================
-// EMPTY STATE
-// =============================================================================
-
-fn view_no_selection<'a>() -> Element<'a, Message> {
-    EmptyState::new(
-        container(lucide::mouse_pointer_click().size(48)).style(|theme: &Theme| container::Style {
-            text_color: Some(theme.clinical().text_disabled),
-            ..Default::default()
-        }),
-        "Select a Variable",
-    )
-    .description("Click a variable from the list to view details and configure mapping")
-    .centered()
-    .view()
 }

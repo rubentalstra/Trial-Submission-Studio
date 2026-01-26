@@ -20,6 +20,7 @@ use crate::state::{AppState, NormalizationUiState, SourceDomainState, ViewState}
 use crate::theme::{
     BORDER_RADIUS_SM, ClinicalColors, MASTER_WIDTH, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
 };
+use crate::view::domain_editor::detail_no_selection;
 
 use tss_standards::TerminologyRegistry;
 use tss_submit::NormalizationType;
@@ -81,10 +82,18 @@ pub fn view_normalization_tab<'a>(
         if let Some(rule) = normalization.rules.get(selected_idx) {
             view_rule_detail(source, rule, sdtm_domain, state.terminology.as_ref())
         } else {
-            view_no_selection()
+            detail_no_selection(
+                lucide::wand_sparkles().size(48),
+                "Select a Rule",
+                "Click a variable from the list to view its normalization details",
+            )
         }
     } else {
-        view_no_selection()
+        detail_no_selection(
+            lucide::wand_sparkles().size(48),
+            "Select a Rule",
+            "Click a variable from the list to view its normalization details",
+        )
     };
 
     SplitView::new(master_content, detail)
@@ -828,23 +837,6 @@ fn simulate_transform(
         }
         _ => input.to_string(),
     }
-}
-
-// =============================================================================
-// EMPTY STATE
-// =============================================================================
-
-fn view_no_selection<'a>() -> Element<'a, Message> {
-    EmptyState::new(
-        container(lucide::wand_sparkles().size(48)).style(|theme: &Theme| container::Style {
-            text_color: Some(theme.clinical().text_disabled),
-            ..Default::default()
-        }),
-        "Select a Rule",
-    )
-    .description("Click a variable from the list to view its normalization details")
-    .centered()
-    .view()
 }
 
 // =============================================================================
