@@ -52,6 +52,7 @@ use crate::state::AppState;
 // Re-export handlers
 pub use dialog::DialogHandler;
 pub use domain_editor::DomainEditorHandler;
+pub use domain_editor::rebuild_validation_cache;
 pub use export::ExportHandler;
 pub use home::HomeHandler;
 pub use menu::MenuActionHandler;

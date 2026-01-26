@@ -29,6 +29,33 @@ use detail::view_issue_detail;
 use master::{view_issues_list, view_master_header};
 
 // =============================================================================
+// FILTER CACHE COMPUTATION
+// =============================================================================
+
+/// Compute the filtered issue indices based on current filter settings.
+///
+/// This is used both for cache rebuilding in handlers and as a fallback in views.
+pub fn compute_validation_filtered_indices(
+    report: &ValidationReport,
+    validation_ui: &crate::state::ValidationUiState,
+) -> Vec<usize> {
+    report
+        .issues
+        .iter()
+        .enumerate()
+        .filter(|(_, issue)| match validation_ui.severity_filter {
+            SeverityFilter::All => true,
+            SeverityFilter::Errors => {
+                matches!(issue.severity(), Severity::Error | Severity::Reject)
+            }
+            SeverityFilter::Warnings => matches!(issue.severity(), Severity::Warning),
+            SeverityFilter::Info => matches!(issue.severity(), Severity::Info),
+        })
+        .map(|(idx, _)| idx)
+        .collect()
+}
+
+// =============================================================================
 // MAIN VALIDATION TAB VIEW
 // =============================================================================
 
@@ -63,19 +90,21 @@ pub fn view_validation_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Ele
         return view_validation_passed();
     }
 
-    // Filter issues by severity
-    let filtered_issues: Vec<(usize, &Issue)> = report
-        .issues
+    // Use cached indices if valid, otherwise compute on the fly
+    // (handlers are responsible for rebuilding the cache when filters change)
+    let computed_indices: Vec<usize>;
+    let filtered_indices: &[usize] = if validation_ui.cache_valid {
+        &validation_ui.filtered_indices
+    } else {
+        // Fallback: compute indices if cache is invalid
+        computed_indices = compute_validation_filtered_indices(report, validation_ui);
+        &computed_indices
+    };
+
+    // Build filtered issues from cached indices
+    let filtered_issues: Vec<(usize, &Issue)> = filtered_indices
         .iter()
-        .enumerate()
-        .filter(|(_, issue)| match validation_ui.severity_filter {
-            SeverityFilter::All => true,
-            SeverityFilter::Errors => {
-                matches!(issue.severity(), Severity::Error | Severity::Reject)
-            }
-            SeverityFilter::Warnings => matches!(issue.severity(), Severity::Warning),
-            SeverityFilter::Info => matches!(issue.severity(), Severity::Info),
-        })
+        .filter_map(|&idx| report.issues.get(idx).map(|issue| (idx, issue)))
         .collect();
 
     // Master panel header

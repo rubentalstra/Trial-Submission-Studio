@@ -430,6 +430,20 @@ pub struct MappingUiState {
     /// Inline "Not Collected" editing state.
     /// Set when user is entering/editing a reason for marking a variable as not collected.
     pub not_collected_edit: Option<NotCollectedEdit>,
+    /// Cached filtered variable indices (for performance).
+    /// Contains indices into the domain's variables vec that pass the current filters.
+    pub filtered_indices: Vec<usize>,
+    /// Whether the filtered_indices cache is valid.
+    /// Set to false when filters or underlying data changes.
+    pub cache_valid: bool,
+}
+
+impl MappingUiState {
+    /// Invalidate the filter cache. Call when filters or underlying data changes.
+    #[inline]
+    pub fn invalidate_cache(&mut self) {
+        self.cache_valid = false;
+    }
 }
 
 /// State for inline "Not Collected" reason editing.
@@ -463,6 +477,20 @@ pub struct ValidationUiState {
     pub selected_issue: Option<usize>,
     /// Severity filter.
     pub severity_filter: SeverityFilter,
+    /// Cached filtered issue indices (for performance).
+    /// Contains indices into the validation report's issues vec that pass the current filter.
+    pub filtered_indices: Vec<usize>,
+    /// Whether the filtered_indices cache is valid.
+    /// Set to false when filter or validation results change.
+    pub cache_valid: bool,
+}
+
+impl ValidationUiState {
+    /// Invalidate the filter cache. Call when filter or validation results change.
+    #[inline]
+    pub fn invalidate_cache(&mut self) {
+        self.cache_valid = false;
+    }
 }
 
 /// Filter for validation issue severity.
@@ -542,6 +570,20 @@ pub struct SuppUiState {
     /// When Some, user is editing an included column.
     /// When None, showing read-only view or editing a pending column.
     pub edit_draft: Option<SuppEditDraft>,
+    /// Cached filtered column names (for performance).
+    /// Contains unmapped column names that pass the current filters.
+    pub filtered_columns: Vec<String>,
+    /// Whether the filtered_columns cache is valid.
+    /// Set to false when filters or underlying data changes.
+    pub cache_valid: bool,
+}
+
+impl SuppUiState {
+    /// Invalidate the filter cache. Call when filters or underlying data changes.
+    #[inline]
+    pub fn invalidate_cache(&mut self) {
+        self.cache_valid = false;
+    }
 }
 
 /// Draft state for editing an included SUPP column.
