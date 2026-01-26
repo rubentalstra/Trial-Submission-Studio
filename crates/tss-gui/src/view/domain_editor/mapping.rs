@@ -19,7 +19,7 @@ use crate::component::layout::SplitView;
 use crate::component::panels::{DetailHeader, FilterToggle};
 use crate::message::domain_editor::MappingMessage;
 use crate::message::{DomainEditorMessage, Message};
-use crate::state::{AppState, DomainState, MappingUiState, NotCollectedEdit, ViewState};
+use crate::state::{AppState, MappingUiState, NotCollectedEdit, SourceDomainState, ViewState};
 use crate::theme::{
     BORDER_RADIUS_SM, ClinicalColors, MASTER_WIDTH, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
     button_primary, button_secondary,
@@ -54,12 +54,28 @@ pub fn view_mapping_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
         }
     };
 
+    // Mapping only applies to source domains
+    let source = match domain.as_source() {
+        Some(s) => s,
+        None => {
+            return EmptyState::new(
+                container(lucide::info().size(48)).style(|theme: &Theme| container::Style {
+                    text_color: Some(theme.clinical().text_muted),
+                    ..Default::default()
+                }),
+                "Generated domains do not require mapping",
+            )
+            .centered()
+            .view();
+        }
+    };
+
     let mapping_ui = match &state.view {
         ViewState::DomainEditor(editor) => &editor.mapping_ui,
         _ => return text("Invalid view state").into(),
     };
 
-    let sdtm_domain = domain.mapping.domain();
+    let sdtm_domain = source.mapping.domain();
 
     // Apply filters
     let filtered_indices: Vec<usize> = sdtm_domain
@@ -83,7 +99,7 @@ pub fn view_mapping_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
 
             // Unmapped filter
             if mapping_ui.filter_unmapped {
-                let status = domain.mapping.status(&var.name);
+                let status = source.mapping.status(&var.name);
                 if !matches!(status, VariableStatus::Unmapped | VariableStatus::Suggested) {
                     return false;
                 }
@@ -99,11 +115,11 @@ pub fn view_mapping_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
         .map(|(idx, _)| idx)
         .collect();
 
-    let master_header = view_variable_list_header(domain, mapping_ui);
-    let master_content = view_variable_list_content(domain, &filtered_indices, mapping_ui);
+    let master_header = view_variable_list_header(source, mapping_ui);
+    let master_content = view_variable_list_content(source, &filtered_indices, mapping_ui);
     let detail = if let Some(selected_idx) = mapping_ui.selected_variable {
         if let Some(var) = sdtm_domain.variables.get(selected_idx) {
-            view_variable_detail(state, domain, var)
+            view_variable_detail(state, source, var)
         } else {
             view_no_selection()
         }
@@ -122,10 +138,10 @@ pub fn view_mapping_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
 // =============================================================================
 
 fn view_variable_list_header<'a>(
-    domain: &'a DomainState,
+    source: &'a SourceDomainState,
     mapping_ui: &'a MappingUiState,
 ) -> Element<'a, Message> {
-    let summary = domain.summary();
+    let summary = source.mapping.summary();
 
     // Search input
     let search_input = text_input("Search variables...", &mapping_ui.search_filter)
@@ -188,11 +204,11 @@ fn view_variable_list_header<'a>(
 }
 
 fn view_variable_list_content<'a>(
-    domain: &'a DomainState,
+    source: &'a SourceDomainState,
     filtered_indices: &[usize],
     mapping_ui: &'a MappingUiState,
 ) -> Element<'a, Message> {
-    let sdtm_domain = domain.mapping.domain();
+    let sdtm_domain = source.mapping.domain();
 
     if filtered_indices.is_empty() {
         return container(
@@ -221,7 +237,7 @@ fn view_variable_list_content<'a>(
     let mut items = column![].spacing(SPACING_XS);
     for &idx in filtered_indices {
         if let Some(var) = sdtm_domain.variables.get(idx) {
-            let status = domain.mapping.status(&var.name);
+            let status = source.mapping.status(&var.name);
             let is_selected = mapping_ui.selected_variable == Some(idx);
             items = items.push(view_variable_item(idx, var, status, is_selected));
         }
@@ -315,10 +331,10 @@ fn view_variable_item<'a>(
 
 fn view_variable_detail<'a>(
     state: &'a AppState,
-    domain: &'a DomainState,
+    source: &'a SourceDomainState,
     var: &'a tss_standards::SdtmVariable,
 ) -> Element<'a, Message> {
-    let status = domain.mapping.status(&var.name);
+    let status = source.mapping.status(&var.name);
     let not_collected_edit = match &state.view {
         ViewState::DomainEditor(editor) => editor.mapping_ui.not_collected_edit.as_ref(),
         _ => None,
@@ -334,10 +350,10 @@ fn view_variable_detail<'a>(
     } else {
         Space::new().height(0.0).into()
     };
-    let mapping_status = view_mapping_status(domain, var, status);
+    let mapping_status = view_mapping_status(source, var, status);
     let source_picker: Element<'a, Message> =
         if matches!(status, VariableStatus::Unmapped | VariableStatus::Suggested) {
-            view_source_column_picker(domain, var)
+            view_source_column_picker(source, var)
         } else {
             Space::new().height(0.0).into()
         };
@@ -350,7 +366,7 @@ fn view_variable_detail<'a>(
         _ if is_required && !matches!(status, VariableStatus::Accepted) => {
             Space::new().height(0.0).into()
         }
-        _ => view_mapping_actions(domain, var, status),
+        _ => view_mapping_actions(source, var, status),
     };
 
     scrollable(column![
@@ -401,7 +417,7 @@ fn view_variable_metadata<'a>(var: &'a tss_standards::SdtmVariable) -> Element<'
 }
 
 fn view_mapping_status<'a>(
-    domain: &'a DomainState,
+    source: &'a SourceDomainState,
     var: &'a tss_standards::SdtmVariable,
     status: VariableStatus,
 ) -> Element<'a, Message> {
@@ -413,7 +429,7 @@ fn view_mapping_status<'a>(
 
     let status_content: Element<'a, Message> = match status {
         VariableStatus::Accepted => {
-            if let Some((col, conf)) = domain.mapping.accepted(&var.name) {
+            if let Some((col, conf)) = source.mapping.accepted(&var.name) {
                 let conf_pct = (conf * 100.0) as u32;
                 StatusCard::new(container(lucide::circle_check().size(16)).style(
                     |theme: &Theme| container::Style {
@@ -441,7 +457,7 @@ fn view_mapping_status<'a>(
         .description("This variable is populated automatically by the system")
         .view(),
         VariableStatus::Suggested => {
-            if let Some((col, conf)) = domain.mapping.suggestion(&var.name) {
+            if let Some((col, conf)) = source.mapping.suggestion(&var.name) {
                 let conf_pct = (conf * 100.0) as u32;
                 let var_name = var.name.clone();
                 StatusCard::new(
@@ -469,7 +485,7 @@ fn view_mapping_status<'a>(
             }
         }
         VariableStatus::NotCollected => {
-            let reason = domain
+            let reason = source
                 .mapping
                 .not_collected_reason(&var.name)
                 .unwrap_or("No reason provided");
@@ -753,19 +769,19 @@ impl std::fmt::Display for ColumnOption {
 }
 
 fn view_source_column_picker<'a>(
-    domain: &'a DomainState,
+    source: &'a SourceDomainState,
     var: &'a tss_standards::SdtmVariable,
 ) -> Element<'a, Message> {
-    let source_columns = domain.source.column_names();
-    let mapped_columns: std::collections::BTreeSet<String> = domain
+    let source_columns = source.source.column_names();
+    let mapped_columns: std::collections::BTreeSet<String> = source
         .mapping
         .all_accepted()
         .values()
-        .map(|(col, _)| col.clone())
+        .map(|(col, _): &(String, f32)| col.clone())
         .collect();
 
-    let suggestion = domain.mapping.suggestion(&var.name);
-    let suggested_col: Option<&str> = suggestion.as_ref().map(|(col, _)| col.as_ref());
+    let suggestion = source.mapping.suggestion(&var.name);
+    let suggested_col: Option<&str> = suggestion.as_ref().map(|(col, _)| *col);
     let suggested_conf = suggestion.as_ref().map(|(_, conf)| (*conf * 100.0) as u32);
 
     let mut column_options: Vec<ColumnOption> = source_columns
@@ -887,7 +903,7 @@ fn view_source_column_picker<'a>(
 // =============================================================================
 
 fn view_mapping_actions<'a>(
-    domain: &'a DomainState,
+    source: &'a SourceDomainState,
     var: &'a tss_standards::SdtmVariable,
     status: VariableStatus,
 ) -> Element<'a, Message> {
@@ -927,7 +943,7 @@ fn view_mapping_actions<'a>(
 
     // Edit reason + Revert (if NotCollected)
     if matches!(status, VariableStatus::NotCollected) {
-        let current_reason = domain
+        let current_reason = source
             .mapping
             .not_collected_reason(&var.name)
             .unwrap_or("")

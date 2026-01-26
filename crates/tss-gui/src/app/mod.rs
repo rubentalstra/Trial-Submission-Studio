@@ -381,7 +381,7 @@ impl App {
                 if let Some(study) = &mut self.state.study
                     && let Some(domain_state) = study.domain_mut(&domain)
                 {
-                    domain_state.validation_cache = Some(report);
+                    domain_state.set_validation_cache(report);
                 }
                 Task::none()
             }

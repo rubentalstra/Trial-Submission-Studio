@@ -1,15 +1,17 @@
-//! Domain state - source data and mapping.
+//! Domain state - source-mapped domains.
 //!
-//! A domain represents a single SDTM dataset (e.g., DM, AE, LB).
-//! This module contains:
-//! - [`DomainSource`] - Immutable source data (CSV file + DataFrame)
-//! - [`DomainState`] - Domain with source data and mapping state
-//! - [`SuppColumnConfig`] - SUPP qualifier configuration for unmapped columns
+//! A domain represents a single SDTM dataset (e.g., DM, AE, LB, CO, RELREC).
+//! All domains are mapped from CSV source data.
+//!
+//! Per CDISC guidelines, CO, RELREC, RELSPEC, and RELSUB domains contain
+//! **collected data** and should be imported from source CSV files, not
+//! manually generated. (SDTM-IG v3.4 Sections 5.1, 8.2, 8.7, 8.8)
 
 use polars::prelude::{DataFrame, PlSmallStr};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use tss_standards::SdtmDomain;
 use tss_submit::MappingState;
 use tss_submit::{NormalizationPipeline, Severity, ValidationReport, infer_normalization_rules};
 
@@ -178,39 +180,26 @@ impl DomainSource {
 }
 
 // =============================================================================
-// DOMAIN (Source + Mapping)
+// DOMAIN STATE
 // =============================================================================
 
-/// A single SDTM domain with source data and mapping state.
+/// Type alias for backwards compatibility.
+/// All domains are now source-mapped domains.
+pub type DomainState = SourceDomainState;
+
+// =============================================================================
+// SOURCE DOMAIN STATE
+// =============================================================================
+
+/// State for domains mapped from source CSV files.
 ///
-/// # Design Notes
-///
-/// - **Normalization pipeline is computed once** - The pipeline is derived from
-///   the SDTM domain metadata when the domain is created. It defines what
-///   transformations will be applied to each variable during export.
-///
-/// - **Validation cache persists across navigation** - Stored here so it survives
-///   view changes. Use `validation_summary()` for quick stats.
-///
-/// - **Mapping state is from `tss_map`** - The core mapping logic lives in the
-///   `tss_map` crate. This struct just holds the state.
-///
-/// # Example
-///
-/// ```ignore
-/// let domain = DomainState::new(source, mapping);
-///
-/// // Check mapping status
-/// let summary = domain.mapping.summary();
-/// println!("Mapped: {}/{}", summary.mapped, summary.total_variables);
-///
-/// // Check validation (if run)
-/// if let Some((warnings, errors)) = domain.validation_summary() {
-///     println!("Issues: {} warnings, {} errors", warnings, errors);
-/// }
-/// ```
+/// This contains all the data needed for the mapping/normalization workflow:
+/// - Source data from CSV
+/// - Mapping state (which source columns map to which CDISC variables)
+/// - Normalization pipeline (transformations to apply during export)
+/// - SUPP configuration for unmapped columns
 #[derive(Clone)]
-pub struct DomainState {
+pub struct SourceDomainState {
     /// Immutable source data (CSV).
     pub source: DomainSource,
 
@@ -231,8 +220,8 @@ pub struct DomainState {
     pub validation_cache: Option<ValidationReport>,
 }
 
-impl DomainState {
-    /// Create a new domain.
+impl SourceDomainState {
+    /// Create a new source domain.
     ///
     /// Automatically infers the normalization pipeline from the SDTM domain
     /// metadata. This pipeline defines what transformations will be applied
@@ -248,6 +237,38 @@ impl DomainState {
             supp_config: HashMap::new(),
             validation_cache: None,
         }
+    }
+
+    /// Get display name: "Demographics" or fallback to code "DM".
+    pub fn display_name(&self, code: &str) -> String {
+        match &self.source.label {
+            Some(label) => label.to_string(),
+            None => code.to_string(),
+        }
+    }
+
+    /// Get row count from source data.
+    #[inline]
+    pub fn row_count(&self) -> usize {
+        self.source.row_count()
+    }
+
+    /// Get unmapped source columns (for SUPP configuration).
+    ///
+    /// Returns columns that are not mapped to any SDTM variable.
+    pub fn unmapped_columns(&self) -> Vec<String> {
+        let mapped_columns: std::collections::BTreeSet<_> = self
+            .mapping
+            .all_accepted()
+            .values()
+            .map(|(col, _)| col.as_str())
+            .collect();
+
+        self.source
+            .column_names()
+            .into_iter()
+            .filter(|col| !mapped_columns.contains(col.as_str()))
+            .collect()
     }
 
     /// Get validation summary as (warnings, errors) count.
@@ -270,51 +291,59 @@ impl DomainState {
         })
     }
 
-    /// Clear validation cache (call when mapping/normalization changes).
+    /// Get the cached validation report.
+    pub fn validation_cache(&self) -> Option<&ValidationReport> {
+        self.validation_cache.as_ref()
+    }
+
+    /// Set the validation cache.
+    pub fn set_validation_cache(&mut self, report: ValidationReport) {
+        self.validation_cache = Some(report);
+    }
+
+    /// Clear validation cache (call when data changes).
     pub fn invalidate_validation(&mut self) {
         self.validation_cache = None;
     }
 
-    /// Get display name: "Demographics" or fallback to code "DM".
-    pub fn display_name(&self, code: &str) -> String {
-        match &self.source.label {
-            Some(label) => label.to_string(),
-            None => code.to_string(),
-        }
-    }
-
-    /// Get row count from source data.
-    #[inline]
-    pub fn row_count(&self) -> usize {
-        self.source.row_count()
-    }
-
     /// Get mapping summary.
-    #[inline]
     pub fn summary(&self) -> tss_submit::MappingSummary {
         self.mapping.summary()
     }
 
-    /// Get unmapped source columns (for SUPP configuration).
-    ///
-    /// Returns columns that are not mapped to any SDTM variable.
-    pub fn unmapped_columns(&self) -> Vec<String> {
-        let mapped_columns: std::collections::BTreeSet<_> = self
-            .mapping
-            .all_accepted()
-            .values()
-            .map(|(col, _)| col.as_str())
-            .collect();
+    /// Get the domain label (if set).
+    pub fn label(&self) -> Option<&str> {
+        self.source.label.as_deref()
+    }
 
-        self.source
-            .column_names()
-            .into_iter()
-            .filter(|col| !mapped_columns.contains(col.as_str()))
-            .collect()
+    /// Get the DataFrame for this domain.
+    pub fn data(&self) -> &Arc<DataFrame> {
+        &self.source.data
+    }
+
+    /// Get the CDISC domain definition.
+    pub fn definition(&self) -> &SdtmDomain {
+        self.mapping.domain()
+    }
+
+    /// Check if this is a source-mapped domain (always true now).
+    #[inline]
+    pub fn is_source(&self) -> bool {
+        true
+    }
+
+    /// Get as source domain (returns self for backwards compatibility).
+    pub fn as_source(&self) -> Option<&SourceDomainState> {
+        Some(self)
+    }
+
+    /// Get as mutable source domain (returns self for backwards compatibility).
+    pub fn as_source_mut(&mut self) -> Option<&mut SourceDomainState> {
+        Some(self)
     }
 }
 
-impl std::fmt::Debug for DomainState {
+impl std::fmt::Debug for SourceDomainState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DomainState")
             .field("source", &self.source.file_path)

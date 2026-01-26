@@ -19,7 +19,7 @@ use polars::prelude::DataFrame;
 use crate::component::display::{EmptyState, ErrorState, LoadingState};
 use crate::message::domain_editor::PreviewMessage;
 use crate::message::{DomainEditorMessage, Message};
-use crate::state::{AppState, DomainState, PreviewUiState, ViewState};
+use crate::state::{AppState, PreviewUiState, SourceDomainState, ViewState};
 use crate::theme::{
     BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, ThemeConfig,
     button_ghost, button_primary,
@@ -96,6 +96,25 @@ pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
         }
     };
 
+    // Preview only applies to source domains
+    let source = match domain.as_source() {
+        Some(s) => s,
+        None => {
+            let theme = config.to_theme(false);
+            let text_muted = theme.clinical().text_muted;
+            return container(
+                text("Generated domains do not have preview")
+                    .size(14)
+                    .color(text_muted),
+            )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Shrink)
+            .center_y(Length::Shrink)
+            .into();
+        }
+    };
+
     // Get preview UI state and cached DataFrame
     let (preview_cache, preview_ui) = match &state.view {
         ViewState::DomainEditor(editor) => (&editor.preview_cache, &editor.preview_ui),
@@ -111,7 +130,7 @@ pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
     } else if let Some(error) = &preview_ui.error {
         view_error_state(error.as_str())
     } else if let Some(df) = preview_cache {
-        view_data_table(config, df, preview_ui, domain)
+        view_data_table(config, df, preview_ui, source)
     } else {
         view_empty_state(config)
     };
@@ -247,7 +266,7 @@ fn view_data_table<'a>(
     config: &ThemeConfig,
     df: &DataFrame,
     preview_ui: &PreviewUiState,
-    domain: &DomainState,
+    source: &SourceDomainState,
 ) -> Element<'a, Message> {
     let theme = config.to_theme(false);
     let bg_secondary = theme.clinical().background_secondary;
@@ -263,7 +282,7 @@ fn view_data_table<'a>(
     let page_size = preview_ui.rows_per_page;
 
     // Get the set of "Not Collected" variable names
-    let not_collected_cols: HashSet<&str> = domain
+    let not_collected_cols: HashSet<&str> = source
         .mapping
         .all_not_collected()
         .keys()

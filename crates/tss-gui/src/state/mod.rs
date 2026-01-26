@@ -34,7 +34,9 @@ mod view_state;
 pub use dialog::{DialogRegistry, DialogState, ExportProgressState, PendingAction};
 // Re-export DialogType from dialog module (remove local definition)
 pub use dialog::DialogType;
-pub use domain_state::{DomainSource, DomainState, SuppAction, SuppColumnConfig, SuppOrigin};
+pub use domain_state::{
+    DomainSource, DomainState, SourceDomainState, SuppAction, SuppColumnConfig, SuppOrigin,
+};
 pub use settings::{
     AssignmentMode, ExportFormat, RecentProject, SdtmIgVersion, Settings, WorkflowType, XptVersion,
 };

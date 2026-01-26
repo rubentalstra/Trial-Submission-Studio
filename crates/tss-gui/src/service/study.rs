@@ -2,12 +2,15 @@
 //!
 //! Background tasks for creating studies from user assignments.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
+
+use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
+use tss_standards::TerminologyRegistry;
+use tss_standards::sdtm::get_reciprocal_srel;
 
 use crate::error::GuiError;
 use crate::state::{DomainSource, DomainState, Study, WorkflowMode};
-use tss_standards::TerminologyRegistry;
 
 /// Create a study from manual source-to-domain assignments.
 ///
@@ -88,9 +91,10 @@ pub async fn create_study_from_assignments(
             .unwrap_or_default()
             .to_string();
 
-        let (df, _headers) = tss_ingest::read_csv_table(&file_path, header_rows).map_err(|e| {
-            GuiError::domain_load(&domain_code, format!("Failed to load {}: {}", file_stem, e))
-        })?;
+        let (mut df, _headers) =
+            tss_ingest::read_csv_table(&file_path, header_rows).map_err(|e| {
+                GuiError::domain_load(&domain_code, format!("Failed to load {}: {}", file_stem, e))
+            })?;
 
         // Find domain in IG
         let ig_domain = ig_domains
@@ -101,6 +105,18 @@ pub async fn create_study_from_assignments(
             tracing::warn!("Domain {} not found in IG, skipping", domain_code);
             continue;
         };
+
+        // RELSUB: Auto-generate missing reciprocal relationships per SDTM-IG Section 8.7
+        if domain_code.eq_ignore_ascii_case("RELSUB") {
+            let (augmented_df, added_count) = ensure_relsub_bidirectional(df);
+            df = augmented_df;
+            if added_count > 0 {
+                tracing::info!(
+                    "Auto-generated {} reciprocal relationship(s) for RELSUB domain",
+                    added_count
+                );
+            }
+        }
 
         // Create source
         let source = DomainSource::new(file_path, df.clone(), ig_domain.label.clone());
@@ -134,4 +150,170 @@ pub async fn create_study_from_assignments(
     }
 
     Ok((study, terminology))
+}
+
+// =============================================================================
+// RELSUB BIDIRECTIONAL AUTO-GENERATION
+// =============================================================================
+
+/// Post-process RELSUB domain after import: auto-generate missing reciprocal relationships.
+///
+/// Per SDTM-IG v3.4 Section 8.7 Assumption 7:
+/// "Every relationship between 2 study subjects is represented in RELSUB
+/// as 2 directional relationships: (1) with the first subject's identifier
+/// in USUBJID and the second subject's identifier in RSUBJID, and (2) with
+/// the second subject's identifier in USUBJID and the first subject's
+/// identifier in RSUBJID."
+///
+/// # Example
+///
+/// Input CSV with only:
+/// ```text
+/// STUDYID,USUBJID,RSUBJID,SREL
+/// STUDY1,SUBJ-001,SUBJ-002,MOTHER, BIOLOGICAL
+/// ```
+///
+/// Output DataFrame will have 2 rows:
+/// ```text
+/// STUDY1,SUBJ-001,SUBJ-002,MOTHER, BIOLOGICAL
+/// STUDY1,SUBJ-002,SUBJ-001,CHILD, BIOLOGICAL
+/// ```
+pub fn ensure_relsub_bidirectional(df: DataFrame) -> (DataFrame, usize) {
+    // Check if this is a RELSUB-like DataFrame with required columns
+    let has_usubjid = df.column("USUBJID").is_ok();
+    let has_rsubjid = df.column("RSUBJID").is_ok();
+    let has_srel = df.column("SREL").is_ok();
+
+    if !has_usubjid || !has_rsubjid || !has_srel {
+        return (df, 0);
+    }
+
+    // Get STUDYID and DOMAIN if present for the new rows
+    let studyid_col = df.column("STUDYID").ok();
+    let domain_col = df.column("DOMAIN").ok();
+
+    let usubjid_col = df.column("USUBJID").expect("USUBJID column exists");
+    let rsubjid_col = df.column("RSUBJID").expect("RSUBJID column exists");
+    let srel_col = df.column("SREL").expect("SREL column exists");
+
+    // Build set of existing relationships
+    let mut existing: HashSet<(String, String)> = HashSet::new();
+
+    for i in 0..df.height() {
+        let usubjid = get_string_value(usubjid_col, i);
+        let rsubjid = get_string_value(rsubjid_col, i);
+        existing.insert((usubjid, rsubjid));
+    }
+
+    // Find missing reciprocals
+    let mut new_rows: Vec<(String, String, String, String, String)> = Vec::new(); // (studyid, domain, usubjid, rsubjid, srel)
+
+    for i in 0..df.height() {
+        let usubjid = get_string_value(usubjid_col, i);
+        let rsubjid = get_string_value(rsubjid_col, i);
+        let srel = get_string_value(srel_col, i);
+
+        let reverse_key = (rsubjid.clone(), usubjid.clone());
+
+        // Only add reciprocal if:
+        // 1. The reverse relationship doesn't exist
+        // 2. We can find a reciprocal SREL term
+        if !existing.contains(&reverse_key)
+            && let Some(reciprocal_srel) = get_reciprocal_srel(&srel)
+        {
+            let studyid = studyid_col
+                .map(|c| get_string_value(c, i))
+                .unwrap_or_default();
+            let domain = domain_col
+                .map(|c| get_string_value(c, i))
+                .unwrap_or_else(|| "RELSUB".to_string());
+
+            new_rows.push((
+                studyid,
+                domain,
+                rsubjid.clone(),
+                usubjid.clone(),
+                reciprocal_srel.to_string(),
+            ));
+            existing.insert(reverse_key);
+        }
+    }
+
+    let added_count = new_rows.len();
+
+    if new_rows.is_empty() {
+        return (df, 0);
+    }
+
+    // Build new DataFrame with original + new rows
+    let original_height = df.height();
+    let new_height = original_height + new_rows.len();
+
+    // Extract original columns as vectors and append new values
+    let mut studyid_vec: Vec<String> = (0..original_height)
+        .map(|i| {
+            studyid_col
+                .map(|c| get_string_value(c, i))
+                .unwrap_or_default()
+        })
+        .collect();
+    let mut domain_vec: Vec<String> = (0..original_height)
+        .map(|i| {
+            domain_col
+                .map(|c| get_string_value(c, i))
+                .unwrap_or_else(|| "RELSUB".to_string())
+        })
+        .collect();
+    let mut usubjid_vec: Vec<String> = (0..original_height)
+        .map(|i| get_string_value(usubjid_col, i))
+        .collect();
+    let mut rsubjid_vec: Vec<String> = (0..original_height)
+        .map(|i| get_string_value(rsubjid_col, i))
+        .collect();
+    let mut srel_vec: Vec<String> = (0..original_height)
+        .map(|i| get_string_value(srel_col, i))
+        .collect();
+
+    // Append new rows
+    for (studyid, domain, usubjid, rsubjid, srel) in new_rows {
+        studyid_vec.push(studyid);
+        domain_vec.push(domain);
+        usubjid_vec.push(usubjid);
+        rsubjid_vec.push(rsubjid);
+        srel_vec.push(srel);
+    }
+
+    // Build new DataFrame
+    let new_df = DataFrame::new(vec![
+        Series::new("STUDYID".into(), studyid_vec).into(),
+        Series::new("DOMAIN".into(), domain_vec).into(),
+        Series::new("USUBJID".into(), usubjid_vec).into(),
+        Series::new("RSUBJID".into(), rsubjid_vec).into(),
+        Series::new("SREL".into(), srel_vec).into(),
+    ]);
+
+    match new_df {
+        Ok(df) => {
+            tracing::info!(
+                "Added {} reciprocal relationship(s) to RELSUB (total: {} rows)",
+                added_count,
+                new_height
+            );
+            (df, added_count)
+        }
+        Err(e) => {
+            tracing::warn!("Failed to create augmented RELSUB DataFrame: {}", e);
+            (df, 0)
+        }
+    }
+}
+
+/// Helper to extract string value from a column at a given row index.
+fn get_string_value(col: &Column, idx: usize) -> String {
+    match col.get(idx) {
+        Ok(AnyValue::String(s)) => s.to_string(),
+        Ok(AnyValue::StringOwned(s)) => s.to_string(),
+        Ok(v) => v.to_string(),
+        Err(_) => String::new(),
+    }
 }

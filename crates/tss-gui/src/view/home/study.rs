@@ -169,8 +169,11 @@ fn view_path_info<'a>(study: &Study) -> Element<'a, Message> {
 fn view_domains<'a>(state: &'a AppState, study: &'a Study) -> Element<'a, Message> {
     let domain_codes = study.domain_codes_dm_first();
 
+    // Count domains
+    let domain_count = domain_codes.len();
+
     // Section header with domain count
-    let domain_count_str = format!("{}", domain_codes.len());
+    let domain_count_str = format!("{}", domain_count);
     let header = row![
         text("Domains").size(16).style(|theme: &Theme| text::Style {
             color: Some(theme.clinical().text_secondary),
