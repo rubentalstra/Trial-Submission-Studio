@@ -420,30 +420,15 @@ fn build_supp_domain_definition(
 
 /// Build export data from a GUI domain.
 ///
-/// For source domains: performs data transformation using the normalization pipeline
+/// Performs data transformation using the normalization pipeline
 /// and builds SUPP DataFrame if the domain has included SUPP columns.
-///
-/// For generated domains: uses the pre-built data directly (no normalization/SUPP).
 pub fn build_domain_export_data(
     code: &str,
     gui_domain: &DomainState,
     study_id: &str,
     terminology: Option<&TerminologyRegistry>,
 ) -> Result<DomainExportData, ExportError> {
-    match gui_domain {
-        DomainState::Source(source) => {
-            build_source_domain_export_data(code, source, study_id, terminology)
-        }
-        DomainState::Generated(generated) => {
-            // Generated domains have pre-built data ready for export
-            Ok(DomainExportData {
-                code: code.to_string(),
-                definition: generated.definition.clone(),
-                data: (*generated.data).clone(),
-                supp_data: None, // Generated domains don't have SUPP
-            })
-        }
-    }
+    build_source_domain_export_data(code, gui_domain, study_id, terminology)
 }
 
 /// Build export data from a source domain (mapped from CSV).

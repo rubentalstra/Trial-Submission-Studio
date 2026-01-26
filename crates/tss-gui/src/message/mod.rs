@@ -12,7 +12,6 @@
 pub mod dialog;
 pub mod domain_editor;
 pub mod export;
-pub mod generated_domains;
 pub mod home;
 pub mod menu;
 pub mod source_assignment;
@@ -39,11 +38,6 @@ pub use dialog::{
 };
 pub use domain_editor::DomainEditorMessage;
 pub use export::ExportMessage;
-pub use generated_domains::{
-    CoBuilderState, CoMessage, GeneratedDomainBuilderState, GeneratedDomainMessage,
-    RelrecBuilderState, RelrecMessage, RelspecBuilderState, RelspecMessage, RelsubBuilderState,
-    RelsubMessage,
-};
 pub use home::HomeMessage;
 pub use source_assignment::SourceAssignmentMessage;
 
@@ -99,9 +93,6 @@ pub enum Message {
 
     /// Export view messages.
     Export(ExportMessage),
-
-    /// Generated domain builder messages (CO, RELREC, RELSPEC, RELSUB).
-    GeneratedDomain(GeneratedDomainMessage),
 
     // =========================================================================
     // Project persistence

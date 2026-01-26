@@ -8,7 +8,7 @@ use iced_fonts::lucide;
 
 use crate::component::display::DomainCard;
 use crate::message::{HomeMessage, Message};
-use crate::state::{AppState, GeneratedDomainType, Study, WorkflowMode};
+use crate::state::{AppState, Study, WorkflowMode};
 use crate::theme::{
     BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL,
     button_primary, button_secondary,
@@ -169,21 +169,11 @@ fn view_path_info<'a>(study: &Study) -> Element<'a, Message> {
 fn view_domains<'a>(state: &'a AppState, study: &'a Study) -> Element<'a, Message> {
     let domain_codes = study.domain_codes_dm_first();
 
-    // Count source domains and generated domains that have data
-    let source_count = domain_codes.len();
-    let generated_with_data = GeneratedDomainType::ALL
-        .iter()
-        .filter(|dt| {
-            study
-                .domain(dt.code())
-                .map(|d| d.row_count() > 0)
-                .unwrap_or(false)
-        })
-        .count();
-    let total_count = source_count + generated_with_data;
+    // Count domains
+    let domain_count = domain_codes.len();
 
     // Section header with domain count
-    let domain_count_str = format!("{}", total_count);
+    let domain_count_str = format!("{}", domain_count);
     let header = row![
         text("Domains").size(16).style(|theme: &Theme| text::Style {
             color: Some(theme.clinical().text_secondary),
@@ -208,7 +198,7 @@ fn view_domains<'a>(state: &'a AppState, study: &'a Study) -> Element<'a, Messag
     ]
     .align_y(Alignment::Center);
 
-    // Source domain cards
+    // Domain cards
     let mut cards_column = column![].spacing(SPACING_SM).width(Length::Fill);
 
     for code in domain_codes {
@@ -243,65 +233,7 @@ fn view_domains<'a>(state: &'a AppState, study: &'a Study) -> Element<'a, Messag
         }
     }
 
-    // Generated domain cards (always show CO, RELREC, RELSPEC, RELSUB)
-    let generated_section = view_generated_domains(study);
-
-    column![
-        header,
-        Space::new().height(SPACING_MD),
-        cards_column,
-        Space::new().height(SPACING_LG),
-        generated_section,
-    ]
-    .width(Length::Fill)
-    .into()
-}
-
-/// Render the generated domains section (CO, RELREC, RELSPEC, RELSUB).
-///
-/// These domains are always visible so users can add data during the mapping workflow.
-fn view_generated_domains<'a>(study: &'a Study) -> Element<'a, Message> {
-    // Section header
-    let header = row![
-        text("Special-Purpose & Relationship Domains")
-            .size(14)
-            .style(|theme: &Theme| text::Style {
-                color: Some(theme.clinical().text_muted),
-            }),
-    ]
-    .align_y(Alignment::Center);
-
-    let mut cards_column = column![].spacing(SPACING_SM).width(Length::Fill);
-
-    for domain_type in GeneratedDomainType::ALL {
-        let code = domain_type.code();
-        let label = domain_type.label();
-
-        // Check if domain exists with data
-        let (row_count, validation) = if let Some(domain) = study.domain(code) {
-            (domain.row_count(), domain.validation_summary())
-        } else {
-            (0, None)
-        };
-
-        // Generated domains always show 0% progress (no mapping needed)
-        // or 100% if they have data
-        let progress = if row_count > 0 { 1.0 } else { 0.0 };
-
-        let card = DomainCard::new(
-            code,
-            label,
-            Message::Home(HomeMessage::GeneratedDomainClicked(domain_type)),
-        )
-        .row_count(row_count)
-        .progress(progress)
-        .validation_opt(validation)
-        .view();
-
-        cards_column = cards_column.push(card);
-    }
-
-    column![header, Space::new().height(SPACING_SM), cards_column,]
+    column![header, Space::new().height(SPACING_MD), cards_column,]
         .width(Length::Fill)
         .into()
 }

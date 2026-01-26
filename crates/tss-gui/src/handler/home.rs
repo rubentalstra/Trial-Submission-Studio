@@ -44,11 +44,6 @@ impl MessageHandler<HomeMessage> for HomeHandler {
                 Task::none()
             }
 
-            HomeMessage::GeneratedDomainClicked(domain_type) => {
-                state.view = ViewState::generated_domain_builder_for(domain_type);
-                Task::none()
-            }
-
             HomeMessage::GoToExportClicked => {
                 state.view = ViewState::export();
                 Task::none()

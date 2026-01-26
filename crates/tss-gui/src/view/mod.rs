@@ -7,14 +7,12 @@
 //!
 //! - `home.rs` - Home screen (study selection, domain list)
 //! - `domain_editor/` - Domain editing with tabbed interface
-//! - `generated_domain_builder/` - Builders for CO, RELREC, RELSPEC, RELSUB
 //! - `export.rs` - Export configuration and progress
 //! - `dialog/` - Modal dialogs (about, settings, third-party, update)
 
 pub mod dialog;
 pub mod domain_editor;
 pub mod export;
-pub mod generated_domain_builder;
 pub mod home;
 pub mod source_assignment;
 
@@ -28,6 +26,5 @@ pub use dialog::{
 
 pub use domain_editor::view_domain_editor;
 pub use export::view_export;
-pub use generated_domain_builder::view_generated_domain_builder;
 pub use home::view_home;
 pub use source_assignment::view_source_assignment;

@@ -137,13 +137,6 @@ impl App {
             Message::Export(export_msg) => ExportHandler.handle(&mut self.state, export_msg),
 
             // =================================================================
-            // Generated domain builder messages
-            // =================================================================
-            Message::GeneratedDomain(gen_msg) => {
-                crate::handler::GeneratedDomainHandler.handle(&mut self.state, gen_msg)
-            }
-
-            // =================================================================
             // Project persistence
             // =================================================================
             Message::NewProject => crate::handler::project::handle_new_project(&mut self.state),
@@ -501,9 +494,8 @@ impl App {
         use crate::view::{
             view_about_dialog_content, view_close_project_dialog_content, view_domain_editor,
             view_export, view_export_complete_dialog_content, view_export_progress_dialog_content,
-            view_generated_domain_builder, view_settings_dialog_content,
-            view_third_party_dialog_content, view_unsaved_changes_dialog_content,
-            view_update_dialog_content,
+            view_settings_dialog_content, view_third_party_dialog_content,
+            view_unsaved_changes_dialog_content, view_update_dialog_content,
         };
 
         // Check if this is a dialog window
@@ -567,7 +559,6 @@ impl App {
                 view_domain_editor(&self.state, &editor.domain, editor.tab)
             }
             ViewState::Export(_) => view_export(&self.state),
-            ViewState::GeneratedDomainBuilder { builder } => view_generated_domain_builder(builder),
         };
 
         // On Windows/Linux, add the in-app menu bar at the top
@@ -675,9 +666,6 @@ impl App {
                     "Export - {}{} - Trial Submission Studio",
                     study_name, dirty_indicator
                 )
-            }
-            ViewState::GeneratedDomainBuilder { .. } => {
-                format!("Create Domain{} - Trial Submission Studio", dirty_indicator)
             }
         }
     }

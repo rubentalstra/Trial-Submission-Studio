@@ -39,7 +39,6 @@
 pub mod dialog;
 pub mod domain_editor;
 pub mod export;
-pub mod generated_domain;
 pub mod home;
 pub mod menu;
 pub mod project;
@@ -54,7 +53,6 @@ use crate::state::AppState;
 pub use dialog::DialogHandler;
 pub use domain_editor::DomainEditorHandler;
 pub use export::ExportHandler;
-pub use generated_domain::GeneratedDomainHandler;
 pub use home::HomeHandler;
 pub use menu::MenuActionHandler;
 pub use source_assignment::SourceAssignmentHandler;
