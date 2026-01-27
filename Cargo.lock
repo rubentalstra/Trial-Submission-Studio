@@ -6668,7 +6668,7 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "tss-gui"
-version = "0.0.5-alpha"
+version = "0.0.6-alpha"
 dependencies = [
  "chrono",
  "directories",
@@ -6700,7 +6700,7 @@ dependencies = [
 
 [[package]]
 name = "tss-ingest"
-version = "0.0.5-alpha"
+version = "0.0.6-alpha"
 dependencies = [
  "encoding_rs",
  "polars",
@@ -6713,7 +6713,7 @@ dependencies = [
 
 [[package]]
 name = "tss-persistence"
-version = "0.0.5-alpha"
+version = "0.0.6-alpha"
 dependencies = [
  "chrono",
  "hex",
@@ -6730,7 +6730,7 @@ dependencies = [
 
 [[package]]
 name = "tss-standards"
-version = "0.0.5-alpha"
+version = "0.0.6-alpha"
 dependencies = [
  "csv",
  "polars",
@@ -6741,7 +6741,7 @@ dependencies = [
 
 [[package]]
 name = "tss-submit"
-version = "0.0.5-alpha"
+version = "0.0.6-alpha"
 dependencies = [
  "anyhow",
  "chrono",
@@ -6758,7 +6758,7 @@ dependencies = [
 
 [[package]]
 name = "tss-updater"
-version = "0.0.5-alpha"
+version = "0.0.6-alpha"
 dependencies = [
  "async-stream",
  "chrono",
@@ -6779,7 +6779,7 @@ dependencies = [
 
 [[package]]
 name = "tss-updater-helper"
-version = "0.0.5-alpha"
+version = "0.0.6-alpha"
 dependencies = [
  "chrono",
  "serde",

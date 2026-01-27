@@ -81,7 +81,7 @@
     <content_rating type="oars-1.1"/>
 
     <releases>
-        <release version="0.0.5-alpha" date="2026-01-25">
+        <release version="0.0.6-alpha" date="2026-01-27">
             <description>
                 <p>Alpha release with core SDTM transformation features:</p>
                 <ul>
